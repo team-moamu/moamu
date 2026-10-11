@@ -1,0 +1,74 @@
+
+# ==============================
+# Java / Spring Boot / Gradle
+# ==============================
+.gradle/
+**/build/
+**/bin/
+*.class
+*.log
+
+# Gradle Wrapper는 Git에 포함
+!**/gradle/wrapper/gradle-wrapper.jar
+
+# ==============================
+# IDE
+# ==============================
+
+# IntelliJ IDEA
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+
+# Eclipse / STS
+.apt_generated/
+.classpath
+.factorypath
+.project
+.settings/
+.springBeans
+.sts4-cache/
+
+# VS Code
+.vscode/
+
+# NetBeans
+nbproject/private/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# ==============================
+# Frontend (React / Vite)
+# ==============================
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# ==============================
+# Environment / Secrets
+# ==============================
+.env
+.env.*
+!.env.example
+
+# Local application config
+**/application-local.yml
+**/application-local.yaml
+**/application-local.properties
+
+# ==============================
+# OS
+# ==============================
+.DS_Store
+Thumbs.db
+
+# ==============================
+# Others
+# ==============================
+HELP.md
+*.tmp
+*.swp
