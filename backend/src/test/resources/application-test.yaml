@@ -1,0 +1,7 @@
+# test Profile: MySQL Testcontainers를 사용하는 테스트 전용 설정을 관리합니다.
+# 테스트 DB 연결 정보는 Testcontainers에서 공급하며, 운영 DB를 사용하지 않습니다.
+# Spring 컨텍스트 테스트에서 @ActiveProfiles("test")로 명시합니다.
+# 이미지명은 운영 MySQL 버전 확정 후 TEST_MYSQL_IMAGE에 태그와 함께 지정합니다.
+test:
+  mysql:
+    image: ${TEST_MYSQL_IMAGE}
