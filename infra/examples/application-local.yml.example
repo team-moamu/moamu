@@ -1,0 +1,18 @@
+# 백엔드 프로젝트의 src/main/resources/application-local.yml로 복사합니다.
+# 백엔드 프로젝트 루트에 .env를 두고 그 디렉터리에서 실행하세요.
+# Spring Boot는 .env를 자동으로 읽지 않으므로 properties 형식으로 가져옵니다.
+# 배포본 .env의 값은 dotenv와 properties 양쪽에서 사용할 수 있습니다.
+spring:
+  config:
+    import: "optional:file:.env[.properties]"
+  datasource:
+    url: "jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:moamu}?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true"
+    username: ${DB_USER:moamu}
+    password: ${DB_PASSWORD}
+  jpa:
+    # 테이블은 백엔드가 버전 관리하는 마이그레이션으로 생성합니다.
+    # 엔티티가 있는데 테이블이 없다면 validate는 실패하는 것이 정상입니다.
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: UTC

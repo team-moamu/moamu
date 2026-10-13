@@ -1,0 +1,48 @@
+# 팀 공통 로컬 개발 DB. 운영 환경은 별도 RDS/시크릿을 사용합니다.
+name: moamu-team-db
+
+services:
+  mysql:
+    # 패치 버전까지 고정하여 팀원마다 같은 MySQL 버전을 사용합니다.
+    image: mysql:8.4.11
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:?DB_NAME is required in .env}
+      MYSQL_USER: ${DB_USER:?DB_USER is required in .env}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is required in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required in .env}
+      MYSQL_ROOT_HOST: localhost
+      TZ: UTC
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-time-zone=+00:00
+    ports:
+      # 다른 컴퓨터에서 이 로컬 DB에 직접 접속할 수 없도록 제한합니다.
+      - "127.0.0.1:${DB_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      # 인증과 쿼리 실행을 확인합니다. 초기화 중 임시 서버는 TCP를 열지 않습니다.
+      # $$는 Compose가 아닌 컨테이너 안에서 환경변수를 읽도록 합니다.
+      test:
+        - CMD-SHELL
+        - >-
+          MYSQL_PWD="$${MYSQL_PASSWORD}"
+          mysql --protocol=TCP --host=127.0.0.1
+          --user="$${MYSQL_USER}" --database="$${MYSQL_DATABASE}"
+          --connect-timeout=3 --batch --skip-column-names
+          --execute='SELECT 1' >/dev/null 2>&1
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  mysql_data:
