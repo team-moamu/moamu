@@ -127,48 +127,7 @@ Remove-Item Env:REDIS_HOST, Env:REDIS_PORT -ErrorAction SilentlyContinue
 
 ### 5. 개인 Docker MySQL 준비
 
-**기존 MySQL 컨테이너가 있는 경우** 새로 생성하지 않습니다. 이름과 포트를 확인해 시작하고, `.env`를 해당 컨테이너의 DB 주소·계정·비밀번호와 맞춥니다.
-
-```powershell
-docker ps -a
-docker start <기존 MySQL 컨테이너 이름>
-```
-
-**처음 세팅하는 경우** 4단계의 환경변수 로딩 후 아래 명령으로 개인 DB를 생성합니다. root 비밀번호는 입력창에서 본인이 정한 값을 입력합니다.
-
-```powershell
-$rootPassword = Read-Host '개인 로컬 MySQL root 비밀번호' -AsSecureString
-$env:MYSQL_ROOT_PASSWORD = [System.Net.NetworkCredential]::new('', $rootPassword).Password
-$env:MYSQL_DATABASE = 'moamu'
-$env:MYSQL_USER = $env:DB_USERNAME
-$env:MYSQL_PASSWORD = $env:DB_PASSWORD
-
-docker run --name moamu-mysql `
-    --detach `
-    --publish 127.0.0.1:3306:3306 `
-    --mount source=moamu-mysql-data,target=/var/lib/mysql `
-    --env MYSQL_ROOT_PASSWORD `
-    --env MYSQL_DATABASE `
-    --env MYSQL_USER `
-    --env MYSQL_PASSWORD `
-    mysql:8.4.11
-
-Remove-Item Env:MYSQL_ROOT_PASSWORD, Env:MYSQL_DATABASE, Env:MYSQL_USER, Env:MYSQL_PASSWORD
-docker logs moamu-mysql
-```
-
-초기화가 끝나고 MySQL 서버의 `ready for connections` 로그가 나올 때까지 기다립니다. 시작 완료 후 아래 접속 명령으로 확인합니다. 초기화 중에도 임시 서버 로그가 출력될 수 있습니다.
-
-이 명령은 DB `moamu`와 애플리케이션 계정을 생성하고 데이터를 Docker 볼륨 `moamu-mysql-data`에 보관합니다. 컨테이너·이미지·DB 데이터는 GitHub에 포함되지 않습니다.
-
-3306 포트를 이미 사용한다면 `--publish 127.0.0.1:3307:3306`으로 변경합니다. `.env`도 `DB_URL=jdbc:mysql://127.0.0.1:3307/moamu`로 바꾼 뒤 다시 로딩합니다. 기존 볼륨에는 최초 생성 당시의 계정과 비밀번호가 유지되므로 `.env` 수정만으로 DB 비밀번호가 바뀌지는 않습니다.
-
-```powershell
-# 비밀번호는 프롬프트에서 입력합니다. 접속 후 exit로 종료합니다.
-docker exec -it moamu-mysql mysql -u moamu -p moamu
-```
-
-기존 컨테이너 또는 다른 계정을 사용한다면 위 명령의 컨테이너 이름과 계정도 바꿉니다.
+`/infra/README.md` 참고
 
 ### 6. 백엔드 실행
 
