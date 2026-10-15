@@ -12,8 +12,6 @@ package com.moamu.domain.user.exception;
  * @RequiredArgsConstructor: Enum 생성자 생성
  */
 
-@Getter
-@RequiredArgsConstructor
 public class UserErrorCode {
 
   

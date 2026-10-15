@@ -10,7 +10,7 @@ package com.moamu.domain.user.dto;
  * 필요한 Request/Response DTO 생성해서 사용해주세요.
  * 필요없는 경우 생성하지 않아도 됩니다.
  */
-public class UseSignupRequest {
+public class UserSignupRequest {
 
   
 }

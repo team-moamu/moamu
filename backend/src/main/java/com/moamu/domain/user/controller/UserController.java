@@ -1,6 +1,13 @@
 package com.moamu.domain.user.controller;
 
+import org.springframework.web.bind.annotation.RestController;
+
 import com.moamu.domain.user.service.UserService;
+
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.web.bind.annotation.RequestMapping;
+
 
 /**
  * UserController
@@ -13,8 +20,8 @@ import com.moamu.domain.user.service.UserService;
 
 @RestController
 @RequestMapping("/api/users")
-@RequiredArgsConstructor
+@RequiredArgsConstructor 
 public class UserController {
-  
-  private final UserService userService;
+
+    private final UserService userService;
 }

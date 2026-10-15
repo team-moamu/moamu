@@ -1,5 +1,11 @@
 package com.moamu.domain.user.repository;
 
+import org.springframework.stereotype.Repository;
+
+import com.querydsl.jpa.impl.JPAQueryFactory;
+
+import lombok.RequiredArgsConstructor;
+
 /**
  * UserQueryRepository
  * QueryDSL 복잡한 조회 -> 기본 CRUD만 있다면 UserRepository.java에 작성하고 이 파일은 삭제해주세요.
@@ -8,8 +14,8 @@ package com.moamu.domain.user.repository;
  * @RequiredArgsConstructor: JPAQueryFactory 생성자 주입
  */
 
-@Repository
-@RequiredArgsConstructor
+@Repository 
+@RequiredArgsConstructor 
 public class UserQueryRepository {
 
     private final JPAQueryFactory queryFactory;
