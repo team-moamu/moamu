@@ -9,13 +9,10 @@ import lombok.NoArgsConstructor;
  * JPA Entity
  */
 
-@Entity 
-@Table (name = "users")
-@Getter 
-@NoArgsConstructor (access = AccessLevel.PROTECTED)
+// 개발할때 주석 풀어주세요.
+// @Entity 
+// @Table (name = "users")
+// @Getter 
+// @NoArgsConstructor (access = AccessLevel.PROTECTED)
 public class User {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
 }

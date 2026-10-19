@@ -9,7 +9,8 @@ import com.moamu.domain.user.entity.User;
  * JPA CRUD
  */
 
-
-public interface UserRepository extends JpaRepository<User, Long> {
-  
+// 개발 진행할때는 주석처리된 코드로 바꿔주세요
+// public interface UserRepository extends JpaRepository<User, Long> {
+public interface UserRepository {
+      
 }

@@ -11,6 +11,7 @@ import com.moamu.domain.user.repository.UserRepository;
 @Transactional(readOnly = true)
 public class UserServiceImpl implements UserService {
 
-    private final UserRepository userRepository;
+    // 개발할때는 주석 풀어주세요
+    // private final UserRepository userRepository;
 
 }
