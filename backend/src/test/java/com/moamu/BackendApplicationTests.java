@@ -1,13 +1,36 @@
 package com.moamu;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
+import org.testcontainers.containers.MySQLContainer;
+import org.testcontainers.utility.DockerImageName;
 
 @SpringBootTest
+@ActiveProfiles("test")
+@Import(BackendApplicationTests.ContainerConfiguration.class)
 class BackendApplicationTests {
 
-	@Test
-	void contextLoads() {
-	}
+    @Test
+    void contextLoads() {
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class ContainerConfiguration {
+
+        @Bean
+        @ServiceConnection
+        MySQLContainer<?> mysqlContainer(@Value("${test.mysql.image}") String image) {
+            if (image.isBlank()) {
+                throw new IllegalArgumentException("TEST_MYSQL_IMAGE must specify a MySQL image with a tag.");
+            }
+            return new MySQLContainer<>(DockerImageName.parse(image));
+        }
+    }
 
 }

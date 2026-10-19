@@ -59,6 +59,7 @@ coverage/
 **/application-local.yml
 **/application-local.yaml
 **/application-local.properties
+!backend/src/main/resources/application-local.yaml
 
 # ==============================
 # OS
