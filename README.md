@@ -20,21 +20,50 @@ moamu/
 │   ├── gradle/wrapper/               # Gradle Wrapper
 │   ├── src/main/java/com/moamu/
 │   │   ├── BackendApplication.java
-│   │   ├── domain/                   # 기능별 패키지 (구현 전)
-│   │   └── global/                   # 공통 설정·엔티티·응답·예외
+│   │   ├── domain/                   # 기능별 도메인 패키지
+│   │   │   ├── user/                 # 사용자 도메인
+│   │   │   │   ├── controller/       # 사용자 API 컨트롤러
+│   │   │   │   ├── dto/              # 회원가입 요청 DTO
+│   │   │   │   ├── entity/           # 사용자 엔티티
+│   │   │   │   ├── enums/            # 사용자 상태
+│   │   │   │   ├── exception/        # 사용자 도메인 오류 코드
+│   │   │   │   ├── repository/       # JPA·QueryDSL 저장소
+│   │   │   │   └── service/          # 서비스 인터페이스·구현체
+│   │   │   ├── ai/                   # 이하 도메인은 빈 패키지 (구현 전)
+│   │   │   ├── artwork/
+│   │   │   ├── challenge/
+│   │   │   ├── goal/
+│   │   │   ├── media/
+│   │   │   ├── museum/
+│   │   │   ├── puzzle/
+│   │   │   ├── schedule/
+│   │   │   └── verification/
+│   │   └── global/                   # 공통 코드
+│   │       ├── config/               # JPA Auditing·QueryDSL 설정
+│   │       ├── entity/               # 공통 BaseEntity
+│   │       ├── exception/            # 공통 오류 코드·예외 처리
+│   │       ├── response/             # 공통 API 응답
+│   │       └── security/             # 보안 패키지 (구현 전)
 │   ├── src/main/resources/
 │   │   ├── application.yaml          # 공통 JPA·Flyway 설정
 │   │   ├── application-local.yaml    # 로컬 연결·Swagger 설정
 │   │   ├── application-prod.yaml     # 운영 연결 설정
-│   │   └── db/migration/             # Flyway SQL (작성 전)
-│   ├── src/test/                     # 공통 코드·MySQL 컨텍스트 테스트
+│   │   └── db/migration/             # Flyway 마이그레이션
+│   │       └── README.md             # SQL 작성 규칙 (도메인 SQL 작성 전)
+│   ├── src/test/
+│   │   ├── java/com/moamu/           # MySQL 컨텍스트·공통 엔티티·예외 처리 테스트
+│   │   └── resources/
+│   │       └── application-test.yaml # 테스트 프로필 설정
 │   ├── build.gradle
+│   ├── settings.gradle
+│   ├── gradlew                       # macOS/Linux용 Gradle 실행 스크립트
+│   ├── gradlew.bat                   # Windows용 Gradle 실행 스크립트
 │   └── README.md                     # 백엔드 구현 규칙
 ├── frontend/                        # 초기화 전
 └── README.md
 ```
 
-빈 디렉토리는 Git에 저장되지 않습니다. Clone 후 `frontend/`나 빈 도메인 패키지가 보이지 않아도 정상입니다. 구현할 때 필요한 디렉토리를 생성합니다.
+위 구조는 현재 소스와 구현 예정인 빈 패키지를 함께 표시합니다. 빈 디렉토리는 Git에 저장되지 않으므로 Clone 후 `frontend/`, 구현 전 도메인 패키지, `global/security/`가 보이지 않아도 정상입니다. 구현할 때 필요한 디렉토리를 생성합니다. 개인 환경 파일과 IDE 설정, 빌드 산출물은 구조에서 생략했습니다.
 
 | 구분 | 구성 |
 | --- | --- |
