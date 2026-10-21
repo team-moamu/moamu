@@ -32,7 +32,9 @@ out/
 .sts4-cache/
 
 # VS Code
-.vscode/
+.vscode/*
+!.vscode/launch.json
+!.vscode/extensions.json
 
 # NetBeans
 nbproject/private/

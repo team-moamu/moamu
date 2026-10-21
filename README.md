@@ -175,6 +175,18 @@ Remove-Item Env:REDIS_HOST, Env:REDIS_PORT -ErrorAction SilentlyContinue
 
 IDE에서 직접 실행한다면 Java 21을 선택하고, 실행 구성에 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `SPRING_PROFILES_ACTIVE=local`을 등록합니다. Redis 변수는 준비 전까지 생략합니다. IDE의 `.env` 로딩 기능을 사용한다면 빈 Redis 값이 주입되지 않도록 확인합니다.
 
+#### VS Code에서 실행
+
+저장소 루트 `moamu/`를 VS Code로 열고 권장 확장인 **Extension Pack for Java**를 설치합니다. Java 실행 환경은 각자의 PC에서 JDK 21로 설정합니다.
+
+1. `backend/.env.example`을 `backend/.env`로 복사하고 본인 MySQL의 포트·계정·비밀번호를 입력합니다. 이미 파일이 있다면 기존 파일을 수정합니다.
+2. Redis가 준비되지 않았다면 `.env`의 `REDIS_HOST`, `REDIS_PORT` 항목은 삭제하거나 `#`으로 주석 처리합니다. 빈 값으로 전달하지 않습니다.
+3. Docker MySQL을 실행한 뒤 **실행 및 디버그**에서 **MOAMU Backend (local)**을 선택하고 `F5`를 누릅니다. 디버깅 없이 실행하려면 `Ctrl+F5`를 누릅니다.
+
+공유된 `.vscode/launch.json`이 `local` 프로필을 지정하고 `backend/.env`를 읽어 서버에 전달하므로 PowerShell 환경변수 로딩은 필요하지 않습니다. 이 설정은 VS Code 실행 구성에만 적용되며, 터미널에서 `bootRun`을 직접 실행할 때는 위 환경변수 로딩 과정이 필요합니다. 서버 시작 시 Flyway가 연결한 DB에 미적용 마이그레이션을 적용합니다.
+
+Git에는 `.vscode/launch.json`, `.vscode/extensions.json`, `.env.example`을 공유합니다. 개인 `.env`와 JDK 설치 경로 등 개인 VS Code 설정은 공유하지 않습니다.
+
 ### 7. 빌드와 테스트
 
 ```powershell
