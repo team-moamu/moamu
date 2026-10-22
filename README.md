@@ -135,7 +135,9 @@ TEST_MYSQL_IMAGE=mysql:8.4.11
 
 ### 4. 현재 터미널에 환경변수 로딩
 
-아래 코드는 주석과 빈 값을 건너뛰고 현재 PowerShell 세션에 값을 등록합니다. `.env` 값은 따옴표 없이 작성합니다. 이 로더는 단순 `KEY=VALUE` 형식용이며 변수 치환과 여러 줄 값은 지원하지 않습니다.
+사용하는 운영체제에 맞는 코드를 `backend/`에서 실행합니다. 아래 코드는 주석과 빈 값을 건너뛰고 현재 터미널 세션에 값을 등록합니다. `.env` 값은 따옴표 없이 작성합니다. 이 로더는 단순 `KEY=VALUE` 형식용이며 변수 치환과 여러 줄 값은 지원하지 않습니다.
+
+#### Windows (PowerShell)
 
 ```powershell
 Get-Content .env -Encoding UTF8 | ForEach-Object {
@@ -152,7 +154,27 @@ Get-Content .env -Encoding UTF8 | ForEach-Object {
 Remove-Item Env:REDIS_HOST, Env:REDIS_PORT -ErrorAction SilentlyContinue
 ```
 
-환경변수는 현재 터미널과 여기서 실행한 프로그램에만 적용됩니다. 새 터미널을 열거나 `.env`를 수정하면 다시 로딩합니다. Redis가 준비된 뒤에는 위 `Remove-Item`을 생략하고 실제 접속 정보를 등록합니다. 빈 Redis 값을 주입하면 기본값이 적용되지 않을 수 있습니다.
+#### macOS (zsh / bash)
+
+```sh
+while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+        *=*) ;;
+        *) continue ;;
+    esac
+    key=$(printf '%s' "${line%%=*}" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+    value=$(printf '%s' "${line#*=}" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+    case "$key" in
+        ''|[0-9]*|*[!a-zA-Z0-9_]*) continue ;;
+    esac
+    [ -n "$value" ] && export "$key=$value"
+done < .env
+
+# Redis 준비 전에는 두 변수를 실행 프로세스에 전달하지 않습니다.
+unset REDIS_HOST REDIS_PORT
+```
+
+환경변수는 현재 터미널과 여기서 실행한 프로그램에만 적용됩니다. 새 터미널을 열거나 `.env`를 수정하면 다시 로딩합니다. Redis가 준비된 뒤에는 위 `Remove-Item` 또는 `unset`을 생략하고 실제 접속 정보를 등록합니다. 빈 Redis 값을 주입하면 기본값이 적용되지 않을 수 있습니다.
 
 ### 5. 개인 Docker MySQL 준비
 
@@ -205,7 +227,7 @@ Docker가 실행 중이어야 합니다. 테스트는 `test` 프로필과 MySQL 
 
 테스트 보고서: `backend/build/reports/tests/test/index.html`
 
-macOS/Linux에서는 `.\gradlew.bat` 대신 `./gradlew`를 사용합니다. 실행 권한이 없다면 `chmod +x gradlew`를 실행합니다. 환경변수는 IDE 실행 구성 또는 각 셸의 `export`로 등록합니다. 위 PowerShell 환경변수 로더는 해당 셸에서 사용할 수 없습니다.
+macOS/Linux에서는 `.\gradlew.bat` 대신 `./gradlew`를 사용합니다. 실행 권한이 없다면 `chmod +x gradlew`를 실행합니다. 환경변수는 IDE 실행 구성 또는 4절의 macOS용 로더로 등록합니다.
 
 ## 자주 발생하는 문제
 
