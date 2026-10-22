@@ -1,11 +1,3 @@
--- MOAMU initial database schema
--- Flyway migration: V1__create_initial_schema.sql
--- Source: moamu(5).sql
--- Target: MySQL 8.x / InnoDB
--- Changes from source: define primary keys inside CREATE TABLE so AUTO_INCREMENT is valid.
--- Retained: 14 tables, 19 foreign keys, 11 unique constraints; no CHECK constraints.
--- Apply to an empty schema. Do not rerun manually after Flyway has applied it.
-
 CREATE TABLE `goal_category` (
 	`cate_id`	BIGINT	NOT NULL AUTO_INCREMENT	COMMENT '카테고리 ID',
 	`cate_code`	VARCHAR(50)	NOT NULL	COMMENT '카테고리 코드 (예: MUSIC)',
@@ -13,7 +5,7 @@ CREATE TABLE `goal_category` (
 	`cate_source`	VARCHAR(20)	NOT NULL	DEFAULT 'SYSTEM'	COMMENT '생성 출처 (SYSTEM/AI_GENERATED, 1차는 SYSTEM)',
 	`default_conditions`	TEXT	NULL	COMMENT '분석 장애 대체 경로용 기본 조건 (원본 JSON, ERD 표시용 TEXT)',
 	`del_yn`	CHAR(1)	NOT NULL	DEFAULT 'N'	COMMENT '삭제 여부 (Y/N)',
-	`frst_reg_dt`	DATETIME	NOT NULL	COMMENT '등록 일시',
+	`frst_reg_dt`	DATETIME	NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '등록 일시',
 	`upd_dt`	DATETIME	NULL	COMMENT '수정 일시',
 	CONSTRAINT `PK_GOAL_CATEGORY` PRIMARY KEY (`cate_id`)
 );
@@ -27,7 +19,7 @@ CREATE TABLE `goal_template_condition` (
 	`required`	CHAR(1)	NOT NULL	DEFAULT 'Y'	COMMENT '필수 여부 (Y/N, DATE_VISIBLE은 보조만 허용)',
 	`sort_order`	INT	NOT NULL	DEFAULT 0	COMMENT '조건 표시 순서',
 	`del_yn`	CHAR(1)	NOT NULL	DEFAULT 'N'	COMMENT '삭제 여부 (Y/N)',
-	`frst_reg_dt`	DATETIME	NOT NULL	COMMENT '등록 일시',
+	`frst_reg_dt`	DATETIME	NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '등록 일시',
 	`upd_dt`	DATETIME	NULL	COMMENT '수정 일시',
 	CONSTRAINT `PK_GOAL_TEMPLATE_CONDITION` PRIMARY KEY (`goal_template_condition_id`)
 );
@@ -38,7 +30,7 @@ CREATE TABLE `verification_check` (
 	`challenge_condition_id`	BIGINT	NOT NULL	COMMENT '도전 생성 당시 인증 조건 ID',
 	`status`	VARCHAR(20)	NOT NULL	COMMENT '조건별 판정 (MET/NOT_MET/UNCERTAIN)',
 	`reason`	VARCHAR(500)	NULL	COMMENT '조건별 판정 사유',
-	`frst_reg_dt`	DATETIME	NOT NULL	COMMENT '등록 일시',
+	`frst_reg_dt`	DATETIME	NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '등록 일시',
 	CONSTRAINT `PK_VERIFICATION_CHECK` PRIMARY KEY (`verification_check_id`)
 );
 
@@ -58,7 +50,7 @@ CREATE TABLE `challenge` (
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'READY'	COMMENT '도전 상태 (READY/IN_PROGRESS/SETTLING/COMPLETED/STOPPED 등)',
 	`stopped_at`	DATETIME	NULL	COMMENT '도전 중단 시각',
 	`del_yn`	CHAR(1)	NOT NULL	DEFAULT 'N'	COMMENT '삭제 여부 (Y/N)',
-	`frst_reg_dt`	DATETIME	NOT NULL	COMMENT '등록 일시',
+	`frst_reg_dt`	DATETIME	NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '등록 일시',
 	`upd_dt`	DATETIME	NULL	COMMENT '수정 일시',
 	`goal_template_id`	BIGINT	NOT NULL	COMMENT '선택한 목표 템플릿 ID (v1.4 추가)',
 	`artwork_id`	BIGINT	NOT NULL	COMMENT '해당 도전에 연결된 원본 작품 ID (v1.4 추가)',
@@ -77,7 +69,7 @@ CREATE TABLE `challenge_condition` (
 	`description`	VARCHAR(300)	NOT NULL	COMMENT '도전 생성 당시 조건 설명',
 	`required`	CHAR(1)	NOT NULL	COMMENT '필수 여부 (Y/N)',
 	`sort_order`	INT	NOT NULL	COMMENT '표시 순서',
-	`frst_reg_dt`	DATETIME	NOT NULL	COMMENT '등록 일시',
+	`frst_reg_dt`	DATETIME	NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '등록 일시',
 	CONSTRAINT `PK_CHALLENGE_CONDITION` PRIMARY KEY (`challenge_condition_id`)
 );
 
@@ -92,7 +84,7 @@ CREATE TABLE `artwork` (
 	`model_version`	VARCHAR(50)	NULL	COMMENT '작품 생성 AI 모델 버전 (사전 제작 메타데이터)',
 	`completed_at`	DATETIME	NULL	COMMENT '작품 준비 완료 시각',
 	`del_yn`	CHAR(1)	NOT NULL	DEFAULT 'N'	COMMENT '삭제 여부 (Y/N)',
-	`frst_reg_dt`	DATETIME	NOT NULL	COMMENT '등록 일시',
+	`frst_reg_dt`	DATETIME	NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '등록 일시',
 	`upd_dt`	DATETIME	NULL	COMMENT '수정 일시',
 	CONSTRAINT `PK_ARTWORK` PRIMARY KEY (`artwork_id`)
 );
@@ -110,7 +102,7 @@ CREATE TABLE `verification` (
 	`retake_guide`	VARCHAR(500)	NULL	COMMENT '재촬영 가이드',
 	`confidence`	DECIMAL(4, 3)	NULL	COMMENT 'AI 신뢰도 참고값 (결과 단독 판단 금지)',
 	`model_version`	VARCHAR(50)	NULL	COMMENT '판정 AI 모델 버전',
-	`frst_reg_dt`	DATETIME	NOT NULL	COMMENT '등록 일시',
+	`frst_reg_dt`	DATETIME	NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '등록 일시',
 	`upd_dt`	DATETIME	NULL	COMMENT '수정 일시',
 	`media_id`	BIGINT	NOT NULL	COMMENT '사진 파일 정보를 구분하는 ID',
 	CONSTRAINT `PK_VERIFICATION` PRIMARY KEY (`verification_id`)
@@ -129,7 +121,7 @@ CREATE TABLE `schedule` (
 	`decided_at`	DATETIME	NULL	COMMENT '최종 회차 결과 확정 시각',
 	`version`	INT	NOT NULL	DEFAULT 0	COMMENT '동시 수정 방지 버전(낙관적 락을 위한 버전)',
 	`piece_index`	INT	NOT NULL	COMMENT '퍼즐 조각 위치 번호',
-	`frst_reg_dt`	DATETIME	NOT NULL	COMMENT '등록 일시',
+	`frst_reg_dt`	DATETIME	NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '등록 일시',
 	`upd_dt`	DATETIME	NULL	COMMENT '수정 일시',
 	CONSTRAINT `PK_SCHEDULE` PRIMARY KEY (`schedule_id`)
 );
@@ -144,7 +136,7 @@ CREATE TABLE `goal_template` (
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'DRAFT'	COMMENT '목표 제공 상태 (DRAFT/ACTIVE/INACTIVE, 제안)',
 	`sort_order`	INT	NOT NULL	DEFAULT 0	COMMENT '목표 목록 표시 순서',
 	`del_yn`	CHAR(1)	NOT NULL	DEFAULT 'N'	COMMENT '삭제 여부 (Y/N)',
-	`frst_reg_dt`	DATETIME	NOT NULL	COMMENT '등록 일시',
+	`frst_reg_dt`	DATETIME	NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '등록 일시',
 	`upd_dt`	DATETIME	NULL	COMMENT '수정 일시',
 	CONSTRAINT `PK_GOAL_TEMPLATE` PRIMARY KEY (`goal_template_id`)
 );
@@ -155,7 +147,7 @@ CREATE TABLE `goal_template_artwork` (
 	`artwork_id`	BIGINT	NOT NULL	COMMENT '미리 생성된 작품 ID',
 	`sort_order`	INT	NOT NULL	DEFAULT 0	COMMENT '작품 연결 목록 표시 순서',
 	`del_yn`	CHAR(1)	NOT NULL	DEFAULT 'N'	COMMENT '연결 삭제 여부 (Y/N)',
-	`frst_reg_dt`	DATETIME	NOT NULL	COMMENT '등록 일시',
+	`frst_reg_dt`	DATETIME	NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '등록 일시',
 	`upd_dt`	DATETIME	NULL	COMMENT '수정 일시',
 	CONSTRAINT `PK_GOAL_TEMPLATE_ARTWORK` PRIMARY KEY (`goal_template_artwork_id`)
 );
@@ -167,7 +159,7 @@ CREATE TABLE `media` (
 	`content_type`	VARCHAR(100)	NULL	COMMENT '서버에서 확인한 실제 파일 형식',
 	`file_size`	BIGINT	NULL	COMMENT '서버에서 확인한 파일 크기',
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'PENDING'	COMMENT '업로드 및 파일 검증 상태',
-	`frst_reg_dt`	DATETIME	NOT NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '등록 일시',
+	`frst_reg_dt`	DATETIME	NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '등록 일시',
 	`user_id`	BIGINT	NULL	COMMENT '사진을 업로드한 회원 ID',
 	`purpose`	VARCHAR(20)	NOT NULL	COMMENT '사진 사용 목적 구분',
 	CONSTRAINT `PK_MEDIA` PRIMARY KEY (`media_id`)
@@ -179,7 +171,7 @@ CREATE TABLE `user_social_account` (
 	`provider`	VARCHAR(20)	NOT NULL	COMMENT '소셜 제공자 (KAKAO/GOOGLE/NAVER 등)',
 	`provider_user_id`	VARCHAR(255)	NOT NULL	COMMENT '제공자가 주는 사용자 고유 ID',
 	`email`	VARCHAR(255)	NULL	COMMENT '제공자에서 받은 이메일 (참고용)',
-	`frst_reg_dt`	DATETIME	NOT NULL	COMMENT '연결 일시',
+	`frst_reg_dt`	DATETIME	NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '등록 일시',
 	`upd_dt`	DATETIME	NULL	COMMENT '수정 일시',
 	CONSTRAINT `PK_USER_SOCIAL_ACCOUNT` PRIMARY KEY (`social_account_id`)
 );
@@ -198,7 +190,7 @@ CREATE TABLE `ai_task` (
 	`last_error`	VARCHAR(1000)	NULL	COMMENT '마지막 기술 오류 내용',
 	`started_at`	DATETIME	NULL	COMMENT 'AI 작업 실행 시작 시각',
 	`finished_at`	DATETIME	NULL	COMMENT 'AI 작업 실행 종료 시각',
-	`frst_reg_dt`	DATETIME	NOT NULL	COMMENT '등록 일시',
+	`frst_reg_dt`	DATETIME	NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '등록 일시',
 	`upd_dt`	DATETIME	NULL	COMMENT '수정 일시',
 	CONSTRAINT `PK_AI_TASK` PRIMARY KEY (`ai_task_id`)
 );
@@ -208,11 +200,10 @@ CREATE TABLE `users` (
 	`login_id`	VARCHAR(50)	NULL	COMMENT '일반 로그인 아이디 (소셜 전용 회원은 NULL)',
 	`password`	VARCHAR(255)	NULL	COMMENT '비밀번호 해시 BCrypt (소셜 전용 회원은 NULL)',
 	`name`	VARCHAR(100)	NOT NULL	COMMENT '이름',
-	`email`	VARCHAR(255)	NULL	COMMENT '이메일 (연락용)',
 	`status`	VARCHAR(20)	NOT NULL	DEFAULT 'ACTIVE'	COMMENT '회원 상태 (ACTIVE/WITHDRAWN)',
 	`withdrawn_at`	DATETIME	NULL	COMMENT '탈퇴 일시',
 	`del_yn`	CHAR(1)	NOT NULL	DEFAULT 'N'	COMMENT '삭제 여부 (Y/N)',
-	`frst_reg_dt`	DATETIME	NOT NULL	COMMENT '등록 일시',
+	`frst_reg_dt`	DATETIME	NULL	DEFAULT CURRENT_TIMESTAMP	COMMENT '등록 일시',
 	`upd_dt`	DATETIME	NULL	COMMENT '수정 일시',
 	`profile_media_id`	BIGINT	NULL	COMMENT '사진 파일 정보를 구분하는 ID',
 	CONSTRAINT `PK_USERS` PRIMARY KEY (`user_id`)
@@ -405,3 +396,8 @@ UNIQUE (`verification_id`, `challenge_condition_id`);
 ALTER TABLE `goal_template_artwork`
 ADD CONSTRAINT `uk_template_artwork`
 UNIQUE (`goal_template_id`, `artwork_id`);
+
+-- 12. ai_task에 인증시도 ID 중복 방지
+ALTER TABLE `ai_task`
+ADD CONSTRAINT `uk_verification_id`
+UNIQUE (`ai_task_id`, `verification_id`);
