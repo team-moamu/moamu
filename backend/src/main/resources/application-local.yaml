@@ -19,3 +19,9 @@ springdoc:
     enabled: true
   swagger-ui:
     enabled: true
+
+# redis 준비 전(준비되면 삭제하거나 true로 바꾸기)
+management:
+  health:
+    redis:
+      enabled: false
