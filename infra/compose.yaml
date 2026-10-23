@@ -44,5 +44,24 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  redis:
+    # 팀 공통 로컬 개발용. 인증번호 등 임시 데이터는 재생성이 가능합니다.
+    image: redis:8.2
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 volumes:
   mysql_data:
