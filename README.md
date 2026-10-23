@@ -80,7 +80,7 @@ Redis·JJWT 의존성이 포함되어 있어도 실제 연결과 JWT 인증 구�
 
 ## 팀원 로컬 환경 세팅
 
-아래 명령은 **Windows PowerShell** 기준입니다. 순서대로 실행합니다.
+사용하는 운영체제에 맞춰 **Windows (PowerShell)** 또는 **macOS (zsh / bash)** 명령을 순서대로 실행합니다.
 
 ### 1. 필수 프로그램
 
@@ -91,7 +91,17 @@ Redis·JJWT 의존성이 포함되어 있어도 실제 연결과 JWT 인증 구�
 
 Gradle과 MySQL은 별도 설치하지 않습니다. Gradle은 Wrapper, MySQL은 Docker를 사용합니다.
 
+#### Windows (PowerShell)
+
 ```powershell
+java -version
+git --version
+docker version
+```
+
+#### macOS (zsh / bash)
+
+```sh
 java -version
 git --version
 docker version
@@ -103,19 +113,39 @@ Java 버전이 21인지, Docker의 Client와 Server 정보가 모두 표시되�
 
 GitHub 저장소 화면의 **Code → HTTPS** 주소를 복사해 아래 자리표시자를 바꿉니다.
 
+#### Windows (PowerShell)
+
 ```powershell
 git clone <GitHub에서 복사한 저장소 주소> moamu
 cd moamu/backend
 .\gradlew.bat --version
 ```
 
+#### macOS (zsh / bash)
+
+```sh
+git clone <GitHub에서 복사한 저장소 주소> moamu
+cd moamu/backend
+chmod +x gradlew
+./gradlew --version
+```
+
 이후 명령은 모두 `backend/`에서 실행합니다. 최초 Gradle·의존성 다운로드에는 인터넷 연결이 필요합니다.
 
 ### 3. 개인 환경변수 파일 생성
 
+#### Windows (PowerShell)
+
 ```powershell
 Copy-Item .env.example .env
 notepad .env
+```
+
+#### macOS (zsh / bash)
+
+```sh
+cp .env.example .env
+open -e .env
 ```
 
 이미 `.env`가 있다면 복사하지 말고 기존 파일을 수정합니다. 아래 비밀번호 자리표시자를 **본인이 정한 로컬 개발용 비밀번호**로 바꿉니다.
@@ -184,8 +214,16 @@ unset REDIS_HOST REDIS_PORT
 
 환경변수를 로딩한 터미널에서 실행합니다.
 
+#### Windows (PowerShell)
+
 ```powershell
 .\gradlew.bat bootRun --args="--spring.profiles.active=local"
+```
+
+#### macOS (zsh / bash)
+
+```sh
+./gradlew bootRun --args="--spring.profiles.active=local"
 ```
 
 `Started BackendApplication` 로그가 나타나면 시작된 것입니다. 기본 포트는 8080이며 `Ctrl+C`로 종료합니다.
@@ -211,11 +249,21 @@ Git에는 `.vscode/launch.json`, `.vscode/extensions.json`, `.env.example`을 �
 
 ### 7. 빌드와 테스트
 
+#### Windows (PowerShell)
+
 ```powershell
 .\gradlew.bat clean build
 ```
 
+#### macOS (zsh / bash)
+
+```sh
+./gradlew clean build
+```
+
 Docker가 실행 중이어야 합니다. 테스트는 `test` 프로필과 MySQL Testcontainers로 별도 임시 DB를 만들며, 개인 개발 DB 접속 정보를 사용하지 않습니다. 처음 실행하면 MySQL 이미지 다운로드로 시간이 걸릴 수 있습니다.
+
+#### Windows (PowerShell)
 
 ```powershell
 # 테스트만 실행
@@ -225,9 +273,19 @@ Docker가 실행 중이어야 합니다. 테스트는 `test` 프로필과 MySQL 
 .\gradlew.bat build -x test
 ```
 
+#### macOS (zsh / bash)
+
+```sh
+# 테스트만 실행
+./gradlew test
+
+# Docker 없이 컴파일·패키징만 확인 (테스트 검증 제외)
+./gradlew build -x test
+```
+
 테스트 보고서: `backend/build/reports/tests/test/index.html`
 
-macOS/Linux에서는 `.\gradlew.bat` 대신 `./gradlew`를 사용합니다. 실행 권한이 없다면 `chmod +x gradlew`를 실행합니다. 환경변수는 IDE 실행 구성 또는 4절의 macOS용 로더로 등록합니다.
+macOS에서 실행 권한 오류가 발생하면 `backend/`에서 `chmod +x gradlew`를 실행합니다. 환경변수는 IDE 실행 구성 또는 4절의 운영체제별 로더로 등록합니다.
 
 ## 자주 발생하는 문제
 
