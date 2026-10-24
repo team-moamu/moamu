@@ -34,9 +34,19 @@ local의 `REDIS_HOST`, `REDIS_PORT`는 선택 사항이며, 생략하면 `127.0.
 
 개인 `.env`의 DB 및 Redis 접속 값을 IDE의 환경 변수 설정이나 터미널을 통해 실행 프로세스에 전달한 뒤 `backend/`에서 실행합니다. Spring Boot는 `.env`를 자동으로 읽지 않습니다.
 
+### Windows (PowerShell)
+
 ```powershell
 .\gradlew.bat bootRun --args="--spring.profiles.active=local"
 ```
+
+### macOS (zsh / bash)
+
+```sh
+./gradlew bootRun --args="--spring.profiles.active=local"
+```
+
+macOS에서 실행 권한 오류가 발생하면 `chmod +x gradlew`를 먼저 실행합니다. 환경변수 로딩은 [루트 README의 운영체제별 안내](../README.md#4-현재-터미널에-환경변수-로딩)를 참고합니다.
 
 운영은 `SPRING_PROFILES_ACTIVE=prod`를 설정하거나 JAR 실행 시 `--spring.profiles.active=prod`를 전달합니다.
 
@@ -46,8 +56,16 @@ Swagger에는 현재 Spring Security 기본 인증이 적용됩니다.
 
 Docker 실행이 필요합니다. 팀 개발 DB와 같은 `mysql:8.4.11`을 사용하며, `TEST_MYSQL_IMAGE`로 변경할 수 있습니다.
 
+### Windows (PowerShell)
+
 ```powershell
 .\gradlew.bat test
+```
+
+### macOS (zsh / bash)
+
+```sh
+./gradlew test
 ```
 
 테스트는 `test` Profile과 MySQL Testcontainers를 사용합니다. DB 연결 정보는 컨테이너에서 공급합니다.
