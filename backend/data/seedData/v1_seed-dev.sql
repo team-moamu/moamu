@@ -15,11 +15,11 @@
 -- 3. 팀의 백엔드 실행 안내에 따라 Flyway 마이그레이션을 적용합니다.
 --    적용을 마치면 백엔드를 중지하고 아래 시드를 실행하세요(동시 데이터 생성 방지).
 -- 4. infra 폴더에서 실행합니다. 아래 경로는 backend/data 저장했을 때 기준입니다.
---    docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --default-character-set=utf8mb4 --user="$MYSQL_USER" --database="$MYSQL_DATABASE"' < ../backend/data/seed-dev.sql
+--    docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --default-character-set=utf8mb4 --user="$MYSQL_USER" --database="$MYSQL_DATABASE"' < ../backend/data/seedData/V1_seed-dev.sql
 -- 5. 맨 아래 건수와 조각 상태 조회 결과를 확인하고 백엔드를 다시 실행합니다.
 
 -- [Windows PowerShell: 1~3번 준비 후 infra 폴더에서]
--- Get-Content -Raw -Encoding UTF8 ../backend/data/seed-dev.sql | docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --default-character-set=utf8mb4 --user="$MYSQL_USER" --database="$MYSQL_DATABASE"'
+-- Get-Content -Raw -Encoding UTF8 ../backend/data/seedData/V1_seed-dev.sql | docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --default-character-set=utf8mb4 --user="$MYSQL_USER" --database="$MYSQL_DATABASE"'
 -- 한국어 전송이 깨지는 구형 PowerShell에서는 먼저 다음을 실행합니다.
 -- $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
 
