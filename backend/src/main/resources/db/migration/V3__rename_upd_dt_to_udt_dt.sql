@@ -1,0 +1,11 @@
+ALTER TABLE `goal_category` RENAME COLUMN `upd_dt` TO `udt_dt`;
+ALTER TABLE `goal_template_condition` RENAME COLUMN `upd_dt` TO `udt_dt`;
+ALTER TABLE `challenge` RENAME COLUMN `upd_dt` TO `udt_dt`;
+ALTER TABLE `artwork` RENAME COLUMN `upd_dt` TO `udt_dt`;
+ALTER TABLE `verification` RENAME COLUMN `upd_dt` TO `udt_dt`;
+ALTER TABLE `schedule` RENAME COLUMN `upd_dt` TO `udt_dt`;
+ALTER TABLE `goal_template` RENAME COLUMN `upd_dt` TO `udt_dt`;
+ALTER TABLE `goal_template_artwork` RENAME COLUMN `upd_dt` TO `udt_dt`;
+ALTER TABLE `user_social_account` RENAME COLUMN `upd_dt` TO `udt_dt`;
+ALTER TABLE `ai_task` RENAME COLUMN `upd_dt` TO `udt_dt`;
+ALTER TABLE `users` RENAME COLUMN `upd_dt` TO `udt_dt`;
