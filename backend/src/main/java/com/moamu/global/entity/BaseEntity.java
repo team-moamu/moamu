@@ -18,7 +18,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public abstract class BaseEntity {
 
-    @Column(name = "del_yn")
+    @Column(name = "del_yn", columnDefinition = "CHAR(1)")
     private String delYn = "N";
 
     @CreatedDate
