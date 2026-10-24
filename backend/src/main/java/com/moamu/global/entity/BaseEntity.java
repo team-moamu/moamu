@@ -27,5 +27,5 @@ public abstract class BaseEntity {
 
     @LastModifiedDate
     @Column(name = "upd_dt")
-    private LocalDateTime udtDt;
+    private LocalDateTime updDt;
 }
