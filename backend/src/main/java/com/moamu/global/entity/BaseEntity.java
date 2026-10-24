@@ -18,7 +18,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public abstract class BaseEntity {
 
-    @Column(name = "del_yn", columnDefinition = "CHAR(1)")
+    @Column(name = "del_yn")
     private String delYn = "N";
 
     @CreatedDate
@@ -26,6 +26,6 @@ public abstract class BaseEntity {
     private LocalDateTime frstRegDt;
 
     @LastModifiedDate
-    @Column(name = "upd_dt")
-    private LocalDateTime updDt;
+    @Column(name = "udt_dt")
+    private LocalDateTime udtDt;
 }
