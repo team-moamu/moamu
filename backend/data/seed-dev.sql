@@ -165,7 +165,7 @@ INSERT INTO `goal_template_artwork` (`goal_template_artwork_id`, `goal_template_
 (6, 6, 6, 1, v_now);
 
 -- 회원 1: 기본 회차를 만든 뒤 아래에서 성공/실패/미확정 표시용으로 변경합니다.
-INSERT INTO challenge (challenge_id,user_id,category_id,challenge_title,goal_text,photo_guide,duration_days,start_date,end_date,status,goal_template_id,artwork_id,verification_scope,grid_rows,grid_cols,is_exhibited,frst_reg_dt)
+INSERT INTO challenge (challenge_id,user_id,cate_id,challenge_title,goal_text,photo_guide,duration_days,start_date,end_date,status,goal_template_id,artwork_id,verification_scope,grid_rows,grid_cols,is_exhibited,frst_reg_dt)
 SELECT 1,1,cate_id,CONCAT('[DEV] ',goal_name),goal_name,photo_guide,7,v_today,DATE_ADD(v_today,INTERVAL 6 DAY),'IN_PROGRESS',goal_template_id,1,verification_scope,1,7,'N',v_now
 FROM goal_template WHERE goal_template_id=1;
 INSERT INTO challenge_condition (challenge_id,code,condition_type,description,required,sort_order,frst_reg_dt)
@@ -181,7 +181,7 @@ INSERT INTO `schedule` (`schedule_id`, `challenge_id`, `day_no`, `schedule_date`
 (7, 1, 7, DATE_ADD(v_today, INTERVAL 6 DAY), DATE_SUB(CAST(DATE_ADD(v_today, INTERVAL 6 DAY) AS DATETIME), INTERVAL 9 HOUR), DATE_SUB(CAST(DATE_ADD(v_today, INTERVAL 7 DAY) AS DATETIME), INTERVAL 9 HOUR), 'UPCOMING', 0, 6, v_now);
 
 -- 회원 2: 오늘 시작하는 7일 도전. 첫 회차 OPEN, 나머지 UPCOMING.
-INSERT INTO challenge (challenge_id,user_id,category_id,challenge_title,goal_text,photo_guide,duration_days,start_date,end_date,status,goal_template_id,artwork_id,verification_scope,grid_rows,grid_cols,is_exhibited,frst_reg_dt)
+INSERT INTO challenge (challenge_id,user_id,cate_id,challenge_title,goal_text,photo_guide,duration_days,start_date,end_date,status,goal_template_id,artwork_id,verification_scope,grid_rows,grid_cols,is_exhibited,frst_reg_dt)
 SELECT 2,2,cate_id,CONCAT('[DEV] ',goal_name),goal_name,photo_guide,7,v_today,DATE_ADD(v_today,INTERVAL 6 DAY),'IN_PROGRESS',goal_template_id,2,verification_scope,1,7,'N',v_now
 FROM goal_template WHERE goal_template_id=2;
 INSERT INTO challenge_condition (challenge_id,code,condition_type,description,required,sort_order,frst_reg_dt)
@@ -197,7 +197,7 @@ INSERT INTO `schedule` (`schedule_id`, `challenge_id`, `day_no`, `schedule_date`
 (14, 2, 7, DATE_ADD(v_today, INTERVAL 6 DAY), DATE_SUB(CAST(DATE_ADD(v_today, INTERVAL 6 DAY) AS DATETIME), INTERVAL 9 HOUR), DATE_SUB(CAST(DATE_ADD(v_today, INTERVAL 7 DAY) AS DATETIME), INTERVAL 9 HOUR), 'UPCOMING', 0, 6, v_now);
 
 -- 회원 3: 오늘 시작하는 7일 도전. 첫 회차 OPEN, 나머지 UPCOMING.
-INSERT INTO challenge (challenge_id,user_id,category_id,challenge_title,goal_text,photo_guide,duration_days,start_date,end_date,status,goal_template_id,artwork_id,verification_scope,grid_rows,grid_cols,is_exhibited,frst_reg_dt)
+INSERT INTO challenge (challenge_id,user_id,cate_id,challenge_title,goal_text,photo_guide,duration_days,start_date,end_date,status,goal_template_id,artwork_id,verification_scope,grid_rows,grid_cols,is_exhibited,frst_reg_dt)
 SELECT 3,3,cate_id,CONCAT('[DEV] ',goal_name),goal_name,photo_guide,7,v_today,DATE_ADD(v_today,INTERVAL 6 DAY),'IN_PROGRESS',goal_template_id,3,verification_scope,1,7,'N',v_now
 FROM goal_template WHERE goal_template_id=3;
 INSERT INTO challenge_condition (challenge_id,code,condition_type,description,required,sort_order,frst_reg_dt)
