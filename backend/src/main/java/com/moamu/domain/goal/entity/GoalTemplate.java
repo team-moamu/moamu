@@ -46,6 +46,6 @@ public class GoalTemplate extends BaseEntity {
     private Status status;
 
     // 목표 목록 표시 순서
-    @Column(name = "sort_ord")
-    private int sortOrd;
+    @Column(name = "sort_order")
+    private int sortOrder;
 }

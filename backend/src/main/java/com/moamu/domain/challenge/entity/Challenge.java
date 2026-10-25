@@ -53,7 +53,7 @@ public class Challenge extends BaseEntity {
     // 사진 인증 가능성 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Verifiability verifiability;
+    private Verifiability verifiability = Verifiability.VERIFIABLE;
 
     // 대체 조건 수락 여부 (Y/N)
     @Column(name = "substitute_accepted", nullable = false)
@@ -78,7 +78,7 @@ public class Challenge extends BaseEntity {
     // 도전 상태
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
-    private Status status;
+    private Status status = Status.READY;
 
     // 도전 중단 시각
     @Column(name = "stopped_at")
@@ -97,6 +97,32 @@ public class Challenge extends BaseEntity {
     private int gridCols;
 
     // 미술관 전시 여부(Y/N)
-    @Column(name = "is_exhibition")
-    private char isExhibition = 'N';
+    @Column(name = "is_exhibited")
+    private char isExhibited = 'N';
+
+    // 도전 생성
+    public static Challenge create(Long userId, Long cateId, Long goalTemplateId, Long artworkId, String challengeTitle, String goalText, String inputGoalText,
+            String photoGuide, int durationDays, LocalDate startDate, LocalDate endDate, String verificationScope, int gridRows, int gridCols ) {
+
+        Challenge challenge = new Challenge();
+
+        challenge.userId = userId;
+        challenge.cateId = cateId;
+        challenge.goalTemplateId = goalTemplateId;
+        challenge.artworkId = artworkId;
+        challenge.challengeTitle = challengeTitle;
+        challenge.goalText = goalText;
+        challenge.inputGoalText = inputGoalText;
+        challenge.photoGuide = photoGuide;
+        challenge.durationDays = durationDays;
+        challenge.startDate = startDate;
+        challenge.endDate = endDate;
+        challenge.verificationScope = verificationScope;
+        challenge.gridRows = gridRows;
+        challenge.gridCols = gridCols;
+
+        return challenge;
+    }
+
+
 }

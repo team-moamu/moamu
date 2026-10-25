@@ -11,5 +11,9 @@ package com.moamu.domain.challenge.enums;
 */
 
 public enum Status {
-    
+    READY,
+    IN_PROGRESS,
+    SETTLING,
+    COMPLETED,
+    STOPPED
 }
