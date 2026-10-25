@@ -9,6 +9,11 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  # 이미지 파일 업로드 크기 제한 (공통)
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 11MB
 
 springdoc:
   api-docs:
