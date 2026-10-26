@@ -9,7 +9,6 @@ import lombok.Setter;
 @Getter
 @Setter
 public class MediaResponse {
-    private Long verificationId;
     private Long mediaId;
     private MediaStatus status; 
 }
