@@ -29,4 +29,4 @@ management:
 # 로컬 이미지 파일 저장 경로
 app:
   storage:
-    local-root: ${MOAMU_STORAGE_ROOT:./data}
+    local-root: ${MOAMU_STORAGE_ROOT:./data/uploads}
