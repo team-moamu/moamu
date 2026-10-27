@@ -42,7 +42,7 @@ public class User extends BaseEntity {
     private LocalDateTime withdrawnAt;
 
     @Column(name = "profile_media_id")
-    private String profileMediaId;
+    private Long profileMediaId;
 
 
     public static User createLocal(
