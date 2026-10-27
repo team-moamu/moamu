@@ -41,7 +41,7 @@ public class User extends BaseEntity {
     @Column(name = "withdrawn_at")
     private LocalDateTime withdrawnAt;
 
-    @Column(name = "progile_media_id")
+    @Column(name = "profile_media_id")
     private String profileMediaId;
 
 
