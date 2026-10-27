@@ -1,14 +1,11 @@
 @import "tailwindcss";
+@import './styles/index.css';
 
-* { box-sizing: border-box; }
-body {
-  margin: 0;
-  font-family: system-ui, sans-serif;
-  color: #202020;
-  background: #faf9f6;
-}
-main {
-  max-width: 60rem;
-  margin: 0 auto;
-  padding: 3rem 1.25rem;
+/* 초기 안내 화면용 배치입니다. 기능 화면 구현 시 각 화면 레이아웃으로 옮기세요. */
+@layer base {
+  main {
+    max-width: 60rem;
+    margin: 0 auto;
+    padding: var(--space-12) var(--page-padding);
+  }
 }
