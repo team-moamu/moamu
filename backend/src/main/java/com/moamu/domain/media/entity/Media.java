@@ -2,7 +2,6 @@ package com.moamu.domain.media.entity;
 
 import java.time.LocalDateTime;
 
-import com.moamu.domain.media.enums.MediaStatus;
 import com.moamu.domain.media.enums.MediaPurpose;
 
 import jakarta.persistence.*;
@@ -37,11 +36,6 @@ public class Media {
     // 파일 크기 (Byte)
     @Column(name = "file_size")
     private Long fileSize;
-
-    // 파일 업로드 및 검증 상태
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
-    private MediaStatus status;
 
     // 등록 일시
     @Column(name = "frst_reg_dt", updatable = false)
@@ -81,7 +75,6 @@ public class Media {
         media.contentType = contentType;
         media.fileSize = fileSize;
         media.userId = userId;
-        media.status = MediaStatus.SUCCESS;
         media.purpose = MediaPurpose.VERIFICATION;
 
         return media;
