@@ -132,8 +132,9 @@ public class LocalStorageService implements StorageService {
         return switch (extension) {
             case "jpg", "jpeg" -> "jpg";
             case "png" -> "png";
+            case "webp" -> "webp";
             default -> throw new IllegalArgumentException(
-                    "JPG 또는 PNG 사진만 업로드할 수 있습니다."
+                    "JPEG, PNG, WebP 사진만 업로드할 수 있습니다."
             );
         };
     }
@@ -167,6 +168,8 @@ public class LocalStorageService implements StorageService {
                     contentType = "image/jpeg";
                 } else if ("png".equals(extension) && "png".equals(format)) {
                     contentType = "image/png";
+                } else if ("webp".equals(extension) && "webp".equals(format)) {
+                    contentType = "image/webp";
                 } else {
                     throw new IllegalArgumentException(
                             "확장자와 실제 이미지 형식이 다릅니다."
