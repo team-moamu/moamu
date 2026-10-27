@@ -10,7 +10,6 @@ import com.moamu.domain.goal.service.GoalTemplateService;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 
 
 @RestController
@@ -20,10 +19,6 @@ public class GoalTemplateController {
     private final GoalTemplateService goalTemplateService;
 
     @GetMapping
-    public String getMethodName(@RequestParam String param) {
-        return new String();
-    }
-    
     public List<GoalTemplateListResponse> getGoalTemplates() {
         return goalTemplateService.selectGoalTemplates();
     }
