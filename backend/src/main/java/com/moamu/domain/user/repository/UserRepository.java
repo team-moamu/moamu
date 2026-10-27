@@ -6,11 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.moamu.domain.user.entity.User;
 
-/**
- * UserRepository
- * JPA CRUD
- */
-
 public interface UserRepository extends JpaRepository<User, Long> {
       
   boolean existsByLoginId(String loginId);
