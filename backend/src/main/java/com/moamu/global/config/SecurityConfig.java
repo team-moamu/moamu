@@ -15,7 +15,8 @@ public class SecurityConfig {
             HttpSecurity http) throws Exception {
 
         http
-            // CSRF 보호 비활성화 (개발용)
+            // REST API 개발을 위해 CSRF 보호 비활성화
+            // JWT 인증 방식 확정 후 재검토
             .csrf(csrf -> csrf.disable())
 
             // API 접근 권한 설정
