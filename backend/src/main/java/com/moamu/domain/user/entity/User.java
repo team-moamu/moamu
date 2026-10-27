@@ -41,8 +41,8 @@ public class User extends BaseEntity {
     @Column(name = "withdrawn_at")
     private LocalDateTime withdrawnAt;
 
-    @Column(name = "progile_media_id")
-    private String profileMediaId;
+    @Column(name = "profile_media_id")
+    private Long profileMediaId;
 
 
     public static User createLocal(
