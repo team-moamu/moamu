@@ -22,9 +22,13 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.moamu.domain.media.exception.MediaErrorCode;
+import com.moamu.global.exception.BusinessException;
+
 // 사용자가 올린 사진을 내 폴더에 저장하고, 필요시 삭제하는 클래스
 @Service
-@Profile("local")
+// 로컬 개발과 테스트에서 같은 파일 저장 구현을 사용합니다.
+@Profile({"local", "test"})
 public class LocalStorageService implements StorageService {
 
     private static final long MAX_FILE_SIZE = 10L * 1024 * 1024;
@@ -44,12 +48,12 @@ public class LocalStorageService implements StorageService {
     public StoredFile saveVerification(MultipartFile image) {
         // 1. 빈 파일인지 확인
         if (image == null || image.isEmpty()) {
-            throw new IllegalArgumentException("사진을 선택해주세요.");
+            throw new BusinessException(MediaErrorCode.IMAGE_REQUIRED);
         }
 
         // 2. 파일 크기 제한 확인
         if (image.getSize() > MAX_FILE_SIZE) {
-            throw new IllegalArgumentException("사진은 10MB 이하여야 합니다.");
+            throw new BusinessException(MediaErrorCode.IMAGE_TOO_LARGE);
         }
 
         byte[] bytes;
@@ -61,7 +65,8 @@ public class LocalStorageService implements StorageService {
         }
 
         if (bytes.length == 0 || bytes.length > MAX_FILE_SIZE) {
-            throw new IllegalArgumentException("사진 크기가 올바르지 않습니다.");
+            throw new BusinessException(bytes.length == 0
+                    ? MediaErrorCode.IMAGE_REQUIRED : MediaErrorCode.IMAGE_TOO_LARGE);
         }
 
         // 3. 지원하는 형식과 실제 이미지인지 검증
@@ -117,13 +122,13 @@ public class LocalStorageService implements StorageService {
     // 파일 확장자 확인
     private String getExtension(String originalFilename) {
         if (originalFilename == null) {
-            throw new IllegalArgumentException("파일명이 없습니다.");
+            throw new BusinessException(MediaErrorCode.INVALID_IMAGE);
         }
 
         int dotIndex = originalFilename.lastIndexOf('.');
 
         if (dotIndex < 0) {
-            throw new IllegalArgumentException("파일 확장자가 없습니다.");
+            throw new BusinessException(MediaErrorCode.INVALID_IMAGE);
         }
 
         String extension = originalFilename.substring(dotIndex + 1)
@@ -132,9 +137,8 @@ public class LocalStorageService implements StorageService {
         return switch (extension) {
             case "jpg", "jpeg" -> "jpg";
             case "png" -> "png";
-            default -> throw new IllegalArgumentException(
-                    "JPG 또는 PNG 사진만 업로드할 수 있습니다."
-            );
+            case "webp" -> "webp";
+            default -> throw new BusinessException(MediaErrorCode.UNSUPPORTED_IMAGE_FORMAT);
         };
     }
 
@@ -144,13 +148,13 @@ public class LocalStorageService implements StorageService {
                 new ByteArrayInputStream(bytes)
         )) {
             if (input == null) {
-                throw new IllegalArgumentException("이미지를 읽을 수 없습니다.");
+                throw new BusinessException(MediaErrorCode.INVALID_IMAGE);
             }
 
             var readers = ImageIO.getImageReaders(input);
 
             if (!readers.hasNext()) {
-                throw new IllegalArgumentException("지원하지 않는 이미지입니다.");
+                throw new BusinessException(MediaErrorCode.INVALID_IMAGE);
             }
 
             var reader = readers.next();
@@ -167,10 +171,10 @@ public class LocalStorageService implements StorageService {
                     contentType = "image/jpeg";
                 } else if ("png".equals(extension) && "png".equals(format)) {
                     contentType = "image/png";
+                } else if ("webp".equals(extension) && "webp".equals(format)) {
+                    contentType = "image/webp";
                 } else {
-                    throw new IllegalArgumentException(
-                            "확장자와 실제 이미지 형식이 다릅니다."
-                    );
+                    throw new BusinessException(MediaErrorCode.INVALID_IMAGE);
                 }
 
                 int width = reader.getWidth(0);
@@ -179,15 +183,13 @@ public class LocalStorageService implements StorageService {
                 // 압축 파일은 작아도 이미지 해상도가 과도할 수 있으므로 제한
                 if (width <= 0 || height <= 0
                         || (long) width * height > 20_000_000L) {
-                    throw new IllegalArgumentException(
-                            "사진은 2,000만 화소 이하여야 합니다."
-                    );
+                    throw new BusinessException(MediaErrorCode.IMAGE_RESOLUTION_TOO_LARGE);
                 }
 
                 BufferedImage decoded = reader.read(0);
 
                 if (decoded == null) {
-                    throw new IllegalArgumentException("손상된 이미지입니다.");
+                    throw new BusinessException(MediaErrorCode.INVALID_IMAGE);
                 }
 
                 decoded.flush();
@@ -196,7 +198,8 @@ public class LocalStorageService implements StorageService {
                 reader.dispose();
             }
         } catch (IOException e) {
-            throw new IllegalArgumentException("이미지를 확인하지 못했습니다.", e);
+            // 이미지 내용을 해석하지 못한 경우는 잘못된 파일 요청으로 처리합니다.
+            throw new BusinessException(MediaErrorCode.INVALID_IMAGE);
         }
     }
 
