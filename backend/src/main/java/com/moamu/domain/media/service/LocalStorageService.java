@@ -24,7 +24,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 // 사용자가 올린 사진을 내 폴더에 저장하고, 필요시 삭제하는 클래스
 @Service
-@Profile("local")
+// 로컬 개발과 테스트에서 같은 파일 저장 구현을 사용합니다.
+@Profile({"local", "test"})
 public class LocalStorageService implements StorageService {
 
     private static final long MAX_FILE_SIZE = 10L * 1024 * 1024;
