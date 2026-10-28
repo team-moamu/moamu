@@ -1,7 +1,6 @@
 package com.moamu.domain.media.controller;
 
 import com.moamu.domain.media.dto.MediaResponse;
-import com.moamu.domain.media.enums.MediaStatus;
 import com.moamu.domain.media.service.MediaService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,7 +28,6 @@ class MediaControllerTests {
     void authenticatedUploadReturnsCreatedMedia() throws Exception {
         MediaResponse response = new MediaResponse();
         response.setMediaId(10L);
-        response.setStatus(MediaStatus.SUCCESS);
         when(mediaService.uploadVerification(eq(1L), any())).thenReturn(response);
 
         mockMvc.perform(multipart("/api/media/verification")
