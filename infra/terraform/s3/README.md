@@ -1,33 +1,46 @@
 # 백엔드 팀 S3 사용 안내
 
-## 현재 구성
+## 접속 정보
 
-- S3 버킷: `moamu-s3-bucket`
-- 리전: `ap-northeast-2` (서울)
-- 버킷은 비공개이며, 퍼블릭 액세스가 차단되어 있습니다.
-- 백엔드 팀원용 IAM 사용자 4명에게 **이 버킷의 파일 목록·읽기·업로드 권한**을 부여했습니다. 파일 삭제 권한은 없습니다.
+| 항목 | 값 |
+| --- | --- |
+| AWS 계정 ID | `539247467418` |
+| 콘솔 로그인 주소 | https://539247467418.signin.aws.amazon.com/console |
+| S3 버킷 | `moamu-s3-bucket` |
+| 리전 | `ap-northeast-2` (서울) |
 
-| 팀원별 IAM 사용자 |
-| --- |
-| `moamu-backend-1` |
-| `moamu-backend-2` |
-| `moamu-backend-3` |
-| `moamu-backend-4` |
+| IAM 사용자 | 담당자 |
+| --- | --- |
+| `moamu-backend-1` | 개별 안내 |
+| `moamu-backend-2` | 개별 안내 |
+| `moamu-backend-3` | 개별 안내 |
+| `moamu-ai` | AI 담당자 |
 
-각 팀원은 배정받은 **자기 계정의 Access key ID와 Secret access key**를 로컬 개발 환경에 설정합니다. 키 값과 콘솔 비밀번호는 각자에게 별도로 전달하며 Git에 올리지 않습니다.
+본인에게 배정된 IAM 사용자 이름을 사용하세요. 버킷은 비공개이며, 위 사용자에게는 이 버킷의 **목록 조회, 파일 읽기, 업로드** 권한이 있습니다. 파일 삭제 권한은 없습니다.
 
-## 로컬 Spring 설정
+## AWS 콘솔에서 확인하기
 
-각자의 로컬 실행 환경에 다음 값을 설정합니다. `.env` 파일을 쓴다면 프로젝트의 로더나 IDE 설정으로 **프로세스 환경변수에 실제로 전달**해야 합니다. Spring과 AWS SDK가 `.env` 파일을 자동으로 읽는 것은 아닙니다. 아래의 `...`는 **본인 키**로 바꿉니다.
+1. 위 **콘솔 로그인 주소**에 접속합니다. 네 사용자 모두 같은 주소를 사용합니다.
+2. 본인의 **IAM 사용자 이름**과 별도로 전달받은 **임시 비밀번호**를 입력합니다.
+3. 첫 로그인에서 요청하면 본인만의 새 비밀번호로 변경합니다.
+4. AWS 콘솔에서 **S3 → `moamu-s3-bucket`**으로 이동합니다.
+
+콘솔 로그인이 설정되지 않은 계정은 비밀번호를 받아도 로그인할 수 없습니다. 로그인이 안 되면 인프라 담당자에게 콘솔 액세스 설정 여부를 확인해 달라고 요청하세요. **Access Key ID와 Secret Access Key는 콘솔 로그인 비밀번호가 아닙니다.**
+
+## 로컬 Spring 앱에서 사용하기
+
+인프라 담당자에게 별도로 받은 **본인 계정의** Access Key ID와 Secret Access Key를 로컬 실행 환경변수로 설정합니다.
 
 ```dotenv
-AWS_ACCESS_KEY_ID=...
-AWS_SECRET_ACCESS_KEY=...
+AWS_ACCESS_KEY_ID=<본인 Access Key ID>
+AWS_SECRET_ACCESS_KEY=<본인 Secret Access Key>
 AWS_REGION=ap-northeast-2
 S3_BUCKET=moamu-s3-bucket
 ```
 
-Spring의 `application.yml`에는 버킷·리전을 다음처럼 연결할 수 있습니다.
+`.env` 파일을 쓴다면 실행 도구가 이 값을 **프로세스 환경변수로 전달하도록** 설정해야 합니다. Spring과 AWS SDK가 `.env` 파일을 자동으로 읽지는 않습니다. AWS SDK for Java의 기본 자격 증명 체인은 전달된 `AWS_ACCESS_KEY_ID`와 `AWS_SECRET_ACCESS_KEY`를 사용할 수 있습니다.
+
+Spring 설정에서 버킷과 리전이 필요하면 다음처럼 참조할 수 있습니다.
 
 ```yaml
 app:
@@ -36,15 +49,6 @@ app:
     region: ${AWS_REGION:ap-northeast-2}
 ```
 
-AWS SDK for Java 2.x의 S3 클라이언트 또는 `S3Presigner`에서 이 값을 사용합니다. 자격 증명은 SDK의 기본 자격 증명 체인이 위 환경변수에서 읽도록 합니다. **코드에 키를 직접 적지 않습니다.**
+S3의 `photos/` 같은 폴더는 **객체 키의 접두어**입니다. 미리 만들지 않아도 `photos/example.jpg`로 업로드하면 콘솔에 폴더처럼 표시됩니다. 사용할 경로 이름은 백엔드와 프런트엔드가 합의해 주세요.
 
-사진 업로드는 Spring이 사용자 권한을 확인하고 객체 키를 만든 뒤 **업로드용 서명 URL**을 발급하는 흐름을 권장합니다. 브라우저가 이 URL로 S3에 사진을 올리고, Spring은 업로드 완료를 확인한 뒤 DB에 **객체 키**를 저장합니다. 사진 조회 시에도 Spring이 권한을 확인하고 조회용 서명 URL을 발급합니다. 서명 URL 자체는 DB에 저장하지 않습니다.
-
-## 아직 필요한 설정
-
-- **브라우저에서 S3로 직접 업로드한다면 CORS 설정이 필요합니다.** 현재 버킷에는 CORS가 없으므로 프런트엔드 주소가 정해지면 인프라 담당자에게 알려주세요.
-- Kubernetes에 배포하는 Spring 서버에는 **팀원 개인 키 대신 서버 전용 자격 증명**을 사용해야 합니다.
-
-## Git에 올리는 파일
-
-`main.tf`, `iam.tf`, `.terraform.lock.hcl`, 이 `README.md`, `.gitignore`는 공유할 수 있습니다. `terraform.tfstate`, `.terraform/`, `.env`, 액세스 키, 비밀번호는 올리지 않습니다. Terraform 적용은 현재 상태 파일을 관리하는 인프라 담당자만 진행합니다.
+**자격 증명과 콘솔 비밀번호는 코드, README, Git에 올리지 마세요.** 팀원별 값은 개별적으로 전달합니다. Kubernetes에 배포하는 서버에는 팀원 개인 키 대신 서버 전용 자격 증명을 사용합니다.
