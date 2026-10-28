@@ -92,7 +92,6 @@ public class MediaService {
         // 5. 저장 결과를 응답 DTO로 변환
         MediaResponse response = new MediaResponse();
         response.setMediaId(savedMedia.getMediaId());
-        response.setStatus(savedMedia.getStatus());
 
         // 여기서는 인증 시도를 생성하지 않으므로
         // verificationId는 설정하지 않음
