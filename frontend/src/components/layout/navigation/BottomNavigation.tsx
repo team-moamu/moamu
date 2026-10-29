@@ -1,6 +1,42 @@
-// 이 파일은 폴더 구조 구성을 위한 임시 파일입니다. 첫 수정자는 이 주석을 삭제한 후 사용해 주세요.
-import { NavigationItem } from '../../molecules/navigation/NavigationItem'
+import { NavLink } from 'react-router'
+import { Icon } from '../../atoms/icon/Icon' 
+import type { IconName } from '../../atoms/icon/Icon'
+
+const navItems: {
+  label: string
+  path: string
+  icon: IconName
+}[] = [
+  { label: '홈', path: '/', icon: 'home' },
+  { label: '도전하기', path: '/challenge', icon: 'challenge' },
+  { label: '미술관', path: '/museum', icon: 'museum' },
+  { label: '보관함', path: '/collection', icon: 'collection' },
+  { label: '마이', path: '/mypage', icon: 'mypage' },
+]
 
 export function BottomNavigation() {
-  return <nav aria-label="하단 메뉴"><NavigationItem label="홈" href="/" /></nav>
+  return (
+    <nav className="fixed bottom-0 left-0 z-50 flex w-full items-center justify-around border-t border-[var(--color-border)] bg-white px-3 py-4">
+      {navItems.map((item) => (
+        <NavLink
+          key={item.path}
+          to={item.path}
+          end={item.path === '/'}
+          className={({ isActive }) =>
+            `flex flex-1 flex-col items-center justify-center gap-2 ${
+              isActive
+                ? 'text-[var(--color-primary)]'
+                : 'text-[var(--color-text)]'
+            }`
+          }
+        >
+          <Icon name={item.icon} size={32} />
+
+          <span className="text-label">
+            {item.label}
+          </span>
+        </NavLink>
+      ))}
+    </nav>
+  )
 }

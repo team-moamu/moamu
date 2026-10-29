@@ -1,6 +1,7 @@
 
 // 뒤로가기가 있는 헤더
 import { useNavigate } from 'react-router'
+import { Icon } from '../../atoms/icon/Icon'
 interface BackHeaderProps {
   title: string
 }
@@ -16,10 +17,7 @@ export function BackHeader({ title }: BackHeaderProps) {
         className="absolute left-6 flex items-center justify-center"
         aria-label="뒤로가기"
       >
-        <span
-          aria-hidden="true"
-          className="icon-[lucide--arrow-left] inline-block shrink-0 text-xl"
-        />
+        <Icon name="back" size={20} />
       </button>
 
       <h1 className="text-description m-0">
