@@ -1,6 +1,11 @@
-// 이 파일은 폴더 구조 구성을 위한 임시 파일입니다. 첫 수정자는 이 주석을 삭제한 후 사용해 주세요.
-type AvatarProps = { name: string }
+import defaultProfileMu from '../../../assets/images/default_profile_mu.png'
 
-export function Avatar({ name }: AvatarProps) {
-  return <span aria-label={`${name} 프로필`}>{name.slice(0, 1)}</span>
+export function Avatar() {
+  return (
+    <img
+      src={defaultProfileMu}
+      alt="프로필 이미지"
+      className="h-10 w-10 rounded-full object-cover"
+    />
+  )
 }
