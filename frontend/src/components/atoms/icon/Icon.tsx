@@ -1,6 +1,39 @@
-// 이 파일은 폴더 구조 구성을 위한 임시 파일입니다. 첫 수정자는 이 주석을 삭제한 후 사용해 주세요.
-type IconProps = { label: string }
+import type { HTMLAttributes } from 'react'
 
-export function Icon({ label }: IconProps) {
-  return <span role="img" aria-label={label}>◯</span>
+// // 사용 예시 : 확인했으면 없애셔도 됩니다!!
+// <Icon name="home" size={28} />
+// <Icon name="challenge" size={28} />
+// <Icon name="back" size={20} />
+
+export const iconMap = {
+  home: 'icon-[lucide--house]',
+  challenge: 'icon-[lucide--puzzle]',
+  museum: 'icon-[lucide--landmark]',
+  collection: 'icon-[lucide--archive]',
+  mypage: 'icon-[lucide--user-round]',
+  back: 'icon-[lucide--arrow-left]',
+} as const
+
+export type IconName = keyof typeof iconMap
+
+interface IconProps extends HTMLAttributes<HTMLSpanElement> {
+  name: IconName
+  size?: number
+}
+
+export function Icon({
+  name,
+  size = 24,
+  className = '',
+  style,
+  ...props
+}: IconProps) {
+  return (
+    <span
+      {...props}
+      aria-hidden="true"
+      className={`${iconMap[name]} inline-block shrink-0 ${className}`}
+      style={{ fontSize: size, ...style }}
+    />
+  )
 }
