@@ -1,11 +1,11 @@
 import { Avatar } from "../../atoms/avatar/Avatar";
 
-// AuthHeader.tsx
+// 메인에서 사용하는 헤더
 export function MainHeader() {
   return (
-    <header className="header">
-      <span className="text-description">MOAMU</span>
-      <Avatar/>
+    <header className="flex w-full items-center justify-between px-6 py-4">
+      <span className="text-accent">MOAMU</span>
+      <Avatar />
     </header>
   )
 }

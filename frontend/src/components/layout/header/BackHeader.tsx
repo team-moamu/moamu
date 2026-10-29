@@ -1,15 +1,30 @@
+
+// 뒤로가기가 있는 헤더
+import { useNavigate } from 'react-router'
 interface BackHeaderProps {
   title: string
 }
 
 export function BackHeader({ title }: BackHeaderProps) {
-    return (
-    <header className="header">
-        <svg xmlns="http://www.w3.org/2000/svg" width="1em" height="1em" viewBox="0 0 24 24">
-            <path d="M0 0h24v24H0z" fill="none" />
-            <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m15 6l-6 6l6 6" />
-        </svg>
-        <h1 className="text-description">{title}</h1>
+  const navigate = useNavigate()
+
+  return (
+    <header className="relative flex w-full items-center justify-center px-6 py-4">
+      <button
+        type="button"
+        onClick={() => navigate(-1)}
+        className="absolute left-6 flex items-center justify-center"
+        aria-label="뒤로가기"
+      >
+        <span
+          aria-hidden="true"
+          className="icon-[lucide--arrow-left] inline-block shrink-0 text-xl"
+        />
+      </button>
+
+      <h1 className="text-description m-0">
+        {title}
+      </h1>
     </header>
-    )
+  )
 }
