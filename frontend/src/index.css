@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import './styles/index.css';
+@plugin "@iconify/tailwind4";
 
 /* 초기 안내 화면용 배치입니다. 기능 화면 구현 시 각 화면 레이아웃으로 옮기세요. */
 @layer base {
