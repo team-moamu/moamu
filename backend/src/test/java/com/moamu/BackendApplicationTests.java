@@ -14,14 +14,15 @@ import org.testcontainers.utility.DockerImageName;
 @SpringBootTest
 @ActiveProfiles("test")
 @Import(BackendApplicationTests.ContainerConfiguration.class)
-class BackendApplicationTests {
+public class BackendApplicationTests {
 
     @Test
     void contextLoads() {
     }
 
+    // 도전 도메인 테스트에서도 가져올 수 있도록 설정 클래스와 바깥 클래스를 공개합니다.
     @TestConfiguration(proxyBeanMethods = false)
-    static class ContainerConfiguration {
+    public static class ContainerConfiguration {
 
         @Bean
         @ServiceConnection
