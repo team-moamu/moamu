@@ -20,7 +20,7 @@ export function BackHeader({ title }: BackHeaderProps) {
         <Icon name="back" size={20} />
       </button>
 
-      <h1 className="text-description m-0">
+      <h1 className="text-description text-description--header m-0">
         {title}
       </h1>
     </header>

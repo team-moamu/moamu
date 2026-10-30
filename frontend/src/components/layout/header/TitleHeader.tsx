@@ -6,7 +6,7 @@ interface TitleHeaderProps {
 export function TitleHeader({ title }: TitleHeaderProps) {
   return (
     <header className="flex w-full items-center justify-center px-6 py-4">
-      <h1 className="text-description m-0">
+      <h1 className="text-description text-description--header m-0">
         {title}
       </h1>
     </header>
