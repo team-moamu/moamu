@@ -1,5 +1,5 @@
 
-import { Link, Route, Routes } from 'react-router'
+import { Route, Routes } from 'react-router'
 import { MainLayout } from '../components/layout/MainLayout'
 import { ChallengeCreatePage } from '../pages/challenge/ChallengeCreatePage'
 

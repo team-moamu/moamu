@@ -1,5 +1,7 @@
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { useNavigate } from 'react-router'
+import { createChallenge } from '../../services/challenge/createChallenge'
 import { GoalCardList } from '../../components/molecules/card/GoalCardList'
 import { CalendarInput } from '../../components/molecules/form/CalendarInput'
 import { DurationSelector } from '../../components/molecules/select/DurationSelector'
@@ -22,6 +24,7 @@ const goals: {
 ]
 
 export function ChallengeCreatePage() {
+  const navigate = useNavigate()
   // 목표 선택
   const [selectedGoalId, setSelectedGoalId] = useState<number | null>(null)
 
@@ -30,27 +33,39 @@ export function ChallengeCreatePage() {
 
   // 도전 기간
   const [durationDays, setDurationDays] = useState<number | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState('')
+  const submissionInFlight = useRef(false)
 
   // 모든 항목 선택 여부
   const isDisabled =
+    isSubmitting ||
     selectedGoalId === null ||
     startDate === '' ||
     durationDays === null
 
   // 도전 생성 버튼 클릭
-  const handleCreateChallenge = () => {
-    if (isDisabled) return
+  const handleCreateChallenge = async () => {
+    if (isDisabled || submissionInFlight.current || selectedGoalId === null || durationDays === null) return
 
-    // 추후 API 연동
-    console.log({
-      goalTemplateId: selectedGoalId,
-      startDate,
-      durationDays,
-    })
+    submissionInFlight.current = true
+    setIsSubmitting(true)
+    setError('')
+    try {
+      await createChallenge({ goalTemplateId: selectedGoalId, startDate, durationDays })
+      // 도전 생성 성공하면 홈화면으로 이동(임시)
+      navigate('/', { replace: true })
+    } catch (error) {
+      setError(error instanceof Error ? error.message : '도전을 생성하지 못했어요. 다시 시도해 주세요.')
+    } finally {
+      submissionInFlight.current = false
+      setIsSubmitting(false)
+    }
   }
 
   return (
     <div className="flex flex-col gap-8 px-5 py-6">
+      <fieldset disabled={isSubmitting} className="m-0 flex min-w-0 flex-col gap-8 border-0 p-0">
 
       {/* 목표 선택 */}
       <section>
@@ -89,12 +104,16 @@ export function ChallengeCreatePage() {
         />
       </section>
 
+      </fieldset>
+
+      {error && <p role="alert" className="m-0 text-sm text-[var(--color-error)]">{error}</p>}
+
       {/* 도전 생성 버튼 */}
       <SuccessButton
-        children="도전 생성하기"
         disabled={isDisabled}
         onClick={handleCreateChallenge}
       >
+        {isSubmitting ? '생성 중...' : '도전 생성하기'}
       </SuccessButton>
 
     </div>
