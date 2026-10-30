@@ -1,8 +1,6 @@
 
 import { Link, Route, Routes } from 'react-router'
-
-// 이 파일은 라우팅 테스트용 임시 페이지를 포함합니다.
-// 실제 페이지 연결 시 임시 페이지 컴포넌트를 제거해 주세요.
+import { MainLayout } from '../components/layout/MainLayout'
 
 function HomePage() {
   return <h1>모아뮤 홈 화면</h1>
@@ -12,7 +10,7 @@ function ChallengePage() {
   return <h1>도전하기 화면</h1>
 }
 
-function MuseumPage() {
+function GalleryPage() {
   return <h1>미술관 화면</h1>
 }
 
@@ -26,23 +24,36 @@ function MyPage() {
 
 export default function AppRoutes() {
   return (
-    <div className="space-y-8 p-6">
-      <nav className="flex flex-wrap gap-4">
-        <Link to="/">홈</Link>
-        <Link to="/challenge">도전하기</Link>
-        <Link to="/museum">미술관</Link>
-        <Link to="/collection">보관함</Link>
-        <Link to="/mypage">마이</Link>
-      </nav>
-
-      <Routes>
+    <Routes>
+      {/* 
+        - element에 showBottomNav 추가하면 네비게이션바가 생깁니다. 
+        - headerType: MainLayout.tsx에 있는 헤더 타입
+      */}
+      {/* 기본 헤더 + 하단 내비게이션 */}
+      <Route element={<MainLayout showBottomNav />}>
         <Route path="/" element={<HomePage />} />
-        <Route path="/challenge" element={<ChallengePage />} />
-        <Route path="/museum" element={<MuseumPage />} />
         <Route path="/collection" element={<CollectionPage />} />
         <Route path="/mypage" element={<MyPage />} />
-        <Route path="*" element={<h1>페이지를 찾을 수 없습니다.</h1>} />
-      </Routes>
-    </div>
+      </Route>
+
+      {/* 뒤로가기 헤더 */}
+      <Route element={<MainLayout headerType="back" title="도전 생성" />}>
+        <Route path="/challenge/create" element={<ChallengePage />} />
+      </Route>
+
+      <Route element={<MainLayout showBottomNav headerType="back" title="도전" />}>
+        <Route path="/challenge" element={<ChallengePage />} />
+      </Route>
+
+      {/* 제목 헤더 */}
+      <Route element={<MainLayout showBottomNav headerType="title" title="미술관" />} >
+        <Route path="/challenge/complete" element={<GalleryPage />} />
+      </Route>
+
+      {/* 로그인 헤더 */}
+      <Route element={<MainLayout headerType="login" />}>
+        <Route path="/login" element={<HomePage />} />
+      </Route>
+    </Routes>
   )
 }
