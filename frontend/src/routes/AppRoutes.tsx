@@ -1,6 +1,7 @@
 
-import { Link, Route, Routes } from 'react-router'
+import { Route, Routes } from 'react-router'
 import { MainLayout } from '../components/layout/MainLayout'
+import { ChallengeCreatePage } from '../pages/challenge/ChallengeCreatePage'
 
 function HomePage() {
   return <h1>모아뮤 홈 화면</h1>
@@ -38,7 +39,7 @@ export default function AppRoutes() {
 
       {/* 뒤로가기 헤더 */}
       <Route element={<MainLayout headerType="back" title="도전 생성" />}>
-        <Route path="/challenge/create" element={<ChallengePage />} />
+        <Route path="/challenge/create" element={<ChallengeCreatePage />} />
       </Route>
 
       <Route element={<MainLayout showBottomNav headerType="back" title="도전" />}>

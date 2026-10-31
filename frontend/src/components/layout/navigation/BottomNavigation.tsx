@@ -16,7 +16,7 @@ const navItems: {
 
 export function BottomNavigation() {
   return (
-    <nav className="fixed bottom-0 left-0 z-50 flex w-full items-center justify-around border-t border-[var(--color-border)] bg-white px-3 py-4">
+    <nav className="fixed bottom-0 left-1/2 z-50 flex w-full max-w-[430px] -translate-x-1/2 items-center justify-around border-t border-[var(--color-border)] bg-white px-3 py-4">
       {navItems.map((item) => (
         <NavLink
           key={item.path}

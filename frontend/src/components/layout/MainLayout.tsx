@@ -29,7 +29,7 @@ export function MainLayout({headerType = 'main', title = '', showBottomNav = fal
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-dvh w-full flex-col">
       {renderHeader()}
 
       <main className={`flex-1 ${showBottomNav ? 'pb-28' : ''}`}>

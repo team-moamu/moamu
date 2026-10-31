@@ -36,8 +36,4 @@ public class GoalTemplateArtwork extends BaseEntity {
     // 작품ID
     @Column(name = "artwork_id", nullable = false)
     private Long artworkId;
-
-    // 목표 목록 표시 순서
-    @Column(name = "sort_order", nullable = false)
-    private int sortOrder = 0;
 }
