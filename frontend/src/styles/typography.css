@@ -28,6 +28,11 @@ h2,
   line-height: var(--line-height-description);
 }
 
+.text-description--header {
+  font-size: var(--font-size-heading);
+  line-height: var(--line-height-heading);
+}
+
 .text-body {
   font-family: var(--font-ui);
   font-size: var(--font-size-body);
