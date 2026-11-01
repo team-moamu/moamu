@@ -12,6 +12,14 @@ export const iconMap = {
   collection: 'icon-[lucide--archive]',
   mypage: 'icon-[lucide--user-round]',
   back: 'icon-[lucide--arrow-left]',
+
+  // 목표 카드 아이콘
+  study: 'icon-[lucide--book-open]',
+  exercise: 'icon-[lucide--dumbbell]',
+  water: 'icon-[lucide--droplet]',
+  algorithm: 'icon-[lucide--pencil]',
+  supplement: 'icon-[lucide--pill]',
+  nametag: 'icon-[lucide--contact]',
 } as const
 
 export type IconName = keyof typeof iconMap
