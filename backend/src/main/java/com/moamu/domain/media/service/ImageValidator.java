@@ -1,51 +1,26 @@
 package com.moamu.domain.media.service;
 
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
-import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Locale;
-import java.util.UUID;
-import java.awt.image.BufferedImage;
-import java.security.MessageDigest;
-
 import javax.imageio.ImageIO;
-
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Profile;
-import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-
 import com.moamu.domain.media.exception.MediaErrorCode;
 import com.moamu.global.exception.BusinessException;
 
-// 사용자가 올린 사진을 내 폴더에 저장하고, 필요시 삭제하는 클래스
-@Service
-// 로컬 개발과 테스트에서 같은 파일 저장 구현을 사용합니다.
-@Profile({"local", "test"})
-public class LocalStorageService implements StorageService {
-
+// 사진 검증 규칙
+final class ImageValidator {
     private static final long MAX_FILE_SIZE = 10L * 1024 * 1024;
-    private final Path storageRoot;
 
-    // 저장 경로
-    public LocalStorageService(
-            @Value("${app.storage.local-root}") String root
-    ) {
-        this.storageRoot = Path.of(root)
-                .toAbsolutePath()
-                .normalize();
-    }
-
-    // 사진을 저장하고 파일 정보 반환
-    @Override
-    public StoredFile saveVerification(MultipartFile image) {
+    // 업로드 이미지의 크기와 형식을 검증하고 SHA-256 해시를 계산
+    ValidatedImage validate(MultipartFile image) {
+        
         // 1. 빈 파일인지 확인
         if (image == null || image.isEmpty()) {
             throw new BusinessException(MediaErrorCode.IMAGE_REQUIRED);
@@ -76,64 +51,30 @@ public class LocalStorageService implements StorageService {
         // 4. SHA-256 파일 해시 계산
         String fileHash = calculateHash(bytes);
 
-        // 5. UUID로 파일명 생성
-        String fileName = UUID.randomUUID() + "." + extension;
-        String imageKey = "verification/" + fileName;
-
-        // 6. verification 폴더 생성 및 파일 저장
-        Path target = storageRoot.resolve(imageKey).normalize();
-
-        try {
-            Files.createDirectories(target.getParent());
-        } catch (IOException e) {
-            throw new UncheckedIOException("저장 폴더를 만들지 못했습니다.", e);
-        }
-
-        try {
-            Files.write(
-                    target,
-                    bytes,
-                    StandardOpenOption.CREATE_NEW,
-                    StandardOpenOption.WRITE
-            );
-        } catch (FileAlreadyExistsException e) {
-            // 기존 파일은 삭제하거나 덮어쓰지 않음
-            throw new UncheckedIOException("같은 이름의 파일이 존재합니다.", e);
-        } catch (IOException e) {
-            // 저장 도중 실패해서 남은 파일 정리
-            try {
-                Files.deleteIfExists(target);
-            } catch (IOException cleanupError) {
-                e.addSuppressed(cleanupError);
-            }
-
-            throw new UncheckedIOException("사진 저장에 실패했습니다.", e);
-        }
-
-        // 7. 저장된 파일 정보를 StoredFile로 반환
-        return new StoredFile(
-                imageKey,
-                fileHash,
-                contentType,
-                (long) bytes.length
-        );
+        return new ValidatedImage(bytes, extension, contentType, fileHash);
     }
 
     // 파일 확장자 확인
     private String getExtension(String originalFilename) {
+
+        // 1. 파일명 존재 여부 확인
         if (originalFilename == null) {
             throw new BusinessException(MediaErrorCode.INVALID_IMAGE);
         }
 
+        // 2. 마지막 마침표(.)의 위치 확인
         int dotIndex = originalFilename.lastIndexOf('.');
 
+        // 3. 확장자가 없는 파일인지 검증
         if (dotIndex < 0) {
             throw new BusinessException(MediaErrorCode.INVALID_IMAGE);
         }
 
+        // 4. 파일명에서 확장자를 추출하고 지원하는 이미지 형식인지 검증
         String extension = originalFilename.substring(dotIndex + 1)
                 .toLowerCase(Locale.ROOT);
 
+        // 5. 지원하는 확장자만 허용하고 jpg/jpeg는 jpg로 통일        
         return switch (extension) {
             case "jpg", "jpeg" -> "jpg";
             case "png" -> "png";
@@ -142,8 +83,10 @@ public class LocalStorageService implements StorageService {
         };
     }
 
-    // 실제 이미지 형식과 크기 확인
+    // 실제 이미지 형식, 확장자 일치 여부 및 해상도 검증
     private String validateImage(byte[] bytes, String extension) {
+
+        // 1. 바이트 배열을 이미지 입력 스트림으로 변환
         try (var input = ImageIO.createImageInputStream(
                 new ByteArrayInputStream(bytes)
         )) {
@@ -151,6 +94,7 @@ public class LocalStorageService implements StorageService {
                 throw new BusinessException(MediaErrorCode.INVALID_IMAGE);
             }
 
+            // 1. 이미지 데이터를 해석할 수 있는 Reader 확인
             var readers = ImageIO.getImageReaders(input);
 
             if (!readers.hasNext()) {
@@ -167,6 +111,7 @@ public class LocalStorageService implements StorageService {
 
                 String contentType;
 
+                // 2. 파일 확장자와 실제 이미지 형식 일치 여부 검증
                 if ("jpg".equals(extension) && "jpeg".equals(format)) {
                     contentType = "image/jpeg";
                 } else if ("png".equals(extension) && "png".equals(format)) {
@@ -180,12 +125,13 @@ public class LocalStorageService implements StorageService {
                 int width = reader.getWidth(0);
                 int height = reader.getHeight(0);
 
-                // 압축 파일은 작아도 이미지 해상도가 과도할 수 있으므로 제한
+                // 3. 과도한 메모리 사용 방지를 위해 최대 2,000만 픽셀로 제한
                 if (width <= 0 || height <= 0
                         || (long) width * height > 20_000_000L) {
                     throw new BusinessException(MediaErrorCode.IMAGE_RESOLUTION_TOO_LARGE);
                 }
 
+                // 4. 실제 디코딩을 통해 이미지 데이터 유효성 검증
                 BufferedImage decoded = reader.read(0);
 
                 if (decoded == null) {
@@ -198,7 +144,6 @@ public class LocalStorageService implements StorageService {
                 reader.dispose();
             }
         } catch (IOException e) {
-            // 이미지 내용을 해석하지 못한 경우는 잘못된 파일 요청으로 처리합니다.
             throw new BusinessException(MediaErrorCode.INVALID_IMAGE);
         }
     }
@@ -213,32 +158,5 @@ public class LocalStorageService implements StorageService {
         }
     }
 
-    // DB 저장 실패 시 파일 삭제
-    @Override
-    public void delete(String imageKey) {
-        // 1. imageKey가 허용된 verification 폴더 안의 경로인지 확인
-        if (imageKey == null || imageKey.isBlank()) {
-            throw new IllegalArgumentException("파일 경로가 없습니다.");
-        }
-
-        Path verificationRoot = storageRoot.resolve("verification");
-        Path relativePath = Path.of(imageKey);
-
-        if (relativePath.isAbsolute()) {
-            throw new IllegalArgumentException("상대 경로만 허용됩니다.");
-        }
-
-        Path target = storageRoot.resolve(relativePath).normalize();
-
-        // 2. 파일이 존재하면 삭제
-        if (!verificationRoot.equals(target.getParent())) {
-            throw new IllegalArgumentException("허용되지 않은 파일 경로입니다.");
-        }
-
-        try {
-            Files.deleteIfExists(target);
-        } catch (IOException e) {
-            throw new UncheckedIOException("사진 삭제에 실패했습니다.", e);
-        }
-    }
+    record ValidatedImage(byte[] bytes, String extension, String contentType, String fileHash) {}
 }

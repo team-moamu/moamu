@@ -36,4 +36,5 @@ public class GoalTemplateArtwork extends BaseEntity {
     // 작품ID
     @Column(name = "artwork_id", nullable = false)
     private Long artworkId;
+
 }

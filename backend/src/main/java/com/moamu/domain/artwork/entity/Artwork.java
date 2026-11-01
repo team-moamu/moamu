@@ -35,9 +35,9 @@ public class Artwork extends BaseEntity {
     @Column(name = "artwork_title")
     private String artworkTitle;
 
-    // S3 저장 키(추후 media_id로 변경 의논 필요)
+    // 작품 이미지 정보를 가진 media의 ID
     @Column(name = "media_id")
-    private Long imageKey;
+    private Long mediaId;
 
     // 최신 작품 생성 요청 버전
     @Column(name = "task_version", nullable = false)
