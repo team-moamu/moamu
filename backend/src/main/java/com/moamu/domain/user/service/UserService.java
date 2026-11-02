@@ -5,4 +5,6 @@ import com.moamu.domain.user.dto.UserSignupRequest;
 public interface UserService {
 
   Long signup(UserSignupRequest Request);
+
+  boolean isEmailAvailable(String email);
 }

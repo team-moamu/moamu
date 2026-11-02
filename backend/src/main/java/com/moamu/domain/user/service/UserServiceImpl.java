@@ -36,6 +36,10 @@ public class UserServiceImpl implements UserService {
 
         return savedUser.getUserId();
         
-        
+    }
+
+    @Override 
+    public boolean isEmailAvailable(String email){
+        return !userRepository.existsByLoginId(email);
     }
 }
