@@ -18,7 +18,7 @@ spring:
 # S3 설정
 app:
   ai:
-    server-url: ${AI_SERVER_URL:}
+    server-url: ${AI_SERVER_URL:http://localhost:8000}
     connect-timeout: ${AI_CONNECT_TIMEOUT:3s}
     read-timeout: ${AI_READ_TIMEOUT:30s}
   storage:
