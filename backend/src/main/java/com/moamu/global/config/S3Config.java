@@ -1,4 +1,4 @@
-package com.moamu.global;
+package com.moamu.global.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
