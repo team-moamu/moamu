@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import com.moamu.domain.challenge.dto.TodayChallengeResponse;
 import com.moamu.domain.challenge.entity.Challenge;
 
-import io.lettuce.core.dynamic.annotation.Param;
+import org.springframework.data.repository.query.Param;
 
 public interface ChallengeRepository extends JpaRepository<Challenge, Long> {
 
@@ -36,5 +36,5 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long> {
           c.challengeId DESC,
           s.dayNo DESC
     """)
-    List<TodayChallengeResponse> findTodayChallenges(@Param("userId") Long userId, @Param("day")LocalDate day, @Param("sortType") String sortType);
+    List<TodayChallengeResponse> findTodayChallenges(@Param("userId") Long userId, @Param("day")LocalDate day, @Param("sort") String sortType);
 }

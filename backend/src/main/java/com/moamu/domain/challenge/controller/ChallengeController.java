@@ -31,8 +31,8 @@ public class ChallengeController {
 
     @GetMapping("/today")
     public List<TodayChallengeResponse> getTodayChallenges(
-        @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate day, 
-        @RequestParam(required = false) String sortType
+        @RequestParam(name = "day", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate day, 
+        @RequestParam(name = "sortType", required = false) String sortType
     ) {
         // 임시. 회원 기능 구현 후 수정 필요
         Long userId = 1L; 
