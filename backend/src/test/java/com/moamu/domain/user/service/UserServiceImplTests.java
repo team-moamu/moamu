@@ -5,7 +5,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.sql.SQLException;
@@ -104,5 +106,28 @@ public class UserServiceImplTests {
         () -> userService.signup(request));
 
     assertSame(databaseException, result);
+  }
+
+  @Test
+  void existingEmailIsRejectedBeforeSaving() {
+    UserSignupRequest request = mock(UserSignupRequest.class);
+
+    when(request.getLoginId()).thenReturn("test@example.com");
+
+    when(userRepository.existsByLoginId("test@example.com"))
+        .thenReturn(true);
+
+    BusinessException result = assertThrows(
+        BusinessException.class,
+        () -> userService.signup(request));
+
+    assertEquals(
+        UserErrorCode.DUPLICATE_LOGIN_ID,
+        result.getErrorCode());
+
+    verifyNoInteractions(passwordEncoder);
+
+    verify(userRepository, never())
+        .saveAndFlush(any(User.class));
   }
 }
