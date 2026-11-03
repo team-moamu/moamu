@@ -1,11 +1,11 @@
-package com.moamu.domain.challenge.dto;
+package com.moamu.domain.schedule.dto;
 
 import java.time.LocalDate;
 
 import com.moamu.domain.schedule.enums.Status;
 
-public record ChallengeDetailResponse(
-    Long challenengeId,
+public record ScheduleDetailResponse(
+    Long challengeId,
     String challengeTitle,
     Long scheduleId,
     int dayNo,
