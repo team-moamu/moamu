@@ -14,6 +14,7 @@ import com.moamu.global.exception.GlobalExceptionHandler;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -141,5 +142,45 @@ class UserControllerTests {
         .andExpect(jsonPath("$.data.userId").value(10));
 
     verify(userService).signup(any(UserSignupRequest.class));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+      " test@example.com",
+      "test@example.com ",
+      "te st@example.com"
+  })
+  void signupRejectsEmailWithSpaces(String email) throws Exception {
+    mockMvc.perform(post("/api/users/signup")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("""
+            {
+              "loginId": "%s",
+              "password": "test-password1",
+              "name": "테스트회원"
+            }
+            """.formatted(email)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error.code")
+            .value("INVALID_REQUEST"));
+
+    verifyNoInteractions(userService);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+      " test@example.com",
+      "test@example.com ",
+      "te st@example.com"
+  })
+  void availabilityRejectsEmailWithSpaces(String email)
+      throws Exception {
+    mockMvc.perform(get("/api/users/email-availability")
+        .param("email", email))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error.code")
+            .value("INVALID_REQUEST"));
+
+    verifyNoInteractions(userService);
   }
 }
