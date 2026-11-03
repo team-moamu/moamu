@@ -6,6 +6,7 @@ import com.moamu.domain.challenge.service.ChallengeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -21,5 +22,13 @@ public class ChallengeController {
         Long userId = 1L; 
 
         challengeService.createChallenge(userId, request);
+    }
+
+    // 도전 중단
+    @PatchMapping("/{challengeId}/stop")
+    public ResponseEntity<Void> stopChallenge(@RequestParam("userId") Long userId, @PathVariable("challengeId") Long challengeId ) {
+        challengeService.stopChallenge(userId, challengeId);
+
+        return ResponseEntity.noContent().build();
     }
 }

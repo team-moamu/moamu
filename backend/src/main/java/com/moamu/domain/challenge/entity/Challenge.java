@@ -6,6 +6,8 @@ import java.time.LocalDateTime;
 import com.moamu.domain.challenge.enums.Status;
 import com.moamu.domain.challenge.enums.Verifiability;
 import com.moamu.global.entity.BaseEntity;
+import com.moamu.global.exception.BusinessException;
+import com.moamu.global.exception.CommonErrorCode;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -124,5 +126,18 @@ public class Challenge extends BaseEntity {
         return challenge;
     }
 
+    // 도전 중단
+    public void stop(LocalDateTime now) {
+        if (this.status == Status.STOPPED) {
+            return;
+        }
+
+        if (this.status != Status.IN_PROGRESS) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
+        }
+
+        this.status = Status.STOPPED;
+        this.stoppedAt = now;
+    }
 
 }

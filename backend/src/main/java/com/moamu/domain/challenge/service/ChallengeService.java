@@ -2,6 +2,7 @@ package com.moamu.domain.challenge.service;
 
 import com.moamu.domain.schedule.repository.ScheduleRepository;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -137,5 +138,18 @@ public class ChallengeService {
         int rows = (int) Math.ceil((double) durationDays / cols);
 
         return new int[]{rows, cols};
+    }
+
+    @Transactional
+    public void stopChallenge(Long userId, Long challengeId) {
+        Challenge challenge = challengeRepository.findById(challengeId)
+                .orElseThrow(() ->
+                        new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
+
+        if (!challenge.getUserId().equals(userId)) {
+            throw new BusinessException(CommonErrorCode.FORBIDDEN);
+        }
+
+        challenge.stop(LocalDateTime.now());
     }
 }
