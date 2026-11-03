@@ -15,6 +15,7 @@ import java.sql.SQLException;
 import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
@@ -129,5 +130,42 @@ public class UserServiceImplTests {
 
     verify(userRepository, never())
         .saveAndFlush(any(User.class));
+  }
+
+  @Test
+  void signupSavesEncodedPasswordAndReturnsUserId() {
+    UserSignupRequest request = mock(UserSignupRequest.class);
+
+    when(request.getLoginId()).thenReturn("test@example.com");
+    when(request.getPassword()).thenReturn("test-password");
+    when(request.getName()).thenReturn("테스트회원");
+
+    when(userRepository.existsByLoginId("test@example.com"))
+        .thenReturn(false);
+
+    when(passwordEncoder.encode("test-password"))
+        .thenReturn("test-password-hash");
+
+    User savedUser = mock(User.class);
+    when(savedUser.getUserId()).thenReturn(10L);
+
+    when(userRepository.saveAndFlush(any(User.class)))
+        .thenReturn(savedUser);
+
+    Long userId = userService.signup(request);
+
+    assertEquals(Long.valueOf(10L), userId);
+
+    ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+
+    verify(userRepository).saveAndFlush(captor.capture());
+
+    User submittedUser = captor.getValue();
+
+    assertEquals("test@example.com", submittedUser.getLoginId());
+    assertEquals("테스트회원", submittedUser.getName());
+    assertEquals("test-password-hash", submittedUser.getPassword());
+
+    verify(passwordEncoder).encode("test-password");
   }
 }
