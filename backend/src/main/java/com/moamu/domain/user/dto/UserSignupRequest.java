@@ -14,6 +14,10 @@ public class UserSignupRequest {
   @NotBlank (message = "이메일을 입력해주세요.")
   @Email(message = "올바른 이메일 형식으로 입력해주세요.")
   @Size (max = 50, message = "아이디는 50자 이하여야 합니다.")
+  @Pattern(
+        regexp = "^\\S+$",
+        message = "이메일에는 공백을 포함할 수 없습니다."
+  )
   private String loginId;
 
   @NotBlank(message = "비밀번호를 입력해주세요.")
@@ -21,7 +25,7 @@ public class UserSignupRequest {
   @Pattern(
         regexp = "^(?=.*[A-Za-z])(?=.*[0-9])[\\x21-\\x7E]+$",
         message = "비밀번호는 영문과 숫자를 포함하고, 공백 없이 입력해주세요."
-)
+  )
   private String password;
 
   @NotBlank(message = "이름을 입력해주세요.")

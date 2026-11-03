@@ -2,6 +2,8 @@ package com.moamu.domain.user.service;
 
 import lombok.RequiredArgsConstructor;
 
+import java.util.Locale;
+
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,13 +29,14 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public Long signup(UserSignupRequest request) {
 
-        if (userRepository.existsByLoginId(request.getLoginId())) {
+        String email = request.getLoginId().toLowerCase(Locale.ROOT);
+        if (userRepository.existsByLoginId(email)) {
             throw new BusinessException(UserErrorCode.DUPLICATE_LOGIN_ID);
         }
 
         String encodePassword = passwordEncoder.encode(request.getPassword());
 
-        User user = User.createLocal(request.getLoginId(), encodePassword, request.getName());
+        User user = User.createLocal(email, encodePassword, request.getName());
 
         try {
             User savedUser = userRepository.saveAndFlush(user);
@@ -52,7 +55,9 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public boolean isEmailAvailable(String email) {
-        return !userRepository.existsByLoginId(email);
+        String normalizedEmail = email.toLowerCase(Locale.ROOT);
+
+        return !userRepository.existsByLoginId(normalizedEmail);
     }
 
     private boolean isDuplicateLoginId(Throwable exception) {

@@ -18,6 +18,7 @@ import com.moamu.global.response.ApiResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
 
@@ -45,7 +46,12 @@ public class UserController {
             @RequestParam("email")
             @NotBlank 
             @Email 
-            @Size(max = 50) String email) {
+            @Size(max = 50)
+            @Pattern(
+                    regexp = "^\\S+$",
+                    message = "이메일에는 공백을 포함할 수 없습니다."
+            )
+            String email) {
         boolean available = userService.isEmailAvailable(email);
 
         EmailAvailabilityResponse response = new EmailAvailabilityResponse(available);
