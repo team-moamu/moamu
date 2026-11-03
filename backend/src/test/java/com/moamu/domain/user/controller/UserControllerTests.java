@@ -2,6 +2,8 @@ package com.moamu.domain.user.controller;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -40,7 +42,7 @@ class UserControllerTests {
         .content("""
             {
               "loginId": "test@example.com",
-              "password": "test-password",
+              "password": "test-password1",
               "name": "테스트회원"
             }
             """))
@@ -60,7 +62,7 @@ class UserControllerTests {
         .content("""
             {
               "loginId": "not-an-email",
-              "password": "test-password",
+              "password": "test-password1",
               "name": "테스트회원"
             }
             """))
@@ -88,5 +90,56 @@ class UserControllerTests {
             .value("INVALID_REQUEST"));
 
     verifyNoInteractions(userService);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+      "abc1234",
+      "abcdefgh",
+      "12345678",
+      "abcd 1234",
+      "가나다라1234",
+      "Abc1234567890123456789"
+  })
+  void invalidPasswordReturns400(String password) throws Exception {
+    mockMvc.perform(post("/api/users/signup")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("""
+            {
+              "loginId": "test@example.com",
+              "password": "%s",
+              "name": "테스트회원"
+            }
+            """.formatted(password)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.error.code")
+            .value("INVALID_REQUEST"));
+
+    verifyNoInteractions(userService);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {
+      "abcd1234",
+      "Abcd123!",
+      "Abc12345678901234567"
+  })
+  void validPasswordReturns201(String password) throws Exception {
+    when(userService.signup(any(UserSignupRequest.class)))
+        .thenReturn(10L);
+
+    mockMvc.perform(post("/api/users/signup")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("""
+            {
+              "loginId": "test@example.com",
+              "password": "%s",
+              "name": "테스트회원"
+            }
+            """.formatted(password)))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.data.userId").value(10));
+
+    verify(userService).signup(any(UserSignupRequest.class));
   }
 }
