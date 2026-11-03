@@ -136,7 +136,7 @@ public class UserServiceImplTests {
   void signupSavesEncodedPasswordAndReturnsUserId() {
     UserSignupRequest request = mock(UserSignupRequest.class);
 
-    when(request.getLoginId()).thenReturn("test@example.com");
+    when(request.getLoginId()).thenReturn("Test@Example.COM");
     when(request.getPassword()).thenReturn("test-password");
     when(request.getName()).thenReturn("테스트회원");
 
@@ -167,5 +167,31 @@ public class UserServiceImplTests {
     assertEquals("test-password-hash", submittedUser.getPassword());
 
     verify(passwordEncoder).encode("test-password");
+
+    verify(userRepository).existsByLoginId("test@example.com");
+  }
+
+  @Test
+  void emailAvailabilityNormalizesEmail() {
+    when(userRepository.existsByLoginId("test@example.com"))
+        .thenReturn(false);
+
+    boolean available = userService.isEmailAvailable("Test@Example.COM");
+
+    assertEquals(true, available);
+
+    verify(userRepository).existsByLoginId("test@example.com");
+  }
+
+  @Test
+  void existingEmailIsUnavailableRegardlessOfCase() {
+    when(userRepository.existsByLoginId("test@example.com"))
+        .thenReturn(true);
+
+    boolean available = userService.isEmailAvailable("TEST@EXAMPLE.COM");
+
+    assertEquals(false, available);
+
+    verify(userRepository).existsByLoginId("test@example.com");
   }
 }
