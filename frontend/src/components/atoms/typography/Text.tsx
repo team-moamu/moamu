@@ -1,7 +1,12 @@
-import type { ReactNode } from 'react'
+type TextProps = {
+  children: React.ReactNode
+  className?: string
+}
 
-type TextProps = { children: ReactNode }
-
-export function Text({ children }: TextProps) {
-  return <span className='text-accent'>{children}</span>
+export function Text({ children, className = '' }: TextProps) {
+  return (
+    <span className={`text-description text-[#4A382A] ${className}`}>
+      {children}
+    </span>
+  )
 }

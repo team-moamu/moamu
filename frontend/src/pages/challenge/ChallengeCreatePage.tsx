@@ -5,7 +5,7 @@ import { createChallenge } from '../../services/challenge/createChallenge'
 import { GoalCardList } from '../../components/molecules/card/GoalCardList'
 import { CalendarInput } from '../../components/molecules/form/CalendarInput'
 import { DurationSelector } from '../../components/molecules/select/DurationSelector'
-import { SuccessButton } from '../../components/atoms/button/successButton'
+import { SuccessButton } from '../../components/atoms/button/SuccessButton'
 import type { IconName } from '../../components/atoms/icon/Icon'
 
 // 임시 목표 데이터 (추후 API 연동)
