@@ -2,14 +2,15 @@ package com.moamu.domain.challenge.service;
 
 import com.moamu.domain.schedule.repository.ScheduleRepository;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
 
-import com.moamu.domain.artwork.entity.Artwork;
 import com.moamu.domain.artwork.repository.ArtworkRepository;
 import com.moamu.domain.challenge.dto.ChallengeCreateRequest;
+import com.moamu.domain.challenge.dto.TodayChallengeResponse;
 import com.moamu.domain.challenge.entity.Challenge;
 import com.moamu.domain.challenge.repository.ChallengeRepository;
 import com.moamu.domain.goal.entity.GoalTemplate;
@@ -17,11 +18,11 @@ import com.moamu.domain.goal.entity.GoalTemplateArtwork;
 import com.moamu.domain.goal.repository.GoalTemplateArtworkRepository;
 import com.moamu.domain.goal.repository.GoalTemplateRepository;
 import com.moamu.domain.schedule.entity.Schedule;
-import com.moamu.domain.user.entity.User;
-import com.moamu.domain.user.repository.UserRepository;
 import com.moamu.global.exception.BusinessException;
 import com.moamu.global.exception.CommonErrorCode;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
@@ -137,5 +138,23 @@ public class ChallengeService {
         int rows = (int) Math.ceil((double) durationDays / cols);
 
         return new int[]{rows, cols};
+    }
+
+    // 오늘의 도전 조회
+    public List<TodayChallengeResponse> getTodayChallenges(Long userId, LocalDate day, String sort) {
+        // 사용자 조회 -> 회원 기능 완료되면 적용
+        // User user = userRepository.findById(userId)
+        //     .orElseThrow(() ->
+        //         new IllegalArgumentException("존재하지 않는 회원입니다.")
+        // );
+
+        // 파라미터로 받는 날짜 없으면 오늘 날짜로 처리
+        LocalDate targetDate = day != null ? day : LocalDate.now(ZoneId.of("Asia/Seoul"));
+
+        // 정렬 기준
+        // 최신순 - 기본값(내림차순) / 이름순(오름차순)
+        String sortType = "name".equals(sort) ? "name" : "latest";
+
+        return challengeRepository.findTodayChallenges(userId, targetDate, sortType);
     }
 }
