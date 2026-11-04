@@ -1,45 +1,17 @@
--- MOAMU 로컬 개발용 시드 (2026-10-23 수정). 운영 사용 금지.
--- 저장 권장 위치: 프로젝트/backend/data/seed-dev.sql
--- Flyway 공통 migration 폴더에 넣지 않습니다. 파일 저장만으로 실행되지 않습니다.
-
--- 전제: 제공한 스키마가 적용되어 있고 14개 도메인 테이블이 모두 비어 있는 로컬 DB.
--- 기존 회원 시드도 포함합니다. 먼저 별도로 넣지 마세요. 기존 데이터가 있으면 중단합니다.
--- 이미지 파일은 SQL로 복사되지 않습니다. backend/data/artworks, uploads를 준비하세요.
--- 비밀번호는 개발용 BCrypt 해시이며 실제 로그인은 A의 PasswordEncoder 구현과 확인하세요.
-
--- [로컬 DB에 넣기: macOS / zsh]
--- 1. Docker Desktop을 켜고, 터미널에서 프로젝트의 infra 폴더로 이동합니다.
---    cd /본인/프로젝트경로/moamu/infra
--- 2. infra/.env를 준비하고 MySQL을 실행합니다. backend/.env와는 다른 파일입니다.
---    docker compose up -d --wait --wait-timeout 240 mysql
--- 3. 팀의 백엔드 실행 안내에 따라 Flyway 마이그레이션을 적용합니다.
---    적용을 마치면 백엔드를 중지하고 아래 시드를 실행하세요(동시 데이터 생성 방지).
--- 4. infra 폴더에서 실행합니다. 아래 경로는 backend/data 저장했을 때 기준입니다.
---    docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --default-character-set=utf8mb4 --user="$MYSQL_USER" --database="$MYSQL_DATABASE"' < ../backend/data/seedData/V1_seed-dev.sql
--- 5. 맨 아래 건수와 조각 상태 조회 결과를 확인하고 백엔드를 다시 실행합니다.
-
--- [Windows PowerShell: 1~3번 준비 후 infra 폴더에서]
--- Get-Content -Raw -Encoding UTF8 ../backend/data/seedData/V1_seed-dev.sql | docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --default-character-set=utf8mb4 --user="$MYSQL_USER" --database="$MYSQL_DATABASE"'
--- 한국어 전송이 깨지는 구형 PowerShell에서는 먼저 다음을 실행합니다.
--- $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-
--- [DB 도구에서 실행]
--- 본인의 로컬 DB 연결/스키마를 선택하고 파일 전체를 SQL 스크립트로 실행하세요.
--- DELIMITER와 프로시저를 지원하지 않는 실행기는 위 mysql CLI 방식을 사용하세요.
--- INSERT 부분만 실행하면 프로시저 내부 변수 v_now/v_today를 사용할 수 없습니다.
--- CREATE ROUTINE, EXECUTE, ALTER ROUTINE 및 해당 테이블 읽기/쓰기 권한이 필요합니다.
--- 실패하면 --force로 넘기거나 기존 데이터를 지우지 말고 원인을 확인하세요.
--- 실패 후 이 파일의 프로시저가 남아 재실행을 막으면, 같은 로컬 DB에서 다음만 실행합니다.
--- DROP PROCEDURE IF EXISTS moamu_seed_dev_20261023;
--- 이 명령은 프로시저만 제거합니다. 기존 테이블/데이터를 초기화하지 않습니다.
-
--- [조각 표시]
--- 조각 표시 테스트용: 도전1 성공 1개·실패 1개·미확정 5개.
--- 성공 인증 기록은 화면 확인용 가상 데이터이며 실제 AI 판정 결과가 아닙니다.
+-- MOAMU 로컬 개발용 기본 시드. 운영 사용 금지.
+-- 대상: Flyway V1~V4가 모두 적용된 빈 로컬 DB.
+-- 데이터 초기화 후 이 파일 하나만 실행합니다. 이미지 키도 최종 영문 경로로 저장합니다.
+-- 실행 방법과 기존 로컬 DB 구조가 다른 경우: ../README.md 참고.
+-- 이 파일은 S3 객체 키만 저장하며 이미지 파일을 업로드하지 않습니다.
+-- 비밀번호 해시는 기존 개발용 값이며 실제 로그인은 PasswordEncoder와 별도로 확인하세요.
+-- 도전1의 성공 인증은 화면 확인용 가상 데이터입니다. 실제 AI 판정 결과가 아닙니다.
+-- 프로시저를 포함한 파일 전체를 실행하세요. 오류 시 실행을 중단하고 --force를 사용하지 마세요.
 
 SET NAMES utf8mb4;
+DROP PROCEDURE IF EXISTS moamu_seed_dev_20261104;
 DELIMITER $$
-CREATE PROCEDURE moamu_seed_dev_20261023()
+CREATE PROCEDURE moamu_seed_dev_20261104()
+SQL SECURITY INVOKER
 BEGIN
  DECLARE v_now DATETIME;
  DECLARE v_today DATE;
@@ -48,6 +20,37 @@ BEGIN
   ROLLBACK;
   RESIGNAL;
  END;
+ DECLARE EXIT HANDLER FOR SQLWARNING
+ BEGIN
+  ROLLBACK;
+  RESIGNAL;
+ END;
+
+ -- V4 적용 후 테이블과 컬럼인지 확인합니다. 시드는 스키마를 변경하지 않습니다.
+ IF (SELECT COUNT(*) FROM information_schema.tables
+     WHERE table_schema = DATABASE() AND table_type = 'BASE TABLE' AND engine = 'InnoDB'
+       AND table_name IN ('users', 'media', 'goal_category', 'goal_template',
+         'goal_template_condition', 'artwork', 'goal_template_artwork', 'challenge',
+         'challenge_condition', 'schedule', 'verification', 'verification_check',
+         'ai_task', 'user_social_account')) <> 14 THEN
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Apply Flyway V1-V4 to an empty local InnoDB database before seeding.';
+ END IF;
+ IF (SELECT COUNT(*) FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND ((table_name = 'challenge' AND column_name = 'cate_id')
+         OR (table_name = 'artwork' AND column_name = 'media_id')
+         OR (table_name = 'challenge_condition' AND column_name = 'condition_type'))) <> 3
+    OR EXISTS (SELECT 1 FROM information_schema.columns
+     WHERE table_schema = DATABASE()
+       AND ((table_name = 'challenge' AND column_name = 'category_id')
+         OR (table_name = 'artwork' AND column_name IN ('image_key', 'masterpiece_id', 'artwork_style'))
+         OR (table_name = 'media' AND column_name = 'status')
+         OR (table_name = 'challenge_condition' AND column_name = 'required')
+         OR (table_name = 'goal_template_artwork' AND column_name = 'sort_order')
+         OR (table_name = 'goal_template_condition' AND column_name = 'condition_type'))) THEN
+  SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Seed schema mismatch: apply Flyway V1-V4 first. No domain data was changed.';
+ END IF;
+
  SET v_now = UTC_TIMESTAMP();
  SET v_today = DATE(UTC_TIMESTAMP() + INTERVAL 9 HOUR);
  START TRANSACTION;
@@ -63,10 +66,22 @@ INSERT INTO `users` (`user_id`, `login_id`, `password`, `name`, `status`, `del_y
 
 -- 기본 프로필은 시스템 공용 파일: 업로더 NULL, purpose=PROFILE. 기본 이미지 여부는 이 시드의 공용 파일 연결로 구분합니다.
 
-INSERT INTO `media` (`media_id`, `image_key`, `file_hash`, `content_type`, `file_size`, `status`, `user_id`, `purpose`, `frst_reg_dt`) VALUES
-(1, 'uploads/기본 프로필 뮤.png', '05bfda986db50f1418719a5f129f4d764a462b74f5b005d3339563c8c5672eb4', 'image/png', 1502568, 'SUCCESS', NULL, 'PROFILE', v_now);
+INSERT INTO `media` (`media_id`, `image_key`, `file_hash`, `content_type`, `file_size`, `user_id`, `purpose`, `frst_reg_dt`) VALUES
+(1, 'uploads/default_profile_mu.png', '05bfda986db50f1418719a5f129f4d764a462b74f5b005d3339563c8c5672eb4', 'image/png', 1502568, NULL, 'PROFILE', v_now);
 
 UPDATE users SET profile_media_id = 1 WHERE user_id IN (1,2,3);
+
+-- 작품 경로도 media에 저장하고 artwork.media_id로 연결합니다.
+-- TODO: 작품 경로 행의 VERIFICATION은 임시값입니다. 사용자 인증 사진과 구분할 저장용 purpose를 확정해야 합니다.
+-- 시스템 공용 작품은 user_id=NULL이며, 실제 파일 정보가 없는 행의 해시/크기는 NULL입니다.
+INSERT INTO media (media_id, image_key, content_type, user_id, purpose, frst_reg_dt) VALUES
+(3, 'artworks/last_supper_solving_algorithms.png', 'image/png', NULL, 'VERIFICATION', v_now),
+(4, 'artworks/mona_lisa_with_name_tag.png', 'image/png', NULL, 'VERIFICATION', v_now),
+(5, 'artworks/girl_with_pearl_earring_studying.png', 'image/png', NULL, 'VERIFICATION', v_now),
+(6, 'artworks/flute_boy_climbing_stairs.png', 'image/png', NULL, 'VERIFICATION', v_now),
+(7, 'artworks/munch_drinking_water.png', 'image/png', NULL, 'VERIFICATION', v_now),
+(8, 'artworks/gleaners_taking_supplements.png', 'image/png', NULL, 'VERIFICATION', v_now);
+
 
 INSERT INTO `goal_category` (`cate_id`, `cate_code`, `cate_name`, `cate_source`, `frst_reg_dt`) VALUES
 (1, 'DEV_ALGORITHM', '알고리즘', 'SYSTEM', v_now);
@@ -74,16 +89,16 @@ INSERT INTO `goal_category` (`cate_id`, `cate_code`, `cate_name`, `cate_source`,
 INSERT INTO `goal_template` (`goal_template_id`, `cate_id`, `goal_name`, `description`, `photo_guide`, `verification_scope`, `status`, `sort_order`, `frst_reg_dt`) VALUES
 (1, 1, '알고리즘 문제 풀이 기록하기', '개발용 샘플. AI/PM 확정 조건으로 교체 필요.', '문제·풀이 코드와 실행 또는 채점 결과가 보이도록 촬영해주세요. 날짜는 보조 확인 항목입니다.', '개발용 예시: 사진에 보이는 대상만 확인하며 실제 수행 여부, 시간, 양, 섭취 여부는 보장하지 않습니다.', 'ACTIVE', 1, v_now);
 
-INSERT INTO `goal_template_condition` (`goal_template_condition_id`, `goal_template_id`, `code`, `condition_type`, `description`, `required`, `sort_order`, `frst_reg_dt`) VALUES
-(1, 1, 'C1', 'SCREEN_RECORD', '문제와 풀이 코드가 표시된 화면이 사진에 보여야 한다', 'Y', 1, v_now),
-(7, 1, 'C2', 'RESULT_OUTPUT', '풀이 코드의 실행 결과 또는 채점 결과가 사진에서 확인되어야 한다', 'Y', 2, v_now),
-(8, 1, 'C3', 'DATE_VISIBLE', '기록한 날짜가 사진에 보여야 한다', 'N', 3, v_now);
+INSERT INTO `goal_template_condition` (`goal_template_condition_id`, `goal_template_id`, `code`, `description`, `required`, `sort_order`, `frst_reg_dt`) VALUES
+(1, 1, 'C1', '문제와 풀이 코드가 표시된 화면이 사진에 보여야 한다', 'Y', 1, v_now),
+(7, 1, 'C2', '풀이 코드의 실행 결과 또는 채점 결과가 사진에서 확인되어야 한다', 'Y', 2, v_now),
+(8, 1, 'C3', '기록한 날짜가 사진에 보여야 한다', 'N', 3, v_now);
 
-INSERT INTO `artwork` (`artwork_id`, `status`, `artwork_title`, `image_key`, `completed_at`, `frst_reg_dt`) VALUES
-(1, 'READY', '개발용 작품 1', 'artworks/알고리즘 푸는 최후의 만찬.png', v_now, v_now);
+INSERT INTO `artwork` (`artwork_id`, `status`, `artwork_title`, `media_id`, `completed_at`, `frst_reg_dt`) VALUES
+(1, 'READY', '개발용 작품 1', 3, v_now, v_now);
 
-INSERT INTO `goal_template_artwork` (`goal_template_artwork_id`, `goal_template_id`, `artwork_id`, `sort_order`, `frst_reg_dt`) VALUES
-(1, 1, 1, 1, v_now);
+INSERT INTO `goal_template_artwork` (`goal_template_artwork_id`, `goal_template_id`, `artwork_id`, `frst_reg_dt`) VALUES
+(1, 1, 1, v_now);
 
 INSERT INTO `goal_category` (`cate_id`, `cate_code`, `cate_name`, `cate_source`, `frst_reg_dt`) VALUES
 (2, 'DEV_WORK', '출근', 'SYSTEM', v_now);
@@ -91,14 +106,14 @@ INSERT INTO `goal_category` (`cate_id`, `cate_code`, `cate_name`, `cate_source`,
 INSERT INTO `goal_template` (`goal_template_id`, `cate_id`, `goal_name`, `description`, `photo_guide`, `verification_scope`, `status`, `sort_order`, `frst_reg_dt`) VALUES
 (2, 2, '명찰 착용 기록하기', '개발용 샘플. AI/PM 확정 조건으로 교체 필요.', '개인정보를 가린 명찰이 보이도록 촬영해주세요.', '개발용 예시: 사진에 보이는 대상만 확인하며 실제 수행 여부, 시간, 양, 섭취 여부는 보장하지 않습니다.', 'ACTIVE', 2, v_now);
 
-INSERT INTO `goal_template_condition` (`goal_template_condition_id`, `goal_template_id`, `code`, `condition_type`, `description`, `required`, `sort_order`, `frst_reg_dt`) VALUES
-(2, 2, 'C1', 'OBJECT_PRESENT', '명찰이 사진에 보여야 한다', 'Y', 1, v_now);
+INSERT INTO `goal_template_condition` (`goal_template_condition_id`, `goal_template_id`, `code`, `description`, `required`, `sort_order`, `frst_reg_dt`) VALUES
+(2, 2, 'C1', '명찰이 사진에 보여야 한다', 'Y', 1, v_now);
 
-INSERT INTO `artwork` (`artwork_id`, `status`, `artwork_title`, `image_key`, `completed_at`, `frst_reg_dt`) VALUES
-(2, 'READY', '개발용 작품 2', 'artworks/명찰 챙긴 모나리자.png', v_now, v_now);
+INSERT INTO `artwork` (`artwork_id`, `status`, `artwork_title`, `media_id`, `completed_at`, `frst_reg_dt`) VALUES
+(2, 'READY', '개발용 작품 2', 4, v_now, v_now);
 
-INSERT INTO `goal_template_artwork` (`goal_template_artwork_id`, `goal_template_id`, `artwork_id`, `sort_order`, `frst_reg_dt`) VALUES
-(2, 2, 2, 1, v_now);
+INSERT INTO `goal_template_artwork` (`goal_template_artwork_id`, `goal_template_id`, `artwork_id`, `frst_reg_dt`) VALUES
+(2, 2, 2, v_now);
 
 INSERT INTO `goal_category` (`cate_id`, `cate_code`, `cate_name`, `cate_source`, `frst_reg_dt`) VALUES
 (3, 'DEV_STUDY', '학습', 'SYSTEM', v_now);
@@ -106,18 +121,18 @@ INSERT INTO `goal_category` (`cate_id`, `cate_code`, `cate_name`, `cate_source`,
 INSERT INTO `goal_template` (`goal_template_id`, `cate_id`, `goal_name`, `description`, `photo_guide`, `verification_scope`, `status`, `sort_order`, `frst_reg_dt`) VALUES
 (3, 3, '학습 기록하기', '개발용 샘플. AI/PM 확정 조건으로 교체 필요.', '책·노트, 직접 쓴 학습 메모, 요약 또는 문제 풀이 결과와 학습 공간이 함께 보이도록 촬영해주세요. 날짜는 보조 확인 항목입니다.', '개발용 예시: 사진에 보이는 대상만 확인하며 실제 수행 여부, 시간, 양, 섭취 여부는 보장하지 않습니다.', 'ACTIVE', 3, v_now);
 
-INSERT INTO `goal_template_condition` (`goal_template_condition_id`, `goal_template_id`, `code`, `condition_type`, `description`, `required`, `sort_order`, `frst_reg_dt`) VALUES
-(3, 3, 'C1', 'OBJECT_PRESENT', '책 또는 학습 노트가 사진에 보여야 한다', 'Y', 1, v_now),
-(9, 3, 'C2', 'HANDWRITTEN_RECORD', '직접 작성한 학습 메모가 사진에서 식별되어야 한다', 'Y', 2, v_now),
-(10, 3, 'C3', 'RESULT_OUTPUT', '학습한 내용을 정리한 요약문 또는 문제 풀이 결과가 사진에 보여야 한다', 'Y', 3, v_now),
-(11, 3, 'C4', 'PLACE', '학습 자료를 놓은 책상이나 학습 공간이 사진에서 확인되어야 한다', 'Y', 4, v_now),
-(12, 3, 'C5', 'DATE_VISIBLE', '학습 기록에 적힌 날짜가 사진에서 식별되어야 한다', 'N', 5, v_now);
+INSERT INTO `goal_template_condition` (`goal_template_condition_id`, `goal_template_id`, `code`, `description`, `required`, `sort_order`, `frst_reg_dt`) VALUES
+(3, 3, 'C1', '책 또는 학습 노트가 사진에 보여야 한다', 'Y', 1, v_now),
+(9, 3, 'C2', '직접 작성한 학습 메모가 사진에서 식별되어야 한다', 'Y', 2, v_now),
+(10, 3, 'C3', '학습한 내용을 정리한 요약문 또는 문제 풀이 결과가 사진에 보여야 한다', 'Y', 3, v_now),
+(11, 3, 'C4', '학습 자료를 놓은 책상이나 학습 공간이 사진에서 확인되어야 한다', 'Y', 4, v_now),
+(12, 3, 'C5', '학습 기록에 적힌 날짜가 사진에서 식별되어야 한다', 'N', 5, v_now);
 
-INSERT INTO `artwork` (`artwork_id`, `status`, `artwork_title`, `image_key`, `completed_at`, `frst_reg_dt`) VALUES
-(3, 'READY', '개발용 작품 3', 'artworks/공부하는 진주귀걸이를 한 소녀.png', v_now, v_now);
+INSERT INTO `artwork` (`artwork_id`, `status`, `artwork_title`, `media_id`, `completed_at`, `frst_reg_dt`) VALUES
+(3, 'READY', '개발용 작품 3', 5, v_now, v_now);
 
-INSERT INTO `goal_template_artwork` (`goal_template_artwork_id`, `goal_template_id`, `artwork_id`, `sort_order`, `frst_reg_dt`) VALUES
-(3, 3, 3, 1, v_now);
+INSERT INTO `goal_template_artwork` (`goal_template_artwork_id`, `goal_template_id`, `artwork_id`, `frst_reg_dt`) VALUES
+(3, 3, 3, v_now);
 
 INSERT INTO `goal_category` (`cate_id`, `cate_code`, `cate_name`, `cate_source`, `frst_reg_dt`) VALUES
 (4, 'DEV_EXERCISE', '운동', 'SYSTEM', v_now);
@@ -125,14 +140,14 @@ INSERT INTO `goal_category` (`cate_id`, `cate_code`, `cate_name`, `cate_source`,
 INSERT INTO `goal_template` (`goal_template_id`, `cate_id`, `goal_name`, `description`, `photo_guide`, `verification_scope`, `status`, `sort_order`, `frst_reg_dt`) VALUES
 (4, 4, '계단 이용 기록하기', '개발용 샘플. AI/PM 확정 조건으로 교체 필요.', '안전한 위치에서 계단이 보이도록 촬영해주세요.', '개발용 예시: 사진에 보이는 대상만 확인하며 실제 수행 여부, 시간, 양, 섭취 여부는 보장하지 않습니다.', 'ACTIVE', 4, v_now);
 
-INSERT INTO `goal_template_condition` (`goal_template_condition_id`, `goal_template_id`, `code`, `condition_type`, `description`, `required`, `sort_order`, `frst_reg_dt`) VALUES
-(4, 4, 'C1', 'OBJECT_PRESENT', '계단이 사진에 보여야 한다', 'Y', 1, v_now);
+INSERT INTO `goal_template_condition` (`goal_template_condition_id`, `goal_template_id`, `code`, `description`, `required`, `sort_order`, `frst_reg_dt`) VALUES
+(4, 4, 'C1', '계단이 사진에 보여야 한다', 'Y', 1, v_now);
 
-INSERT INTO `artwork` (`artwork_id`, `status`, `artwork_title`, `image_key`, `completed_at`, `frst_reg_dt`) VALUES
-(4, 'READY', '개발용 작품 4', 'artworks/계단 오르는 피리부는 소년.png', v_now, v_now);
+INSERT INTO `artwork` (`artwork_id`, `status`, `artwork_title`, `media_id`, `completed_at`, `frst_reg_dt`) VALUES
+(4, 'READY', '개발용 작품 4', 6, v_now, v_now);
 
-INSERT INTO `goal_template_artwork` (`goal_template_artwork_id`, `goal_template_id`, `artwork_id`, `sort_order`, `frst_reg_dt`) VALUES
-(4, 4, 4, 1, v_now);
+INSERT INTO `goal_template_artwork` (`goal_template_artwork_id`, `goal_template_id`, `artwork_id`, `frst_reg_dt`) VALUES
+(4, 4, 4, v_now);
 
 INSERT INTO `goal_category` (`cate_id`, `cate_code`, `cate_name`, `cate_source`, `frst_reg_dt`) VALUES
 (5, 'DEV_WATER', '수분 섭취', 'SYSTEM', v_now);
@@ -140,14 +155,14 @@ INSERT INTO `goal_category` (`cate_id`, `cate_code`, `cate_name`, `cate_source`,
 INSERT INTO `goal_template` (`goal_template_id`, `cate_id`, `goal_name`, `description`, `photo_guide`, `verification_scope`, `status`, `sort_order`, `frst_reg_dt`) VALUES
 (5, 5, '물 마시기 기록하기', '개발용 샘플. AI/PM 확정 조건으로 교체 필요.', '물컵 또는 물병이 보이도록 촬영해주세요.', '개발용 예시: 사진에 보이는 대상만 확인하며 실제 수행 여부, 시간, 양, 섭취 여부는 보장하지 않습니다.', 'ACTIVE', 5, v_now);
 
-INSERT INTO `goal_template_condition` (`goal_template_condition_id`, `goal_template_id`, `code`, `condition_type`, `description`, `required`, `sort_order`, `frst_reg_dt`) VALUES
-(5, 5, 'C1', 'OBJECT_PRESENT', '물컵 또는 물병이 사진에 보여야 한다', 'Y', 1, v_now);
+INSERT INTO `goal_template_condition` (`goal_template_condition_id`, `goal_template_id`, `code`, `description`, `required`, `sort_order`, `frst_reg_dt`) VALUES
+(5, 5, 'C1', '물컵 또는 물병이 사진에 보여야 한다', 'Y', 1, v_now);
 
-INSERT INTO `artwork` (`artwork_id`, `status`, `artwork_title`, `image_key`, `completed_at`, `frst_reg_dt`) VALUES
-(5, 'READY', '개발용 작품 5', 'artworks/물마시는 뭉크.png', v_now, v_now);
+INSERT INTO `artwork` (`artwork_id`, `status`, `artwork_title`, `media_id`, `completed_at`, `frst_reg_dt`) VALUES
+(5, 'READY', '개발용 작품 5', 7, v_now, v_now);
 
-INSERT INTO `goal_template_artwork` (`goal_template_artwork_id`, `goal_template_id`, `artwork_id`, `sort_order`, `frst_reg_dt`) VALUES
-(5, 5, 5, 1, v_now);
+INSERT INTO `goal_template_artwork` (`goal_template_artwork_id`, `goal_template_id`, `artwork_id`, `frst_reg_dt`) VALUES
+(5, 5, 5, v_now);
 
 INSERT INTO `goal_category` (`cate_id`, `cate_code`, `cate_name`, `cate_source`, `frst_reg_dt`) VALUES
 (6, 'DEV_SUPPLEMENT', '영양제', 'SYSTEM', v_now);
@@ -155,21 +170,24 @@ INSERT INTO `goal_category` (`cate_id`, `cate_code`, `cate_name`, `cate_source`,
 INSERT INTO `goal_template` (`goal_template_id`, `cate_id`, `goal_name`, `description`, `photo_guide`, `verification_scope`, `status`, `sort_order`, `frst_reg_dt`) VALUES
 (6, 6, '영양제 챙기기 기록하기', '개발용 샘플. AI/PM 확정 조건으로 교체 필요.', '영양제 용기 또는 포장이 보이도록 촬영해주세요.', '개발용 예시: 사진에 보이는 대상만 확인하며 실제 수행 여부, 시간, 양, 섭취 여부는 보장하지 않습니다.', 'ACTIVE', 6, v_now);
 
-INSERT INTO `goal_template_condition` (`goal_template_condition_id`, `goal_template_id`, `code`, `condition_type`, `description`, `required`, `sort_order`, `frst_reg_dt`) VALUES
-(6, 6, 'C1', 'OBJECT_PRESENT', '영양제 용기 또는 포장이 사진에 보여야 한다', 'Y', 1, v_now);
+INSERT INTO `goal_template_condition` (`goal_template_condition_id`, `goal_template_id`, `code`, `description`, `required`, `sort_order`, `frst_reg_dt`) VALUES
+(6, 6, 'C1', '영양제 용기 또는 포장이 사진에 보여야 한다', 'Y', 1, v_now);
 
-INSERT INTO `artwork` (`artwork_id`, `status`, `artwork_title`, `image_key`, `completed_at`, `frst_reg_dt`) VALUES
-(6, 'READY', '개발용 작품 6', 'artworks/영양제 먹는 이삭줍는 여인들.png', v_now, v_now);
+INSERT INTO `artwork` (`artwork_id`, `status`, `artwork_title`, `media_id`, `completed_at`, `frst_reg_dt`) VALUES
+(6, 'READY', '개발용 작품 6', 8, v_now, v_now);
 
-INSERT INTO `goal_template_artwork` (`goal_template_artwork_id`, `goal_template_id`, `artwork_id`, `sort_order`, `frst_reg_dt`) VALUES
-(6, 6, 6, 1, v_now);
+INSERT INTO `goal_template_artwork` (`goal_template_artwork_id`, `goal_template_id`, `artwork_id`, `frst_reg_dt`) VALUES
+(6, 6, 6, v_now);
 
+-- 템플릿의 condition_type은 V4에서 삭제됐지만 도전 조건에는 필수로 남아 있습니다.
+-- 아래 유형은 기존 시드의 조건별 유형을 명시적으로 보존합니다.
 -- 회원 1: 기본 회차를 만든 뒤 아래에서 성공/실패/미확정 표시용으로 변경합니다.
 INSERT INTO challenge (challenge_id,user_id,cate_id,challenge_title,goal_text,photo_guide,duration_days,start_date,end_date,status,goal_template_id,artwork_id,verification_scope,grid_rows,grid_cols,is_exhibited,frst_reg_dt)
 SELECT 1,1,cate_id,CONCAT('[DEV] ',goal_name),goal_name,photo_guide,7,v_today,DATE_ADD(v_today,INTERVAL 6 DAY),'IN_PROGRESS',goal_template_id,1,verification_scope,1,7,'N',v_now
 FROM goal_template WHERE goal_template_id=1;
-INSERT INTO challenge_condition (challenge_id,code,condition_type,description,required,sort_order,frst_reg_dt)
-SELECT 1,code,condition_type,description,required,sort_order,v_now FROM goal_template_condition WHERE goal_template_id=1 ORDER BY sort_order,goal_template_condition_id;
+INSERT INTO challenge_condition (challenge_id,code,condition_type,description,sort_order,frst_reg_dt)
+SELECT 1,code,CASE code WHEN 'C1' THEN 'SCREEN_RECORD' WHEN 'C2' THEN 'RESULT_OUTPUT' WHEN 'C3' THEN 'DATE_VISIBLE' END,description,sort_order,v_now
+FROM goal_template_condition WHERE goal_template_id=1 ORDER BY sort_order,goal_template_condition_id;
 
 INSERT INTO `schedule` (`schedule_id`, `challenge_id`, `day_no`, `schedule_date`, `start_at`, `deadline_at`, `status`, `attempt_count`, `piece_index`, `frst_reg_dt`) VALUES
 (1, 1, 1, DATE_ADD(v_today, INTERVAL 0 DAY), DATE_SUB(CAST(DATE_ADD(v_today, INTERVAL 0 DAY) AS DATETIME), INTERVAL 9 HOUR), DATE_SUB(CAST(DATE_ADD(v_today, INTERVAL 1 DAY) AS DATETIME), INTERVAL 9 HOUR), 'OPEN', 0, 0, v_now),
@@ -184,8 +202,9 @@ INSERT INTO `schedule` (`schedule_id`, `challenge_id`, `day_no`, `schedule_date`
 INSERT INTO challenge (challenge_id,user_id,cate_id,challenge_title,goal_text,photo_guide,duration_days,start_date,end_date,status,goal_template_id,artwork_id,verification_scope,grid_rows,grid_cols,is_exhibited,frst_reg_dt)
 SELECT 2,2,cate_id,CONCAT('[DEV] ',goal_name),goal_name,photo_guide,7,v_today,DATE_ADD(v_today,INTERVAL 6 DAY),'IN_PROGRESS',goal_template_id,2,verification_scope,1,7,'N',v_now
 FROM goal_template WHERE goal_template_id=2;
-INSERT INTO challenge_condition (challenge_id,code,condition_type,description,required,sort_order,frst_reg_dt)
-SELECT 2,code,condition_type,description,required,sort_order,v_now FROM goal_template_condition WHERE goal_template_id=2 ORDER BY sort_order,goal_template_condition_id;
+INSERT INTO challenge_condition (challenge_id,code,condition_type,description,sort_order,frst_reg_dt)
+SELECT 2,code,'OBJECT_PRESENT',description,sort_order,v_now
+FROM goal_template_condition WHERE goal_template_id=2 ORDER BY sort_order,goal_template_condition_id;
 
 INSERT INTO `schedule` (`schedule_id`, `challenge_id`, `day_no`, `schedule_date`, `start_at`, `deadline_at`, `status`, `attempt_count`, `piece_index`, `frst_reg_dt`) VALUES
 (8, 2, 1, DATE_ADD(v_today, INTERVAL 0 DAY), DATE_SUB(CAST(DATE_ADD(v_today, INTERVAL 0 DAY) AS DATETIME), INTERVAL 9 HOUR), DATE_SUB(CAST(DATE_ADD(v_today, INTERVAL 1 DAY) AS DATETIME), INTERVAL 9 HOUR), 'OPEN', 0, 0, v_now),
@@ -200,8 +219,9 @@ INSERT INTO `schedule` (`schedule_id`, `challenge_id`, `day_no`, `schedule_date`
 INSERT INTO challenge (challenge_id,user_id,cate_id,challenge_title,goal_text,photo_guide,duration_days,start_date,end_date,status,goal_template_id,artwork_id,verification_scope,grid_rows,grid_cols,is_exhibited,frst_reg_dt)
 SELECT 3,3,cate_id,CONCAT('[DEV] ',goal_name),goal_name,photo_guide,7,v_today,DATE_ADD(v_today,INTERVAL 6 DAY),'IN_PROGRESS',goal_template_id,3,verification_scope,1,7,'N',v_now
 FROM goal_template WHERE goal_template_id=3;
-INSERT INTO challenge_condition (challenge_id,code,condition_type,description,required,sort_order,frst_reg_dt)
-SELECT 3,code,condition_type,description,required,sort_order,v_now FROM goal_template_condition WHERE goal_template_id=3 ORDER BY sort_order,goal_template_condition_id;
+INSERT INTO challenge_condition (challenge_id,code,condition_type,description,sort_order,frst_reg_dt)
+SELECT 3,code,CASE code WHEN 'C1' THEN 'OBJECT_PRESENT' WHEN 'C2' THEN 'HANDWRITTEN_RECORD' WHEN 'C3' THEN 'RESULT_OUTPUT' WHEN 'C4' THEN 'PLACE' WHEN 'C5' THEN 'DATE_VISIBLE' END,description,sort_order,v_now
+FROM goal_template_condition WHERE goal_template_id=3 ORDER BY sort_order,goal_template_condition_id;
 
 INSERT INTO `schedule` (`schedule_id`, `challenge_id`, `day_no`, `schedule_date`, `start_at`, `deadline_at`, `status`, `attempt_count`, `piece_index`, `frst_reg_dt`) VALUES
 (15, 3, 1, DATE_ADD(v_today, INTERVAL 0 DAY), DATE_SUB(CAST(DATE_ADD(v_today, INTERVAL 0 DAY) AS DATETIME), INTERVAL 9 HOUR), DATE_SUB(CAST(DATE_ADD(v_today, INTERVAL 1 DAY) AS DATETIME), INTERVAL 9 HOUR), 'OPEN', 0, 0, v_now),
@@ -234,9 +254,9 @@ UPDATE schedule SET decided_at=DATE_ADD(start_at, INTERVAL 12 HOUR),
 WHERE schedule_id=2;
 
 -- 회원1의 성공 회차와 연결된 합성 제출 1건(작품 이미지를 mock 입력으로 사용).
-INSERT INTO media (media_id,image_key,file_hash,content_type,file_size,status,user_id,purpose,frst_reg_dt)
-SELECT 2,'artworks/알고리즘 푸는 최후의 만찬.png','19e15eda81e73aab876b98ccbaceb714d5efd8a882935180950b2556d67a14af',
- 'image/png',2849563,'SUCCESS',1,'VERIFICATION',DATE_SUB(decided_at, INTERVAL 1 MINUTE)
+INSERT INTO media (media_id,image_key,file_hash,content_type,file_size,user_id,purpose,frst_reg_dt)
+SELECT 2,'artworks/last_supper_solving_algorithms.png','19e15eda81e73aab876b98ccbaceb714d5efd8a882935180950b2556d67a14af',
+ 'image/png',2849563,1,'VERIFICATION',DATE_SUB(decided_at, INTERVAL 1 MINUTE)
 FROM schedule WHERE schedule_id=2;
 INSERT INTO verification (verification_id,schedule_id,attempt_no,idempotency_key,file_hash,status,
  submitted_at,analyzed_at,reason,model_version,frst_reg_dt,upd_dt,media_id)
@@ -253,37 +273,47 @@ FROM schedule s JOIN challenge_condition cc ON cc.challenge_id=s.challenge_id
 WHERE s.schedule_id=2
 ORDER BY cc.sort_order,cc.challenge_condition_id;
 
--- 회원2/3의 verification / verification_check / ai_task는 실제 인증 API로 생성합니다.
+-- 회원2/3의 인증 데이터와 ai_task는 생성하지 않습니다. 현재 업로드 API는 AI 작업을 자동 생성하지 않습니다.
 -- user_social_account에는 실제 제공자 ID를 임의로 만들지 않습니다.
  COMMIT;
 END$$
 DELIMITER ;
-CALL moamu_seed_dev_20261023();
-DROP PROCEDURE moamu_seed_dev_20261023;
+CALL moamu_seed_dev_20261104();
+DROP PROCEDURE moamu_seed_dev_20261104;
 
 SELECT 'users' AS table_name, COUNT(*) AS row_count FROM users
 UNION ALL SELECT 'media',COUNT(*) FROM media
+UNION ALL SELECT 'goal_category',COUNT(*) FROM goal_category
 UNION ALL SELECT 'goal_template',COUNT(*) FROM goal_template
+UNION ALL SELECT 'goal_template_condition',COUNT(*) FROM goal_template_condition
 UNION ALL SELECT 'artwork',COUNT(*) FROM artwork
 UNION ALL SELECT 'challenge',COUNT(*) FROM challenge
-UNION ALL SELECT 'schedule',COUNT(*) FROM schedule;
+UNION ALL SELECT 'schedule',COUNT(*) FROM schedule
+UNION ALL SELECT 'challenge_condition',COUNT(*) FROM challenge_condition
+UNION ALL SELECT 'goal_template_artwork',COUNT(*) FROM goal_template_artwork
+UNION ALL SELECT 'verification',COUNT(*) FROM verification
+UNION ALL SELECT 'verification_check',COUNT(*) FROM verification_check
+UNION ALL SELECT 'ai_task',COUNT(*) FROM ai_task
+UNION ALL SELECT 'user_social_account',COUNT(*) FROM user_social_account;
+
+SELECT media_id,image_key,purpose,user_id FROM media ORDER BY media_id;
 
 -- 기대 결과: 도전1 공개1/실패1/미확정5, 도전2·3 공개0/실패0/미확정7.
 SELECT challenge_id,
  SUM(status='SUCCESS') AS revealed_pieces,
  SUM(status='FAILED') AS failed_pieces,
- SUM(status IN ('OPEN','UPCOMING','PROCESSING','PENDING_SETTLEMENT')) AS undecided_pieces
+ SUM(status IN ('OPEN','UPCOMING','PROGRESSING','IN_REVIEW','PENDING_SETTLEMENT')) AS undecided_pieces
 FROM schedule GROUP BY challenge_id;
-SELECT s.challenge_id,c.artwork_id,a.image_key,s.schedule_id,s.day_no,s.piece_index,s.status,s.decided_at
+SELECT s.challenge_id,c.artwork_id,a.media_id,m.image_key,s.schedule_id,s.day_no,s.piece_index,s.status,s.decided_at
 FROM schedule s JOIN challenge c ON c.challenge_id=s.challenge_id
 JOIN artwork a ON a.artwork_id=c.artwork_id
+JOIN media m ON m.media_id=a.media_id
 ORDER BY s.challenge_id,s.piece_index;
 
 -- 조건 목록 기대 개수: 도전1=3, 도전2=1, 도전3=5. sort_order 순으로 화면에 표시합니다.
-SELECT challenge_id,COUNT(*) AS condition_count,
- SUM(required='Y') AS required_count,SUM(required='N') AS optional_count
+SELECT challenge_id,COUNT(*) AS condition_count
 FROM challenge_condition GROUP BY challenge_id;
-SELECT challenge_id,challenge_condition_id,code,condition_type,description,required,sort_order
+SELECT challenge_id,challenge_condition_id,code,condition_type,description,sort_order
 FROM challenge_condition ORDER BY challenge_id,sort_order;
 -- 가상 성공 인증1: 조건 3개, 판정 3개, 모두 MET.
 SELECT v.verification_id,v.status,COUNT(vc.verification_check_id) AS check_count,
