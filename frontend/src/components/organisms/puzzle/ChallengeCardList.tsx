@@ -15,7 +15,7 @@ export function ChallengeCardList({
   onVerify,
 }: ChallengeCardListProps) {
   return (
-    <div className="flex flex-col gap-4 m-6">
+    <div className="flex flex-col gap-4">
       {challenges.map((challenge) => (
         <ChallengeCard
           key={challenge.challengeId}

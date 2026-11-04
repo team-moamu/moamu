@@ -2,7 +2,8 @@ import { BlurImage } from '../../atoms/image/BlurImage'
 import { Text } from '../../atoms/typography/Text'
 import { SubText } from '../../atoms/typography/SubText'
 import { Badge } from '../../atoms/badge/Badge'
-import { SuccessButton } from '../../atoms/button/SuccessButton'
+import { SuccessButton } from '../../atoms/button/successButton'
+import { Icon } from '../../atoms/icon/Icon'
 
 type ChallengeCardProps = {
   challengeId: number
@@ -46,6 +47,7 @@ export function ChallengeCard({
           </SubText>
 
           <SubText>
+            <Icon name="clock" size={12} className='mr-1' />
             마감까지 {remainingTime}
           </SubText>
 

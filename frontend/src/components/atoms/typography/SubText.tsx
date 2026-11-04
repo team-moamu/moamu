@@ -6,7 +6,7 @@ type SubTextProps = {
 export function SubText({ children, bold = false }: SubTextProps) {
   return (
     <span
-      className={`text-xs text-[#6B5B4B] ${
+      className={`inline-flex items-center text-xs text-[#6B5B4B] ${
         bold ? 'font-bold' : 'font-normal'
       }`}
     >
