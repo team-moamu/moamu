@@ -12,6 +12,8 @@ import com.moamu.domain.artwork.repository.ArtworkRepository;
 import com.moamu.domain.challenge.dto.ChallengeCreateRequest;
 import com.moamu.domain.challenge.dto.TodayChallengeResponse;
 import com.moamu.domain.challenge.entity.Challenge;
+import com.moamu.domain.challenge.entity.ChallengeCondition;
+import com.moamu.domain.challenge.repository.ChallengeConditionRepository;
 import com.moamu.domain.challenge.repository.ChallengeRepository;
 import com.moamu.domain.goal.entity.GoalTemplate;
 import com.moamu.domain.goal.entity.GoalTemplateArtwork;
@@ -39,6 +41,7 @@ public class ChallengeService {
     private final ArtworkRepository artworkRepository;
     private final GoalTemplateArtworkRepository goalTemplateArtworkRepository;
     private final GoalTemplateConditionRepository goalTemplateConditionRepository;
+    private final ChallengeConditionRepository challengeConditionRepository;
 
     @Transactional
     public void createChallenge(Long userId, ChallengeCreateRequest request) {
@@ -55,12 +58,6 @@ public class ChallengeService {
             .orElseThrow(() ->
                 new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND)
         );
-
-        // 목표 템플릿 인증 조건 조회
-        List<GoalTemplateCondition> conditions = goalTemplateConditionRepository.findByGoalTemplateIdAndDelYn(request.goalTemplateId(), "N");
-
-        // 템플릿 인증 조건 -> 도전 인증조건에 저장
-        
 
         // 도전 기간 검증 (7, 14, 30일)
         int durationDays = request.durationDays();
@@ -109,6 +106,19 @@ public class ChallengeService {
 
         // Challenge 저장
         challengeRepository.save(challenge);
+        
+        // 목표 템플릿 인증 조건 조회
+        List<GoalTemplateCondition> conditions = goalTemplateConditionRepository.findByGoalTemplateIdAndDelYn(request.goalTemplateId(), "N");
+
+
+        List<ChallengeCondition> challengeConditions = conditions.stream()
+            .map(condition -> ChallengeCondition.create(
+                challenge.getChallengeId(),
+                condition.getCode(),
+                condition.getDescription()
+            ))
+            .toList();
+        challengeConditionRepository.saveAll(challengeConditions);
 
 
         // 도전 기간에 맞춰 Schedule 생성

@@ -4,6 +4,10 @@ import com.moamu.domain.artwork.entity.Artwork;
 import com.moamu.domain.artwork.repository.ArtworkRepository;
 import com.moamu.domain.challenge.dto.ChallengeCreateRequest;
 import com.moamu.domain.challenge.entity.Challenge;
+import com.moamu.domain.challenge.entity.ChallengeCondition;
+import com.moamu.domain.challenge.repository.ChallengeConditionRepository;
+import com.moamu.domain.goal.entity.GoalTemplateCondition;
+import com.moamu.domain.goal.repository.GoalTemplateConditionRepository;
 import com.moamu.domain.challenge.repository.ChallengeRepository;
 import com.moamu.domain.goal.entity.GoalTemplate;
 import com.moamu.domain.goal.entity.GoalTemplateArtwork;
@@ -44,9 +48,12 @@ class ChallengeServiceTests {
     @Mock private GoalTemplateRepository goalTemplateRepository;
     @Mock private ArtworkRepository artworkRepository;
     @Mock private GoalTemplateArtworkRepository goalTemplateArtworkRepository;
+    @Mock private GoalTemplateConditionRepository goalTemplateConditionRepository;
+    @Mock private ChallengeConditionRepository challengeConditionRepository;
     @InjectMocks private ChallengeService challengeService;
     @Captor private ArgumentCaptor<Challenge> challengeCaptor;
     @Captor private ArgumentCaptor<List<Schedule>> schedulesCaptor;
+    @Captor private ArgumentCaptor<List<ChallengeCondition>> conditionsCaptor;
 
     // 7·14·30일 각각에 대해 도전 정보, 종료일, 그리드 크기와 일별 회차 생성을 검증합니다.
     // CsvSource의 값은 순서대로 도전 기간, 기대 행 수, 기대 열 수입니다.
@@ -55,6 +62,14 @@ class ChallengeServiceTests {
     void createsChallengeAndDailySchedules(int days, int rows, int cols) {
         stubTemplate();
         stubMapping();
+        GoalTemplateCondition firstCondition = mock(GoalTemplateCondition.class);
+        when(firstCondition.getCode()).thenReturn("PHOTO");
+        when(firstCondition.getDescription()).thenReturn("Photograph the result");
+        GoalTemplateCondition secondCondition = mock(GoalTemplateCondition.class);
+        when(secondCondition.getCode()).thenReturn("TIME");
+        when(secondCondition.getDescription()).thenReturn("Practice for 10 minutes");
+        when(goalTemplateConditionRepository.findByGoalTemplateIdAndDelYn(10L, "N"))
+                .thenReturn(List.of(firstCondition, secondCondition));
         when(artworkRepository.findByArtworkIdAndDelYn(30L, "N")).thenReturn(Optional.of(mock(Artwork.class)));
         // JPA IDENTITY 저장 시 원본 엔티티에 ID가 할당되는 동작을 재현합니다.
         when(challengeRepository.save(any(Challenge.class))).thenAnswer(invocation -> {
@@ -64,6 +79,17 @@ class ChallengeServiceTests {
         });
 
         challengeService.createChallenge(1L, request(days));
+
+        verify(challengeConditionRepository).saveAll(conditionsCaptor.capture());
+        assertThat(conditionsCaptor.getValue()).hasSize(2);
+        assertThat(conditionsCaptor.getValue()).allSatisfy(condition -> {
+            assertThat(condition.getChallengeId()).isEqualTo(100L);
+            assertThat(condition.getDelYn()).isEqualTo("N");
+        });
+        assertThat(conditionsCaptor.getValue()).extracting(ChallengeCondition::getCode)
+                .containsExactly("PHOTO", "TIME");
+        assertThat(conditionsCaptor.getValue()).extracting(ChallengeCondition::getDescription)
+                .containsExactly("Photograph the result", "Practice for 10 minutes");
 
         // 저장 대상으로 전달된 도전에 사용자·템플릿·작품 정보가 올바르게 반영되는지 확인합니다.
         verify(challengeRepository).save(challengeCaptor.capture());

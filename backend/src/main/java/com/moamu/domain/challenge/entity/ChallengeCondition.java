@@ -25,11 +25,19 @@ public class ChallengeCondition extends BaseEntity {
     private Long challengeConditionId;
 
     @Column(name = "challenge_id", nullable = false)
-    private Long ChallengeId;
+    private Long challengeId;
 
     @Column(name = "code", nullable = false)
     private String code;
 
     @Column(name = "description", nullable = false, length = 300)
     private String description;
+
+    public static ChallengeCondition create(Long challengeId, String code, String description) {
+        ChallengeCondition condition = new ChallengeCondition();
+        condition.challengeId = challengeId;
+        condition.code = code;
+        condition.description = description;
+        return condition;
+    }
 }
