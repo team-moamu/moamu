@@ -8,7 +8,7 @@ const navItems: {
   icon: IconName
 }[] = [
   { label: '홈', path: '/', icon: 'home' },
-  { label: '도전하기', path: '/challenge', icon: 'challenge' },
+  { label: '도전하기', path: '/challenge/list', icon: 'challenge' },
   { label: '미술관', path: '/museum', icon: 'museum' },
   { label: '보관함', path: '/collection', icon: 'collection' },
   { label: '마이', path: '/mypage', icon: 'mypage' },

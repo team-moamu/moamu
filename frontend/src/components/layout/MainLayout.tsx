@@ -6,15 +6,19 @@ import { LoginHeader } from './header/LoginHeader'
 import { BottomNavigation } from './navigation/BottomNavigation'
 import '../../styles/font.css'
 
-type HeaderType = 'main' | 'back' | 'title' | 'login'
-
 interface MainLayoutProps {
-  headerType?: HeaderType
+  headerType?: 'main' | 'back' | 'title' | 'login'
   title?: string
   showBottomNav?: boolean
+  background?: 'white' | 'transparent'
 }
 
-export function MainLayout({headerType = 'main', title = '', showBottomNav = false,}: MainLayoutProps) {
+export function MainLayout({
+  headerType = 'main',
+  title = '',
+  showBottomNav = false,
+  background = 'transparent',
+}: MainLayoutProps) {
   const renderHeader = () => {
     switch (headerType) {
       case 'back':
@@ -32,7 +36,13 @@ export function MainLayout({headerType = 'main', title = '', showBottomNav = fal
     <div className="flex min-h-dvh w-full flex-col">
       {renderHeader()}
 
-      <main className={`flex-1 ${showBottomNav ? 'pb-28' : ''}`}>
+      <main
+        className={`
+          m-0 flex-1
+          ${showBottomNav ? 'pb-28' : ''}
+          ${background === 'white' ? 'bg-white' : ''}
+        `}
+      >
         <Outlet />
       </main>
 

@@ -1,15 +1,18 @@
 // 초록색 공통컨포넌트
 
 import type { ReactNode } from 'react'
+import { Icon, type IconName } from '../icon/Icon'
 
 interface SuccessButtonProps {
   children: ReactNode
+  icon?: IconName
   disabled?: boolean
   onClick?: () => void
 }
 
-export function SuccessButton ({
+export function SuccessButton({
   children,
+  icon,
   disabled = false,
   onClick,
 }: SuccessButtonProps) {
@@ -19,7 +22,8 @@ export function SuccessButton ({
       onClick={onClick}
       disabled={disabled}
       className={`
-        w-full rounded-lg py-3
+        flex w-full items-center justify-center gap-2
+        rounded-md py-3
         text-sm font-semibold transition-colors
         ${
           disabled
@@ -28,6 +32,7 @@ export function SuccessButton ({
         }
       `}
     >
+      {icon && <Icon name={icon} size={18} />}
       {children}
     </button>
   )

@@ -2,6 +2,7 @@
 import { Route, Routes } from 'react-router'
 import { MainLayout } from '../components/layout/MainLayout'
 import { ChallengeCreatePage } from '../pages/challenge/ChallengeCreatePage'
+import { ChallengeListPage } from '../pages/challenge/ChallengeListPage'
 
 function HomePage() {
   return <h1>모아뮤 홈 화면</h1>
@@ -29,6 +30,7 @@ export default function AppRoutes() {
       {/* 
         - element에 showBottomNav 추가하면 네비게이션바가 생깁니다. 
         - headerType: MainLayout.tsx에 있는 헤더 타입
+        - background='white' => 배경색
       */}
       {/* 기본 헤더 + 하단 내비게이션 */}
       <Route element={<MainLayout showBottomNav />}>
@@ -43,12 +45,16 @@ export default function AppRoutes() {
       </Route>
 
       <Route element={<MainLayout showBottomNav headerType="back" title="도전" />}>
-        <Route path="/challenge" element={<ChallengePage />} />
+        <Route path="/challenge" element={<ChallengePage />} /> 
       </Route>
 
       {/* 제목 헤더 */}
       <Route element={<MainLayout showBottomNav headerType="title" title="미술관" />} >
         <Route path="/challenge/complete" element={<GalleryPage />} />
+      </Route>
+
+      <Route element={<MainLayout showBottomNav background='white' headerType="title" title="도전하기" />} >
+        <Route path="/challenge/list" element={<ChallengeListPage />} />
       </Route>
 
       {/* 로그인 헤더 */}

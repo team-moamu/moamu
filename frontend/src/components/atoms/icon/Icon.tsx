@@ -20,6 +20,9 @@ export const iconMap = {
   algorithm: 'icon-[lucide--pencil]',
   supplement: 'icon-[lucide--pill]',
   nametag: 'icon-[lucide--contact]',
+
+  camera: 'icon-[lucide--camera]',
+  clock: 'icon-[lucide--clock]'
 } as const
 
 export type IconName = keyof typeof iconMap
