@@ -30,7 +30,7 @@ export function ChallengeCard({
   onVerify,
 }: ChallengeCardProps) {
   return (
-    <div className="rounded-xl p-4 shadow-sm card" style={{backgroundColor: '#fff8ed'}}>
+    <div className="rounded-md p-4 shadow-sm card" style={{backgroundColor: '#fff8ed'}}>
       <div className="flex gap-4">
         <BlurImage
           src={imageUrl}

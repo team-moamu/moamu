@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router'
-import { ChallengeCardList } from '../../components/organisms/challenge/ChallengeCardList'
+import { ChallengeCardList } from '../../components/organisms/puzzle/ChallengeCardList'
 import backgroundMu from '../../assets/images/background_mu.png'
 
 type Challenge = React.ComponentProps<
@@ -41,7 +41,18 @@ export function ChallengeListPage() {
 
   return (
     <>
-    <img src={backgroundMu} alt='뮤 이미지'></img>
+        <div className="relative w-full">
+      <img
+        src={backgroundMu}
+        alt="뮤 이미지"
+        className="block w-full"
+      />
+
+      <p className="text-description absolute top-[30%] left-1/2 -translate-x-1/2">
+        10월 2일 금요일
+      </p>
+    </div>
+
     <div className="flex flex-col">
 
       <ChallengeCardList
