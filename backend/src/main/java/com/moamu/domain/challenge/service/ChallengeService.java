@@ -15,7 +15,9 @@ import com.moamu.domain.challenge.entity.Challenge;
 import com.moamu.domain.challenge.repository.ChallengeRepository;
 import com.moamu.domain.goal.entity.GoalTemplate;
 import com.moamu.domain.goal.entity.GoalTemplateArtwork;
+import com.moamu.domain.goal.entity.GoalTemplateCondition;
 import com.moamu.domain.goal.repository.GoalTemplateArtworkRepository;
+import com.moamu.domain.goal.repository.GoalTemplateConditionRepository;
 import com.moamu.domain.goal.repository.GoalTemplateRepository;
 import com.moamu.domain.schedule.entity.Schedule;
 import com.moamu.global.exception.BusinessException;
@@ -36,6 +38,7 @@ public class ChallengeService {
     private final GoalTemplateRepository goalTemplateRepository;
     private final ArtworkRepository artworkRepository;
     private final GoalTemplateArtworkRepository goalTemplateArtworkRepository;
+    private final GoalTemplateConditionRepository goalTemplateConditionRepository;
 
     @Transactional
     public void createChallenge(Long userId, ChallengeCreateRequest request) {
@@ -51,7 +54,13 @@ public class ChallengeService {
             .findByGoalTemplateIdAndDelYn(request.goalTemplateId(), "N")
             .orElseThrow(() ->
                 new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND)
-            );
+        );
+
+        // 목표 템플릿 인증 조건 조회
+        List<GoalTemplateCondition> conditions = goalTemplateConditionRepository.findByGoalTemplateIdAndDelYn(request.goalTemplateId(), "N");
+
+        // 템플릿 인증 조건 -> 도전 인증조건에 저장
+        
 
         // 도전 기간 검증 (7, 14, 30일)
         int durationDays = request.durationDays();
