@@ -1,54 +1,96 @@
 # 로컬 개발용 시드 데이터
 
-`seed-dev.sql`은 기능 개발과 화면 확인에 사용할 데이터를 각자의 Docker MySQL에 넣는 파일입니다. 팀원의 DB와 데이터가 자동 동기화되지는 않습니다. 운영 DB에서는 실행하지 않습니다.
+현재 [Flyway 마이그레이션 V1~V4](../src/main/resources/db/migration/)가 적용된 로컬 MySQL용 시드입니다. 스키마는 Flyway가 만들고, 시드는 데이터만 입력합니다. 기존 로컬 DB 구조를 시드 SQL로 변경하지 않습니다.
 
-진행 순서: **Docker MySQL 실행 → Flyway 테이블 생성 → 시드 입력 → DBeaver 확인**
+실행 순서: **Flyway V1~V4 적용 확인 → 도메인 데이터 초기화 → `v1_seed-dev.sql` 한 번 실행 → 데이터 확인**
 
-## 1. 실행 전 준비
+이미 현재 스키마를 사용하는 로컬 DB라면 테이블 구조와 `flyway_schema_history`는 유지하고, 14개 도메인 테이블의 데이터만 비운 뒤 4번부터 진행합니다. 새 DB라면 1~3번을 먼저 진행합니다. 시드 파일은 기존 데이터를 자동 삭제하지 않습니다.
 
-- 팀 저장소를 이미 클론했다면 다시 클론하지 않습니다.
-- Docker Desktop을 실행합니다.
-- [DB 실행 안내](../../infra/README.md)에 따라 `infra/.env`를 준비합니다. 이미 있으면 덮어쓰지 않습니다.
-- `infra/.env`는 Docker DB 설정, `backend/.env`는 Spring Boot 접속 설정입니다. 두 파일의 DB 이름·계정·비밀번호·포트가 서로 맞아야 합니다.
-- 시드는 **14개 도메인 테이블이 모두 비어 있는 로컬 DB**에 한 번 넣습니다. 회원 데이터도 포함하므로 별도로 먼저 넣지 않습니다. Flyway 이력 테이블은 지우지 않습니다.
-
-폴더 구조:
+## 파일과 대상 스키마
 
 ```text
-moamu/
-├── infra/
-│   ├── compose.yaml
-│   └── .env
-└── backend/
-    └── data/
-        ├── README.md
-        ├── seed-dev.sql
-        ├── artworks/    # 사전 작품 이미지
-        └── uploads/     # 기본 프로필 이미지
+backend/data/
+├── README.md
+└── seedData/
+    ├── README.md
+    └── v1_seed-dev.sql   # 빈 DB에 기본 데이터와 최종 영문 이미지 키 입력
 ```
 
-SQL은 이미지 파일을 복사하지 않고 `artworks/파일명.png`, `uploads/파일명.png` 같은 상대 경로를 저장합니다. 이미지 조회 기능에서는 `backend/data`를 기준으로 파일 경로를 해석해야 합니다.
+시드는 `v1_seed-dev.sql` 하나만 실행합니다. 이름의 v1은 Flyway V1만 적용하라는 의미가 아니며, 대상 스키마는 V4까지 적용된 상태입니다. 파일명의 대소문자도 그대로 사용합니다.
 
-## 2. Docker MySQL 실행
+| 현재 스키마 | 시드에 반영한 내용 |
+| --- | --- |
+| `challenge.category_id` → `cate_id` | `cate_id`로 저장 |
+| `artwork.image_key`, `masterpiece_id`, `artwork_style` 삭제, `media_id` 추가 | 작품 경로를 `media.image_key`에 저장하고 `artwork.media_id`로 연결 |
+| `media.status` 삭제 | INSERT와 검증에서 제외 |
+| `challenge_condition.required` 삭제 | 도전 조건 INSERT와 결과 조회에서 제외 |
+| `goal_template_artwork.sort_order` 삭제 | 연결 데이터 INSERT에서 제외 |
+| `goal_template_condition.condition_type` 삭제 | 템플릿 조건 INSERT에서 제외 |
 
-VS Code에서 `moamu` 폴더를 열고 새 터미널을 실행합니다. **프로젝트 루트 `moamu` 기준**입니다.
+`challenge_condition.condition_type`은 여전히 필수 컬럼입니다. 기본 시드는 기존 예시의 유형을 각 조건에 명시해서 보존합니다. `goal_template_condition.required`와 `sort_order`는 그대로 존재하므로 유지합니다.
 
-```shell
+## 1. 로컬 MySQL 준비
+
+[프로젝트 환경 설정](../../README.md)과 [Docker DB 실행 안내](../../infra/README.md)를 참고합니다. `infra/.env`는 Docker 계정·포트 설정이고, `backend/.env`는 백엔드 접속 설정입니다.
+
+프로젝트 루트에서 실행합니다.
+
+```sh
 cd infra
 docker compose config --quiet
 docker compose up -d --wait --wait-timeout 240 mysql
 docker compose ps
 ```
 
-`config --quiet`가 아무 오류 없이 끝나고, `ps`에 MySQL 상태가 `healthy`로 표시되면 준비된 것입니다. 이후 시드 입력 명령도 **infra 폴더에서 실행**합니다.
+MySQL이 `healthy`인지 확인합니다. 이후 시드 입력 명령은 **infra 폴더 기준**입니다.
 
-## 3. Flyway로 테이블 생성
+## 2. 기존 로컬 DB 구조가 다를 때
 
-[프로젝트 실행 안내](../../README.md)와 [백엔드 안내](../README.md)에 따라 `backend/.env`를 준비하고 환경변수를 로딩한 뒤, 별도 터미널의 **backend 폴더**에서 local 프로필로 백엔드를 실행합니다.
+먼저 기존 DB에서 Flyway 적용 이력을 확인합니다.
+
+```sql
+SELECT version, description, success
+FROM flyway_schema_history
+ORDER BY installed_rank;
+```
+
+- 이력이 현재 마이그레이션과 일치하고 V2~V4만 미적용이라면, 백엔드 시작 시 Flyway가 남은 버전을 적용합니다. 기존 데이터가 있다면 먼저 백업하고 삭제되는 컬럼을 확인합니다.
+- 이력 테이블이 없거나, 체크섬 오류가 나거나, 테이블을 수동으로 변경했다면 **새 로컬 데이터베이스에 현재 V1~V4를 적용하는 방법을 권장합니다.**
+- 기본 시드는 14개 도메인 테이블이 모두 비어 있어야 합니다. 기존 데이터가 있는 DB에는 덧붙이지 않습니다.
+
+기존 데이터를 보관하면서 시작하려면 같은 MySQL 컨테이너에 `moamu_seed_v4` 같은 새 DB를 만듭니다. 아래는 기본 개발 계정이 `moamu`인 경우입니다.
+
+infra 폴더에서 관리자 클라이언트를 열고, 프롬프트에 `infra/.env`의 `MYSQL_ROOT_PASSWORD`를 입력합니다.
+
+```sh
+docker compose exec mysql sh -c 'exec mysql --user=root --password'
+```
+
+MySQL 프롬프트에서 실행합니다. 사용자 계정이 다르면 GRANT의 `moamu`를 실제 `DB_USER`로 바꿉니다. 이미 사용 중인 DB 이름이라면 다른 새 이름을 선택합니다.
+
+```sql
+CREATE DATABASE moamu_seed_v4 CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+GRANT ALL PRIVILEGES ON moamu_seed_v4.* TO 'moamu'@'%';
+EXIT;
+```
+
+`backend/.env`의 `DB_URL`도 선택한 DB로 변경합니다. 아래 포트는 예시이며 실제 `DB_PORT`에 맞춥니다.
+
+```dotenv
+DB_URL=jdbc:mysql://127.0.0.1:3306/moamu_seed_v4
+```
+
+이미 생성된 Docker 볼륨은 `infra/.env`의 `DB_NAME`만 바꿔도 초기화되거나 새 DB가 생기지 않습니다. Flyway 이력을 지우거나 `repair`로 오류만 숨기지 말고, 새 DB에 현재 마이그레이션을 적용합니다.
+
+## 3. Flyway V1~V4 적용
+
+[환경변수 로딩 안내](../../README.md#4-현재-터미널에-환경변수-로딩)에 따라 변경한 `backend/.env`를 실행 프로세스에 전달합니다. DB 접속 값과 현재 애플리케이션에서 요구하는 S3 설정도 준비합니다.
+
+별도 터미널의 **backend 폴더**에서 실행합니다.
 
 macOS / Linux:
 
-```shell
+```sh
 ./gradlew bootRun --args='--spring.profiles.active=local'
 ```
 
@@ -58,77 +100,52 @@ Windows PowerShell:
 .\gradlew.bat bootRun --args="--spring.profiles.active=local"
 ```
 
-macOS에서 실행 권한 오류가 나면 `chmod +x gradlew`를 먼저 실행합니다. `.env` 파일을 저장하는 것만으로 Spring Boot에 환경변수가 전달되지는 않습니다.
+Flyway V1~V4 적용 및 애플리케이션 시작 성공을 확인한 뒤, 백엔드를 `Ctrl+C`로 중지합니다. 시드 입력 중 다른 요청이 데이터를 생성하지 않도록 하며, Docker MySQL은 계속 실행해 둡니다.
 
-Flyway 마이그레이션과 백엔드 시작이 성공했는지 확인한 뒤, 백엔드를 `Ctrl+C`로 중지합니다. 시드 입력 중 다른 요청이 데이터를 만들지 않도록 하기 위함입니다. **Docker MySQL은 계속 켜둡니다.**
+선택한 DB의 `flyway_schema_history`에 버전 1~4가 모두 `success=1`로 기록되어 있어야 합니다. 시드가 구조 불일치 오류를 내면 이전 DB에 접속한 것은 아닌지 먼저 확인합니다.
 
-## 4. 시드 데이터 입력
+## 4. 시드 실행
 
-아래 방법 A 또는 B 중 **하나만** 사용합니다. 성공한 뒤 다른 방법으로 다시 입력하지 않습니다.
+터미널 또는 DBeaver 중 한 가지 방법으로 **`v1_seed-dev.sql` 전체를 한 번 실행**합니다. 기본 데이터와 최종 이미지 키가 함께 입력됩니다. 데이터 초기화 없이 다시 실행하면 기존 데이터 보호를 위해 중단됩니다.
 
-### 방법 A. 터미널에서 입력하고 DBeaver로 확인하기 (권장)
+### 터미널
 
-**infra 폴더**에서 실행합니다. MySQL 접속 값은 실행 중인 컨테이너의 환경변수에서 가져오므로 명령어에 비밀번호를 직접 적지 않습니다.
+infra 폴더에서 실행합니다. `seed_db` / `$seedDb`는 Flyway를 적용한 실제 DB 이름으로 지정합니다. 아래 예시는 앞에서 만든 `moamu_seed_v4`입니다. 비밀번호는 컨테이너의 개발 계정 환경변수를 사용합니다.
 
 macOS / Linux:
 
-```shell
-docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --default-character-set=utf8mb4 --user="$MYSQL_USER" --database="$MYSQL_DATABASE"' < ../backend/data/seed-dev.sql
+```sh
+seed_db=moamu_seed_v4
+docker compose exec -T -e SEED_DB="$seed_db" mysql sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --default-character-set=utf8mb4 --user="$MYSQL_USER" --database="$SEED_DB"' < ../backend/data/seedData/v1_seed-dev.sql
 ```
 
 Windows PowerShell:
 
 ```powershell
+$seedDb = "moamu_seed_v4"
 $OutputEncoding = [System.Text.UTF8Encoding]::new($false)
-Get-Content -Raw -Encoding UTF8 ../backend/data/seed-dev.sql | docker compose exec -T mysql sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --default-character-set=utf8mb4 --user="$MYSQL_USER" --database="$MYSQL_DATABASE"'
+Get-Content -Raw -Encoding UTF8 ../backend/data/seedData/v1_seed-dev.sql | docker compose exec -T -e "SEED_DB=$seedDb" mysql sh -c 'MYSQL_PWD="$MYSQL_PASSWORD" exec mysql --default-character-set=utf8mb4 --user="$MYSQL_USER" --database="$SEED_DB"'
+if ($LASTEXITCODE -ne 0) { throw "시드 실패: 오류를 해결한 뒤 다시 실행하세요." }
 ```
 
-오류 없이 끝나면 마지막에 테이블 건수, 회차 상태, 조건 목록과 판정 개수가 출력됩니다. 중간에 `ERROR`가 나왔다면 마지막 조회 결과만 보고 성공으로 판단하지 않습니다.
+### DBeaver
 
-### 방법 B. DBeaver에서 직접 입력하기
+1. 호스트 `127.0.0.1`, `infra/.env`의 포트·개발 계정·비밀번호로 MySQL에 연결합니다.
+2. 활성 데이터베이스를 Flyway가 적용된 DB로 선택합니다. 새 DB를 만들었다면 `moamu_seed_v4`를 선택합니다.
+3. `seedData/v1_seed-dev.sql` 전체를 **SQL 스크립트 실행**으로 실행합니다.
+4. 오류 없이 끝나면 아래 기대 건수와 이미지 키를 확인합니다.
 
-먼저 아래 5번대로 로컬 MySQL에 연결합니다.
+시드는 `DELIMITER`와 프로시저를 사용합니다. INSERT 부분만 선택해 실행하지 않습니다. 구분자 처리 문제가 있으면 터미널 방법을 사용합니다.
 
-1. DBeaver에서 `seed-dev.sql` 파일을 엽니다. 연결된 DB에서 새 SQL 편집기를 열고 파일 전체를 붙여넣어도 됩니다.
-2. 편집기 상단의 연결과 활성 데이터베이스가 **본인의 로컬 MySQL / moamu(또는 설정한 DB_NAME)**인지 확인합니다.
-3. 텍스트 선택을 해제하고 **SQL 편집기 → SQL 스크립트 실행(Execute SQL Script)**을 선택합니다. 기본 단축키는 Windows `Alt+X`, macOS `Option+X`입니다.
-4. 파일 전체를 순서대로 실행하고 결과를 확인합니다. 오류가 나면 실행을 중단합니다.
-
-이 파일은 `DELIMITER`와 프로시저 내부 변수 `v_now`, `v_today`를 사용하므로 INSERT 부분만 선택해서 실행하면 안 됩니다. 구분자 처리 오류가 발생하면 임의로 SQL을 분해하지 말고 방법 A를 사용합니다. 앞선 실행이 일부 진행됐다면 아래 오류 안내를 먼저 확인합니다.
-
-참고: [DBeaver SQL 실행 안내](https://dbeaver.com/docs/dbeaver/SQL-Execution/) · [단축키 안내](https://dbeaver.com/docs/dbeaver/Shortcuts/)
-
-## 5. DBeaver 연결
-
-1. DBeaver에서 **데이터베이스 → 새 데이터베이스 연결 → MySQL**을 선택합니다.
-2. 아래 접속 정보를 입력합니다.
-
-| DBeaver 항목 | 값 |
-| --- | --- |
-| Host | `127.0.0.1` |
-| Port | `infra/.env`의 `DB_PORT` 값. 지정하지 않았다면 `3306` |
-| Database | `infra/.env`의 `DB_NAME` 값 (팀 기본값: `moamu`) |
-| Username | `infra/.env`의 `DB_USER` 값 (팀 기본값: `moamu`) |
-| Password | `infra/.env`의 `DB_PASSWORD` 값 |
-
-3. **연결 테스트(Test Connection)**를 누릅니다. 드라이버 다운로드 창이 나오면 다운로드합니다.
-4. 연결 성공 후 완료하고, 연결 이름은 `MOAMU Local`처럼 구분하기 쉽게 지정합니다.
-
-DBeaver는 Docker MySQL에 접속하는 도구입니다. DBeaver용 MySQL을 따로 설치하거나 새 DB를 만들 필요는 없습니다. 비밀번호는 README에 추가하지 않고 각자의 `.env`에서 확인합니다.
-
-참고: [DBeaver 연결 안내](https://dbeaver.com/docs/dbeaver/Create-Connection/)
-
-## 6. 데이터가 들어갔는지 확인
-
-DBeaver 왼쪽 연결에서 **데이터베이스 → moamu → Tables**를 펼칩니다. 테이블을 더블클릭하고 **데이터(Data)** 탭을 선택합니다. 목록이나 데이터가 갱신되지 않으면 해당 항목을 새로고침합니다.
-
-SQL 편집기에서도 확인할 수 있습니다. 아래 SELECT는 필요한 문장만 실행해도 됩니다.
+## 5. 데이터 확인
 
 ```sql
 SELECT DATABASE();
-SHOW TABLES;
 SELECT user_id, login_id, name, status, profile_media_id FROM users;
-SELECT media_id, image_key, purpose FROM media;
+SELECT media_id, image_key, purpose, user_id FROM media ORDER BY media_id;
+SELECT a.artwork_id, a.artwork_title, a.media_id, m.image_key
+FROM artwork a JOIN media m ON m.media_id = a.media_id
+ORDER BY a.artwork_id;
 SELECT challenge_id, COUNT(*) AS condition_count
 FROM challenge_condition GROUP BY challenge_id;
 SELECT verification_id, challenge_condition_id, status, reason
@@ -137,39 +154,52 @@ SELECT challenge_id, day_no, piece_index, status
 FROM schedule ORDER BY challenge_id, day_no;
 ```
 
-시드 직후 기대 결과:
-
 | 항목 | 기대값 |
 | --- | --- |
-| 회원 / 사진 / 목표 / 작품 | 각각 3 / 2 / 6 / 6건 |
-| 도전 / 회차 | 각각 3 / 21건 |
-| 도전 1 / 2 / 3의 조건 개수 | 각각 3 / 1 / 5개 |
-| 도전 1 회차 상태 | SUCCESS 1개, FAILED 1개, 미확정 5개 |
-| 도전 2·3 회차 상태 | 각각 OPEN 1개, UPCOMING 6개 |
-| 인증 시도 / 조건 판정 | 가상 성공 인증 1건 / MET 3건 |
-| AI 작업 | 0건. 실제 인증 API 실행 시 생성 |
+| 회원 / 카테고리 / 목표 / 작품 | 3 / 6 / 6 / 6건 |
+| 미디어 | 8건: 기본 프로필 1 + 가상 인증 1 + 작품 경로 6 |
+| 목표 템플릿 조건 / 목표-작품 연결 | 12 / 6건 |
+| 도전 / 회차 / 도전 조건 | 3 / 21 / 9건 |
+| 도전 1 / 2 / 3의 조건 수 | 3 / 1 / 5개 |
+| 도전 1 회차 | FAILED 1, SUCCESS 1, OPEN 1, UPCOMING 4 |
+| 도전 2·3 회차 | 각각 OPEN 1, UPCOMING 6 |
+| 인증 시도 / 조건 판정 | 가상 성공 인증 1 / MET 판정 3건 |
+| AI 작업 / 소셜 계정 | 각각 0건 |
+| 이미지 키 | media 8개 행 모두 아래 표의 최종 영문 경로로 저장 |
 
-도전 1의 성공 인증은 **화면 확인용 가상 데이터**이며 실제 AI 판정 결과가 아닙니다. 다중 조건도 개발용 예시입니다. 날짜는 시드 실행 당시 한국 날짜를 기준으로 생성되므로, 며칠 뒤 인증 API를 테스트할 때는 회차 마감 여부를 확인합니다.
+도전 1의 성공 인증은 화면 확인용 합성 데이터입니다. 현재 사진 업로드 API는 AI 작업을 자동 생성하지 않으므로, 시드의 `ai_task=0`은 정상입니다.
 
-확인이 끝나면 백엔드를 다시 실행합니다. 테이블에 데이터가 들어간 것과 실제 로그인·AI 연동·화면 동작 성공은 별도로 확인합니다.
+회차 날짜는 실행 당시 한국 날짜를 기준으로 만들며, 시드의 시각 컬럼은 기존 방식대로 UTC 기준입니다. 며칠 뒤 테스트할 때는 회차 날짜와 마감 시각을 확인합니다. 로그인 비밀번호 해시는 기존 시드 값을 유지했으며, 실제 로그인 성공을 보장하는 데이터는 아닙니다.
 
-## 7. 자주 발생하는 오류
+## 6. 이미지 경로와 S3
 
-| 증상 | 확인할 내용 |
+**DB에는 이미지 파일이 아니라 S3 객체 키를 저장합니다.** 작품 경로는 `artwork → media_id → media.image_key`로 조회합니다. SQL은 파일을 복사하거나 S3에 업로드하지 않으며, 저장소의 로컬 이미지 폴더도 필요로 하지 않습니다.
+
+시드 실행 직후 저장되는 키는 다음과 같습니다.
+
+| media_id | 연결 | image_key |
+| --- | --- | --- |
+| 1 | 회원 1~3의 공용 프로필 | `uploads/default_profile_mu.png` |
+| 2 | 가상 인증 1 | `artworks/last_supper_solving_algorithms.png` |
+| 3 | 작품 1 | `artworks/last_supper_solving_algorithms.png` |
+| 4 | 작품 2 | `artworks/mona_lisa_with_name_tag.png` |
+| 5 | 작품 3 | `artworks/girl_with_pearl_earring_studying.png` |
+| 6 | 작품 4 | `artworks/flute_boy_climbing_stairs.png` |
+| 7 | 작품 5 | `artworks/munch_drinking_water.png` |
+| 8 | 작품 6 | `artworks/gleaners_taking_supplements.png` |
+
+실제 이미지를 표시하려면 사용하는 S3 버킷에 위 키와 일치하는 객체가 있어야 합니다. 키는 예시 데이터이며, `S3_PROFILE_PREFIX` 등 환경변수로 시드 값이 자동 치환되지는 않습니다. 버킷에서 다른 키를 사용한다면 `v1_seed-dev.sql`의 해당 경로를 맞춥니다.
+
+`purpose`는 사용자 사진의 프로필·인증 용도를 구분합니다. **작품 경로 행(media 3~8)의 `VERIFICATION`은 아직 남아 있는 임시값이며, 작품의 올바른 용도 분류가 아닙니다.** 현재 필수 컬럼과 Java enum에 맞는 작품용 저장 값은 별도로 확정해야 합니다. 작품 연결은 `artwork.media_id`로 구분하며, 이 행들로 사용자 인증 시도를 생성하지 않습니다. 실제 파일을 확인하지 않은 작품 행의 해시와 크기는 NULL입니다. media 1·2의 해시와 크기는 기존 시드 예시 값을 유지합니다.
+
+## 7. 오류 처리
+
+| 오류 | 확인할 내용 |
 | --- | --- |
-| `no configuration file provided` | 현재 터미널이 `compose.yaml`이 있는 `infra` 폴더인지 확인 |
-| `DB_NAME is required` 등 | `infra/.env`의 필수 값 확인. `backend/.env`와 혼동하지 않기 |
-| DBeaver 연결 거부 | Docker Desktop 실행 여부, `docker compose ps`, 호스트 포트 확인 |
-| `Access denied` | DB 계정·비밀번호 확인. 이미 생성된 Docker 볼륨의 계정은 `.env` 수정만으로 바뀌지 않음 |
-| 테이블이 없음 | 올바른 DB를 선택했는지, Flyway 적용이 성공했는지 확인 |
-| `Seed requires empty domain tables` | 기존 데이터가 있어 시드가 중단됨. 이미 입력했다면 재실행하지 말고 데이터 확인 |
-| `PROCEDURE ... already exists` | 실패한 실행이 남긴 프로시저인지 확인 후 아래 절차 사용 |
-| `CREATE ROUTINE` / `EXECUTE` 등 권한 오류 | DB 담당자에게 해당 로컬 계정의 프로시저 생성·실행·삭제 권한 확인 요청 |
+| 스키마 불일치 / `Unknown column` | 선택한 DB와 Flyway V1~V4 적용 여부 확인. 시드를 쪼개 실행하지 않기 |
+| Flyway 체크섬 불일치 | 현재 마이그레이션과 기존 DB 이력이 다름. 이력을 삭제하지 말고 새 로컬 DB에 적용 |
+| `Seed requires empty domain tables` | V1이 기존 데이터 보호를 위해 중단됨. 재실행하지 말고 현재 데이터 확인 또는 새 DB 사용 |
+| `Access denied` / `Unknown database` | DB 이름·계정·권한 확인. 새 DB에 개발 계정 권한을 부여했는지 확인 |
+| 프로시저 권한 오류 | 로컬 계정의 CREATE ROUTINE, ALTER ROUTINE, EXECUTE, CREATE TEMPORARY TABLES 및 데이터 읽기·쓰기 권한 확인 |
 
-실패 원인을 해결했는데 `moamu_seed_dev_20261023` 프로시저만 남아 재실행을 막는다면, DBeaver에서 **해당 로컬 DB를 선택한 뒤** 아래 문장만 실행합니다.
-
-```sql
-DROP PROCEDURE IF EXISTS moamu_seed_dev_20261023;
-```
-
-이 명령은 프로시저만 제거하며 테이블 데이터는 지우지 않습니다. 도메인 테이블이 비어 있고 이전 오류를 해결했을 때만 시드를 다시 실행합니다. 기존 데이터를 삭제하거나 Docker 볼륨을 초기화하는 명령은 이 안내에 포함하지 않습니다.
+데이터 입력 중 SQL 오류·경고가 발생하면 시드의 트랜잭션 전체가 롤백됩니다. 원인을 해결하고 도메인 테이블이 비어 있는지 확인한 뒤 같은 파일을 다시 실행합니다. 실패 후 남은 시드 전용 프로시저는 다음 실행 시작 시 정리합니다. `--force`로 오류를 무시하지 않습니다.
