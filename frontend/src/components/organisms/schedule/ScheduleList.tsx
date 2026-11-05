@@ -7,7 +7,7 @@ type ScheduleListProps = {
 
 export function ScheduleList({ schedules }: ScheduleListProps) {
   return (
-    <div className="overflow-hidden rounded-xl border border-[#E8E0D5] bg-white">
+    <div className="border border-[#E8E0D5] overflow-hidden rounded-md shadow-sm bg-[#fff8ed]">
       {schedules.map((schedule) => (
         <ScheduleDetail
           key={schedule.dayNo}

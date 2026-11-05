@@ -14,7 +14,7 @@ export function ChallengeStatus({
   endDate,
 }: ChallengeStatusProps) {
   return (
-    <div className="rounded-xl bg-white p-5">
+    <div className="border border-[#E8E0D5] overflow-hidden p-5 rounded-md shadow-sm bg-[#fff8ed]">
       <div className="mb-3 flex items-center justify-between">
         <span className="text-sm text-[#6B5B4B]">
           도전 진행 현황

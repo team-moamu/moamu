@@ -16,6 +16,7 @@ type ChallengeCardProps = {
   remainingTime: string
   status: 'available' | 'retry'
   onVerify: (challengeId: number) => void
+  onClick?: () => void
 }
 
 export function ChallengeCard({
@@ -29,9 +30,21 @@ export function ChallengeCard({
   remainingTime,
   status,
   onVerify,
+  onClick,
 }: ChallengeCardProps) {
   return (
-    <div className="rounded-md p-4 shadow-sm card" style={{backgroundColor: '#fff8ed'}}>
+    <div 
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onClick?.()
+        }
+      }}
+      className="rounded-md p-4 shadow-sm card bg-[#fff8ed]"
+    >
       <div className="flex gap-4">
         <BlurImage
           src={imageUrl}
