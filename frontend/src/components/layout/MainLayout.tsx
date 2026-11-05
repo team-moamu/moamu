@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Outlet } from 'react-router'
 import { MainHeader } from './header/MainHeader'
 import { BackHeader } from './header/BackHeader'
@@ -19,12 +20,15 @@ export function MainLayout({
   showBottomNav = false,
   background = 'transparent',
 }: MainLayoutProps) {
+  // 동적 헤더 제목
+  const [pageTitle, setPageTitle] = useState('')
+
   const renderHeader = () => {
     switch (headerType) {
       case 'back':
-        return <BackHeader title={title} />
+        return <BackHeader title={title || pageTitle} />
       case 'title':
-        return <TitleHeader title={title} />
+        return <TitleHeader title={title || pageTitle} />
       case 'login':
         return <LoginHeader />
       default:
@@ -43,7 +47,7 @@ export function MainLayout({
           ${background === 'white' ? 'bg-white' : ''}
         `}
       >
-        <Outlet />
+        <Outlet context={{ setPageTitle }} />
       </main>
 
       {showBottomNav && <BottomNavigation />}
