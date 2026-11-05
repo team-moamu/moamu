@@ -1,0 +1,125 @@
+
+/* ========================================
+   Pretendard - 기본 UI 폰트
+======================================== */
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('../assets/fonts/Pretendard-Thin.otf') format('opentype');
+  font-weight: 100;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('../assets/fonts/Pretendard-ExtraLight.otf') format('opentype');
+  font-weight: 200;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('../assets/fonts/Pretendard-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('../assets/fonts/Pretendard-Regular.otf') format('opentype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('../assets/fonts/Pretendard-Medium.otf') format('opentype');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('../assets/fonts/Pretendard-SemiBold.otf') format('opentype');
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('../assets/fonts/Pretendard-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('../assets/fonts/Pretendard-ExtraBold.otf') format('opentype');
+  font-weight: 800;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Pretendard';
+  src: url('../assets/fonts/Pretendard-Black.otf') format('opentype');
+  font-weight: 900;
+  font-style: normal;
+}
+
+/* ========================================
+   그리운 예은체 - 포인트 폰트
+======================================== */
+
+@font-face {
+  font-family: 'Griun Yeeun';
+  src: url('../assets/fonts/Griun_Yeeun-Rg.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+/* ========================================
+   강원교육모두 - 설명용 폰트
+======================================== */
+
+@font-face {
+  font-family: 'GangwonEduAll';
+  src: url('../assets/fonts/강원교육모두 Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'GangwonEduAll';
+  src: url('../assets/fonts/강원교육모두 Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+/* ========================================
+   강원교육 계열 - 추가 폰트
+======================================== */
+
+@font-face {
+  font-family: 'GangwonEduSaeeum';
+  src: url('../assets/fonts/강원교육새음.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'GangwonEduHyeonok';
+  src: url('../assets/fonts/강원교육현옥체.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+/* ========================================
+   온글잎 박다현체
+======================================== */
+
+@font-face {
+  font-family: 'Ongleip Bakdahyeon';
+  src: url('../assets/fonts/온글잎 박다현체.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}

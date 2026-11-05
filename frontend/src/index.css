@@ -1,11 +1,3 @@
 @import "tailwindcss";
 @import './styles/index.css';
-
-/* 초기 안내 화면용 배치입니다. 기능 화면 구현 시 각 화면 레이아웃으로 옮기세요. */
-@layer base {
-  main {
-    max-width: 60rem;
-    margin: 0 auto;
-    padding: var(--space-12) var(--page-padding);
-  }
-}
+@plugin "@iconify/tailwind4";

@@ -1,7 +1,6 @@
 package com.moamu.domain.media.controller;
 
 import com.moamu.domain.media.dto.MediaResponse;
-import com.moamu.domain.media.enums.MediaStatus;
 import com.moamu.domain.media.service.MediaService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,22 +28,20 @@ class MediaControllerTests {
     void authenticatedUploadReturnsCreatedMedia() throws Exception {
         MediaResponse response = new MediaResponse();
         response.setMediaId(10L);
-        response.setStatus(MediaStatus.SUCCESS);
         when(mediaService.uploadVerification(eq(1L), any())).thenReturn(response);
 
-        mockMvc.perform(multipart("/api/media/verification")
+        mockMvc.perform(multipart("/api/media")
                         .file(new MockMultipartFile("image", "photo.png", "image/png", new byte[]{1}))
                         .requestAttr("userId", 1L))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("success").value(true))
-                .andExpect(jsonPath("data.mediaId").value(10))
-                .andExpect(jsonPath("data.status").value("SUCCESS"));
+                .andExpect(jsonPath("data.mediaId").value(10));
         verify(mediaService).uploadVerification(eq(1L), any());
     }
 
     @Test
     void clientSuppliedUserIdDoesNotAuthorizeUpload() throws Exception {
-        mockMvc.perform(multipart("/api/media/verification")
+        mockMvc.perform(multipart("/api/media")
                         .param("userId", "1").header("userId", "1"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("error.code").value("AUTHENTICATION_REQUIRED"));
@@ -53,7 +50,7 @@ class MediaControllerTests {
 
     @Test
     void invalidServerUserIdDoesNotReachStorage() throws Exception {
-        mockMvc.perform(multipart("/api/media/verification").requestAttr("userId", 0L))
+        mockMvc.perform(multipart("/api/media").requestAttr("userId", 0L))
                 .andExpect(status().isUnauthorized());
         verifyNoInteractions(mediaService);
     }

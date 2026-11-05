@@ -14,6 +14,20 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 11MB
+      
+# S3 설정
+app:
+  ai:
+    server-url: ${AI_SERVER_URL:http://localhost:8000}
+    connect-timeout: ${AI_CONNECT_TIMEOUT:3s}
+    read-timeout: ${AI_READ_TIMEOUT:30s}
+  storage:
+    s3:
+      bucket: ${S3_BUCKET}
+      region: ${AWS_REGION}
+      artwork-prefix: ${S3_ARTWORK_PREFIX}
+      profile-prefix: ${S3_PROFILE_PREFIX}
+      verification-prefix: ${S3_VERIFICATION_PREFIX}
 
 springdoc:
   api-docs:

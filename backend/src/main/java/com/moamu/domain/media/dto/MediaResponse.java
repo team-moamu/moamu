@@ -1,7 +1,5 @@
 package com.moamu.domain.media.dto;
 
-import com.moamu.domain.media.enums.MediaStatus;
-
 import lombok.Getter;
 import lombok.Setter;
 
@@ -10,5 +8,4 @@ import lombok.Setter;
 @Setter
 public class MediaResponse {
     private Long mediaId;
-    private MediaStatus status; 
 }
