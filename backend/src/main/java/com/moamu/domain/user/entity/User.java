@@ -9,11 +9,6 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-/**
- * User
- * JPA Entity
- */
-
  @Entity
  @Table (name = "users")
  @Getter

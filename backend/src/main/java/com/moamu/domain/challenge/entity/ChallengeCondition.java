@@ -1,5 +1,7 @@
 package com.moamu.domain.challenge.entity;
 
+import java.time.LocalDateTime;
+
 import com.moamu.global.entity.BaseEntity;
 
 import jakarta.persistence.Column;
@@ -16,7 +18,7 @@ import lombok.NoArgsConstructor;
 @Table (name = "challenge_condition")
 @Getter 
 @NoArgsConstructor (access = AccessLevel.PROTECTED)
-public class ChallengeCondition extends BaseEntity {
+public class ChallengeCondition {
 
     // 도전 인증 조건 ID
     @Id
@@ -32,6 +34,10 @@ public class ChallengeCondition extends BaseEntity {
 
     @Column(name = "description", nullable = false, length = 300)
     private String description;
+
+        // 등록 일시
+    @Column(name = "frst_reg_dt", updatable = false)
+    private LocalDateTime frstRegDt;
 
     public static ChallengeCondition create(Long challengeId, String code, String description) {
         ChallengeCondition condition = new ChallengeCondition();
