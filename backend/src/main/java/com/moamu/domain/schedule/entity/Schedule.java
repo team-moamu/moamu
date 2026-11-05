@@ -39,14 +39,6 @@ public class Schedule {
     @Column(name = "schedule_date", nullable = false)
     private LocalDate scheduleDate;
 
-    // 인증 가능 시작 시각
-    @Column(name = "start_at", nullable = false)
-    private LocalDateTime startAt;
-
-    // 마감 시각
-    @Column(name = "deadline_at", nullable = false)
-    private LocalDateTime deadlineAt;
-
     // 회차 상태
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 30)
@@ -94,8 +86,6 @@ public class Schedule {
         schedule.challengeId = challengeId;
         schedule.dayNo = dayNo;
         schedule.scheduleDate = scheduleDate;
-        schedule.startAt = startAt;
-        schedule.deadlineAt = deadlineAt;
         schedule.pieceIndex = pieceIndex;
 
         return schedule;

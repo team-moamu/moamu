@@ -95,9 +95,6 @@ class ChallengeServiceTests {
             assertThat(schedule.getDayNo()).isEqualTo(i + 1);
             assertThat(schedule.getPieceIndex()).isEqualTo(i);
             assertThat(schedule.getScheduleDate()).isEqualTo(date);
-            // 인증 가능 시간은 해당 날짜의 자정부터 다음 날 자정까지로 설정되는지 확인합니다.
-            assertThat(schedule.getStartAt()).isEqualTo(date.atStartOfDay());
-            assertThat(schedule.getDeadlineAt()).isEqualTo(date.plusDays(1).atStartOfDay());
         }
     }
 
