@@ -1,17 +1,97 @@
 package com.moamu.domain.user.service;
 
 import lombok.RequiredArgsConstructor;
+
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.moamu.domain.user.dto.UserLoginRequest;
+import com.moamu.domain.user.dto.UserSignupRequest;
+import com.moamu.domain.user.entity.User;
+import com.moamu.domain.user.exception.UserErrorCode;
 import com.moamu.domain.user.repository.UserRepository;
+import com.moamu.global.exception.BusinessException;
+
 
 @Service
-@RequiredArgsConstructor 
+@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class UserServiceImpl implements UserService {
 
-    // 개발할때는 주석 풀어주세요
-    // private final UserRepository userRepository;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    @Override
+    @Transactional
+    public Long signup(UserSignupRequest request) {
+
+        //이메일 대소문자 유지해서 중복 확인
+        String email = request.getLoginId();
+        if (userRepository.existsByLoginId(email)) {
+            throw new BusinessException(UserErrorCode.DUPLICATE_LOGIN_ID);
+        }
+
+        String encodePassword = passwordEncoder.encode(request.getPassword());
+
+        User user = User.createLocal(email, encodePassword, request.getName());
+
+        try {
+            User savedUser = userRepository.saveAndFlush(user);
+            return savedUser.getUserId();
+
+        } catch (DataIntegrityViolationException exception) {
+            if (isDuplicateLoginId(exception)) {
+                throw new BusinessException(
+                        UserErrorCode.DUPLICATE_LOGIN_ID);
+            }
+
+            throw exception;
+        }
+
+    }
+
+    @Override
+    public boolean isEmailAvailable(String email) {
+        // 입력한 이메일 그대로 중복 조회
+        return !userRepository.existsByLoginId(email);
+    }
+
+    private boolean isDuplicateLoginId(Throwable exception) {
+        Throwable cause = exception;
+
+        while (cause != null) {
+            if (cause instanceof ConstraintViolationException violation) {
+                String constraintName = violation.getConstraintName();
+
+                if (constraintName != null) {
+                    String normalizedName = constraintName
+                            .replace("`", "")
+                            .replace("'", "")
+                            .replace("\"", "");
+
+                    if (normalizedName.equalsIgnoreCase("uk_users_login_id")
+                            ||
+                            normalizedName.toLowerCase(java.util.Locale.ROOT)
+                                    .endsWith(".uk_users_login_id")) {
+                        return true;
+                    }
+
+                }
+            }
+
+            cause = cause.getCause();
+        }
+
+        return false;
+    }
+
+    @Override
+    public User login(UserLoginRequest request) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'login'");
+    }
 
 }
