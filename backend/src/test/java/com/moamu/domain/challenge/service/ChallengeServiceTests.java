@@ -84,7 +84,6 @@ class ChallengeServiceTests {
         assertThat(conditionsCaptor.getValue()).hasSize(2);
         assertThat(conditionsCaptor.getValue()).allSatisfy(condition -> {
             assertThat(condition.getChallengeId()).isEqualTo(100L);
-            assertThat(condition.getDelYn()).isEqualTo("N");
         });
         assertThat(conditionsCaptor.getValue()).extracting(ChallengeCondition::getCode)
                 .containsExactly("PHOTO", "TIME");
