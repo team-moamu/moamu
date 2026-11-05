@@ -11,10 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 import com.moamu.domain.user.dto.UserLoginRequest;
 import com.moamu.domain.user.dto.UserSignupRequest;
 import com.moamu.domain.user.entity.User;
+import com.moamu.domain.user.enums.UserStatus;
 import com.moamu.domain.user.exception.UserErrorCode;
 import com.moamu.domain.user.repository.UserRepository;
 import com.moamu.global.exception.BusinessException;
-
 
 @Service
 @RequiredArgsConstructor
@@ -28,7 +28,7 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public Long signup(UserSignupRequest request) {
 
-        //이메일 대소문자 유지해서 중복 확인
+        // 이메일 대소문자 유지해서 중복 확인
         String email = request.getLoginId();
         if (userRepository.existsByLoginId(email)) {
             throw new BusinessException(UserErrorCode.DUPLICATE_LOGIN_ID);
@@ -90,8 +90,26 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User login(UserLoginRequest request) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'login'");
+
+        // 이메일 대소문자를 유지하여 회원 조회
+        String email = request.getLoginId();
+
+        User user = userRepository.findByLoginId(email)
+                .orElseThrow(() -> new BusinessException(UserErrorCode.INVALID_CREDENTIALS));
+
+        // 비밀번호가 없거나 일치하지 않으면 로그인 거절
+        if (user.getPassword() == null
+                || !passwordEncoder.matches(
+                        request.getPassword(), user.getPassword())) {
+            throw new BusinessException(UserErrorCode.INVALID_CREDENTIALS);
+        }
+
+        // 활성 회원만 로그인 허용
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new BusinessException(UserErrorCode.LOGIN_NOT_ALLOWED);
+        }
+
+        return user;
     }
 
 }
