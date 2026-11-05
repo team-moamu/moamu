@@ -94,7 +94,7 @@ public class UserServiceImpl implements UserService {
     public User login(UserLoginRequest request) {
 
         // 회원가입과 동일하게 이메일을 소문자로 변환하여 조회
-        String email = request.getLoginId().toLowerCase(Locale.ROOT);
+        String email = request.getLoginId();
 
         // 해당 이메일의 회원이 없으면 로그인 실패
         User user = userRepository.findByLoginId(email)
