@@ -2,14 +2,13 @@ package com.moamu.domain.user.service;
 
 import lombok.RequiredArgsConstructor;
 
-import java.util.Locale;
-
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.moamu.domain.user.dto.UserLoginRequest;
 import com.moamu.domain.user.dto.UserSignupRequest;
 import com.moamu.domain.user.entity.User;
 import com.moamu.domain.user.exception.UserErrorCode;
@@ -29,7 +28,8 @@ public class UserServiceImpl implements UserService {
     @Transactional
     public Long signup(UserSignupRequest request) {
 
-        String email = request.getLoginId().toLowerCase(Locale.ROOT);
+        //이메일 대소문자 유지해서 중복 확인
+        String email = request.getLoginId();
         if (userRepository.existsByLoginId(email)) {
             throw new BusinessException(UserErrorCode.DUPLICATE_LOGIN_ID);
         }
@@ -55,9 +55,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public boolean isEmailAvailable(String email) {
-        String normalizedEmail = email.toLowerCase(Locale.ROOT);
-
-        return !userRepository.existsByLoginId(normalizedEmail);
+        // 입력한 이메일 그대로 중복 조회
+        return !userRepository.existsByLoginId(email);
     }
 
     private boolean isDuplicateLoginId(Throwable exception) {
@@ -87,6 +86,12 @@ public class UserServiceImpl implements UserService {
         }
 
         return false;
+    }
+
+    @Override
+    public User login(UserLoginRequest request) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'login'");
     }
 
 }
