@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import com.moamu.domain.user.dto.UserSignupRequest;
 import com.moamu.domain.user.service.UserService;
 import com.moamu.global.exception.GlobalExceptionHandler;
+import com.moamu.global.security.JwtTokenProvider;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -27,8 +28,11 @@ class UserControllerTests {
   void setUp() {
     userService = mock(UserService.class);
 
+    // 컨트롤러에 전달할 토큰 발급 가짜 객체 생성
+    JwtTokenProvider jwtTokenProvider = mock(JwtTokenProvider.class);
+
     mockMvc = MockMvcBuilders
-        .standaloneSetup(new UserController(userService))
+        .standaloneSetup(new UserController(userService, jwtTokenProvider))
         .setControllerAdvice(new GlobalExceptionHandler())
         .build();
   }
