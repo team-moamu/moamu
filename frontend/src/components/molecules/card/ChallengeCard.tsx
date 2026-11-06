@@ -33,18 +33,20 @@ export function ChallengeCard({
   onClick,
 }: ChallengeCardProps) {
   return (
-    <div 
-      onClick={onClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          onClick?.()
-        }
-      }}
-      className="rounded-md p-4 shadow-sm card bg-[#fff8ed]"
-    >
+      <div
+        onClick={onClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.target !== e.currentTarget) return
+
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onClick?.()
+          }
+        }}
+        className="rounded-md p-4 shadow-sm card bg-[#fff8ed]"
+      >
       <div className="flex gap-4">
         <BlurImage
           src={imageUrl}
@@ -73,7 +75,13 @@ export function ChallengeCard({
       </div>
 
       <div className="mt-4">
-        <SuccessButton icon="camera" onClick={() => onVerify(challengeId)}>
+        <SuccessButton
+          icon="camera"
+          onClick={(e) => {
+            e.stopPropagation()
+            onVerify(challengeId)
+          }}
+        >
           인증하기
         </SuccessButton>
       </div>

@@ -71,7 +71,7 @@ export function ChallengeListPage() {
   }, [])
 
   const handleVerify = (challengeId: number) => {
-    navigate(`/challenge/${challengeId}/verify`)
+    navigate(`/challenge/${challengeId}/verification`)
   }
 
   return (
@@ -97,7 +97,7 @@ export function ChallengeListPage() {
           <ChallengeCardList
             challenges={challenges}
             onVerify={handleVerify}
-            onChallengeClick={handleChallengeClick}
+            onCardClick={handleChallengeClick}
           />
         )}
       </div>
