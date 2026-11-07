@@ -11,7 +11,9 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import com.moamu.domain.user.dto.UserLoginRequest;
 import com.moamu.domain.user.dto.UserSignupRequest;
 import com.moamu.domain.user.entity.User;
+import com.moamu.domain.user.exception.UserErrorCode;
 import com.moamu.domain.user.service.UserService;
+import com.moamu.global.exception.BusinessException;
 import com.moamu.global.exception.GlobalExceptionHandler;
 import com.moamu.global.security.JwtTokenProvider;
 
@@ -224,5 +226,33 @@ class UserControllerTests {
 
     // 검증된 회원 ID로 토큰을 발급했는지 확인
     verify(jwtTokenProvider).createAccessToken(10L);
+  }
+
+  //로그인 정보가 일치하지 않으면 401 응답을 반환
+  @Test
+  void invalidCredentialsReturn401() throws Exception {
+
+    // 서비스에서 로그인 검증에 실패한 상황 설정
+    when(userService.login(any(UserLoginRequest.class)))
+        .thenThrow(
+            new BusinessException(UserErrorCode.INVALID_CREDENTIALS));
+
+    // 형식은 올바르지만 인증에 실패하는 로그인 요청
+    mockMvc.perform(post("/api/users/login")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("""
+            {
+              "loginId": "test@example.com",
+              "password": "WrongPassword123!"
+            }
+            """))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.error.code")
+            .value("INVALID_CREDENTIALS"))
+        .andExpect(jsonPath("$.data").doesNotExist());
+
+    // 로그인에 실패하면 토큰 발급기를 호출하지 않는지 확인
+    verifyNoInteractions(jwtTokenProvider);
   }
 }
