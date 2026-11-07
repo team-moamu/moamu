@@ -300,4 +300,37 @@ public class UserServiceImplTests {
                 // 회원 조회에서 실패하면 비밀번호 검증을 진행하지 않음
                 verifyNoInteractions(passwordEncoder);
         }
+
+        /**
+         * 저장된 비밀번호가 없는 회원은 로그인을 거절하고,
+         * 비밀번호 비교를 실행하지 않는지 확인한다.
+         */
+        @Test
+        void loginRejectsUserWithoutPassword() {
+
+                // 로그인 요청 정보 준비
+                UserLoginRequest request = mock(UserLoginRequest.class);
+
+                when(request.getLoginId()).thenReturn("social@example.com");
+
+                // 저장된 비밀번호가 없는 회원 설정
+                User user = mock(User.class);
+                when(user.getPassword()).thenReturn(null);
+
+                when(userRepository.findByLoginId("social@example.com"))
+                                .thenReturn(Optional.of(user));
+
+                // 비밀번호가 없는 회원은 인증 실패 처리
+                BusinessException exception = assertThrows(
+                                BusinessException.class,
+                                () -> userService.login(request));
+
+                assertEquals(
+                                UserErrorCode.INVALID_CREDENTIALS,
+                                exception.getErrorCode());
+
+                // 비밀번호 비교와 회원 상태 확인까지 진행하지 않음
+                verifyNoInteractions(passwordEncoder);
+                verify(user, never()).getStatus();
+        }
 }
