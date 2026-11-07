@@ -9,6 +9,7 @@ public record TodayChallengeResponse(
   String challengeTitle,
   LocalDate startDate,
   LocalDate endDate,
+  Long scheduleId,
   int dayNo,
   Status scheduleStatus,
   int attemptCount,

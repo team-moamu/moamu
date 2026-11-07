@@ -22,7 +22,8 @@ export const iconMap = {
   nametag: 'icon-[lucide--contact]',
 
   camera: 'icon-[lucide--camera]',
-  clock: 'icon-[lucide--clock]'
+  clock: 'icon-[lucide--clock]',
+  check: 'icon-[lucide--circle-check]',
 } as const
 
 export type IconName = keyof typeof iconMap

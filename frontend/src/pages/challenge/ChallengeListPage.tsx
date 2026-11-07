@@ -40,6 +40,7 @@ export function ChallengeListPage() {
 
         const mappedChallenges: Challenge[] = data.map((challenge) => ({
           challengeId: challenge.challengeId,
+          scheduleId: challenge.scheduleId,
           challengeTitle: challenge.challengeTitle,
           imageUrl: '/images/default-artwork.png',
           dayNo: challenge.dayNo,
@@ -70,8 +71,8 @@ export function ChallengeListPage() {
     }
   }, [])
 
-  const handleVerify = (challengeId: number) => {
-    navigate(`/challenge/${challengeId}/verify`)
+  const handleVerify = (challengeId: number, scheduleId: number) => {
+    navigate(`/challenge/${challengeId}/verification?scheduleId=${scheduleId}`)
   }
 
   return (
@@ -97,7 +98,7 @@ export function ChallengeListPage() {
           <ChallengeCardList
             challenges={challenges}
             onVerify={handleVerify}
-            onChallengeClick={handleChallengeClick}
+            onCardClick={handleChallengeClick}
           />
         )}
       </div>

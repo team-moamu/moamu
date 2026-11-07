@@ -40,9 +40,9 @@ class TodayChallengeServiceTests {
     }, nullValues = "NULL")
     void forwardsRequestedDateAndNormalizesSort(String sort, String expectedSort) {
         TodayChallengeResponse first = new TodayChallengeResponse(
-                100L, "Reading", DAY, DAY.plusDays(6), 1, null, 0, null);
+                100L, "Reading", DAY, DAY.plusDays(6),1L,  1, null, 0, null);
         TodayChallengeResponse second = new TodayChallengeResponse(
-                99L, "Exercise", DAY, DAY.plusDays(13), 1, null, 0, null);
+                99L, "Exercise", DAY, DAY.plusDays(13),1L,  1, null, 0, null);
         when(challengeRepository.findTodayChallenges(USER_ID, DAY, expectedSort))
                 .thenReturn(List.of(first, second));
 

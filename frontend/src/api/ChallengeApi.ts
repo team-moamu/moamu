@@ -1,10 +1,39 @@
 import type {
   TodayChallengeResponse,
   ChallengeDetailResponse,
+  ChallengeVerificationResponse,
   ChallengeCreateRequest,
 } from '../types/Challenge'
-
 import type { ApiResponse } from '../types/ApiResponse'
+
+// 인증 제출 페이지 조회
+export async function getChallengeVerification(
+  challengeId: number,
+  scheduleId: number,
+  signal?: AbortSignal,
+): Promise<ChallengeVerificationResponse | null> {
+  const response = await fetch(
+    `/api/verification?challengeId=${challengeId}&scheduleId=${scheduleId}`,
+    { signal },
+  )
+  const body: ApiResponse<ChallengeVerificationResponse | null> | null =
+    await response.json().catch(() => null)
+
+  if (response.status === 404 && body?.success === false &&
+      body.error.code === 'RESOURCE_NOT_FOUND') {
+    return null
+  }
+
+  if (!response.ok || !body || !body.success) {
+    throw new Error(
+      body?.success === false
+        ? body.error.message
+        : '인증 정보를 불러오지 못했습니다.',
+    )
+  }
+
+  return body.data
+}
 
 // 오늘의 도전 목록 조회
 export async function getTodayChallenges(): Promise<TodayChallengeResponse[]> {

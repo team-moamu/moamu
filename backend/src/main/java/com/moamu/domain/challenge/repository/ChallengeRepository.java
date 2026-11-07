@@ -20,6 +20,7 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long> {
         c.challengeTitle,
         c.startDate,
         c.endDate,
+        s.scheduleId,
         s.dayNo,
         s.status,
         s.attemptCount,

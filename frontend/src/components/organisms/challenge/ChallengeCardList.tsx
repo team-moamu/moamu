@@ -7,14 +7,14 @@ type Challenge = Omit<
 
 type ChallengeCardListProps = {
   challenges: Challenge[]
-  onVerify: (challengeId: number) => void
-  onChallengeClick?: (challengeId: number) => void
+  onVerify: (challengeId: number, scheduleId: number) => void
+  onCardClick?: (challengeId: number) => void
 }
 
 export function ChallengeCardList({
   challenges,
   onVerify,
-  onChallengeClick,
+  onCardClick,
 }: ChallengeCardListProps) {
   return (
     <div className="flex flex-col gap-4">
@@ -23,7 +23,7 @@ export function ChallengeCardList({
           key={challenge.challengeId}
           {...challenge}
           onVerify={onVerify}
-          onClick={() => onChallengeClick?.(challenge.challengeId)}
+          onClick={() => onCardClick?.(challenge.challengeId)}
         />
       ))}
     </div>
