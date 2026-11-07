@@ -1,7 +1,7 @@
 package com.moamu.domain.media.controller;
 
 import com.moamu.domain.media.dto.MediaResponse;
-import com.moamu.domain.media.service.MediaService;
+import com.moamu.domain.media.service.MediaVerificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
@@ -15,28 +15,29 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 class MediaControllerTests {
-    private MediaService mediaService;
+    private MediaVerificationService mediaService;
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
-        mediaService = mock(MediaService.class);
+        mediaService = mock(MediaVerificationService.class);
         mockMvc = MockMvcBuilders.standaloneSetup(new MediaController(mediaService)).build();
     }
 
     @Test
-    void authenticatedUploadReturnsCreatedMedia() throws Exception {
-        MediaResponse response = new MediaResponse();
-        response.setMediaId(10L);
-        when(mediaService.uploadVerification(eq(1L), any())).thenReturn(response);
+    void authenticatedUploadReturnsSavedVerificationResult() throws Exception {
+        var response = new MediaResponse(20L, 10L, 30L, "SUCCESS", java.util.List.of());
+        when(mediaService.submit(eq(1L), eq(50L), any(), eq("request-1"))).thenReturn(response);
 
         mockMvc.perform(multipart("/api/media")
                         .file(new MockMultipartFile("image", "photo.png", "image/png", new byte[]{1}))
-                        .requestAttr("userId", 1L))
-                .andExpect(status().isCreated())
+                        .requestAttr("userId", 1L).param("scheduleId", "50").header("Idempotency-Key", "request-1"))
+                .andExpect(status().isOk())
                 .andExpect(jsonPath("success").value(true))
-                .andExpect(jsonPath("data.mediaId").value(10));
-        verify(mediaService).uploadVerification(eq(1L), any());
+                .andExpect(jsonPath("data.mediaId").value(10))
+                .andExpect(jsonPath("data.verificationId").value(20))
+                .andExpect(jsonPath("data.status").value("SUCCESS"));
+        verify(mediaService).submit(eq(1L), eq(50L), any(), eq("request-1"));
     }
 
     @Test
