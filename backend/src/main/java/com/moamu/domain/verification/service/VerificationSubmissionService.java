@@ -1,5 +1,9 @@
 package com.moamu.domain.verification.service;
 
+import com.moamu.domain.verification.exception.PhotoVerificationTechnicalException;
+
+import com.moamu.domain.verification.repository.VerificationResultRepository;
+
 import com.moamu.domain.verification.repository.PhotoVerificationRequestRepository;
 import com.moamu.domain.aitask.entity.AiTask;
 import com.moamu.domain.aitask.enums.AiTaskType;
@@ -28,6 +32,8 @@ public class VerificationSubmissionService {
     private final PhotoVerificationRequestRepository requestRepository;
     private final PhotoVerificationService photoVerificationService;
     private final VerificationResultService resultService;
+    private final AiTaskExecutionService executionService;
+    private final VerificationResultRepository resultRepository;
 
     private final VerificationRepository verificationRepository;
     private final AiTaskRepository aiTaskRepository;
@@ -42,6 +48,8 @@ public class VerificationSubmissionService {
             PhotoVerificationRequestRepository requestRepository,
             PhotoVerificationService photoVerificationService,
             VerificationResultService resultService,
+            AiTaskExecutionService executionService,
+            VerificationResultRepository resultRepository,
             VerificationRepository verificationRepository,
             AiTaskRepository aiTaskRepository,
             ScheduleRepository scheduleRepository,
@@ -52,6 +60,8 @@ public class VerificationSubmissionService {
         this.requestRepository = requestRepository;
         this.photoVerificationService = photoVerificationService;
         this.resultService = resultService;
+        this.executionService = executionService;
+        this.resultRepository = resultRepository;
         this.verificationRepository = verificationRepository;
         this.aiTaskRepository = aiTaskRepository;
         this.scheduleRepository = scheduleRepository;
@@ -160,12 +170,26 @@ public class VerificationSubmissionService {
 
         var request = requestRepository.findByAiTaskIdAndUserId(aiTaskId, userId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
-        if (request.conditions().isEmpty()) {
-            throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
+        long verificationId = Long.parseLong(request.verificationId());
+        // 응답 유실 후 같은 요청이 와도 AI를 다시 호출하지 않고 저장된 결과를 반환
+        var completed = resultRepository.findCompleted(aiTaskId, verificationId);
+        if (completed.isPresent()) return completed.get();
+        executionService.start(aiTaskId, verificationId);
+        try {
+            if (request.conditions().isEmpty()) {
+                throw new PhotoVerificationTechnicalException(
+                        "저장된 인증 조건이 없습니다.");
+            }
+            // RUNNING 커밋 → AI 통신 → 결과 저장(SUCCEEDED)을 순서대로 실행
+            var result = photoVerificationService.verify(request);
+            return resultService.save(request, result);
+        } catch (RuntimeException failure) {
+            try {
+                executionService.fail(aiTaskId, verificationId);
+            } catch (RuntimeException recordingFailure) {
+                failure.addSuppressed(recordingFailure);
+            }
+            throw failure;
         }
-
-        // 네트워크 호출은 결과 저장 트랜잭션 밖에서 수행
-        var result = photoVerificationService.verify(request);
-        return resultService.save(request, result);
     }
 }

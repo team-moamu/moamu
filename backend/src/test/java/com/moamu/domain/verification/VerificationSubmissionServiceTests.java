@@ -111,7 +111,8 @@ class VerificationSubmissionServiceTests {
     @Test
     void rejectsEmptyConditionsBeforeCallingAi() {
         jdbc.update("DELETE FROM challenge_condition");
-        assertError(1L, TASK_ID, CommonErrorCode.INVALID_REQUEST);
+        assertThatThrownBy(() -> service.verify(1L, TASK_ID))
+                .isInstanceOf(com.moamu.domain.verification.exception.PhotoVerificationTechnicalException.class);
         verifyNoInteractions(client);
     }
 
@@ -125,11 +126,11 @@ class VerificationSubmissionServiceTests {
     }
 
     @Test
-    void propagatesAiFailureWithoutChangingExistingRecords() {
+    void recordsTechnicalFailureWithoutCreatingAnotherAttempt() {
         var failure = new IllegalStateException("AI unavailable");
         when(client.verify(any())).thenThrow(failure);
         assertThatThrownBy(() -> service.verify(1L, TASK_ID)).isSameAs(failure);
-        assertThat(jdbc.queryForObject("SELECT status FROM ai_task", String.class)).isEqualTo("PENDING");
+        assertThat(jdbc.queryForObject("SELECT status FROM ai_task", String.class)).isEqualTo("FAILED_FINAL");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification", Integer.class)).isEqualTo(1);
     }
 
