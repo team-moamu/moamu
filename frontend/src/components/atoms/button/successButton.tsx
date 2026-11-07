@@ -7,7 +7,7 @@ interface SuccessButtonProps {
   children: ReactNode
   icon?: IconName
   disabled?: boolean
-  onClick?: () => void
+  onClick?: React.MouseEventHandler<HTMLButtonElement>
 }
 
 export function SuccessButton({

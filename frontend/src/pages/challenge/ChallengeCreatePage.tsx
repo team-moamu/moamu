@@ -1,7 +1,7 @@
 
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { createChallenge } from '../../services/challenge/createChallenge'
+import { createChallenge } from '../../api/ChallengeApi'
 import { GoalCardList } from '../../components/molecules/card/GoalCardList'
 import { CalendarInput } from '../../components/molecules/form/CalendarInput'
 import { DurationSelector } from '../../components/molecules/select/DurationSelector'

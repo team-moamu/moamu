@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 
-import { ChallengeCardList } from '../../components/organisms/puzzle/ChallengeCardList'
+import { ChallengeCardList } from '../../components/organisms/challenge/ChallengeCardList'
 import { getTodayChallenges } from '../../api/ChallengeApi'
 import backgroundMu from '../../assets/images/background_mu.png'
 import { getRemainingTime } from '../../utils/time'
@@ -18,6 +18,10 @@ export function ChallengeListPage() {
   const [error, setError] = useState<string | null>(null)
 
   const today = new Date()
+
+  const handleChallengeClick = (challengeId: number) => {
+    navigate(`/challenge/${challengeId}`)
+  }
 
   const formattedDate = new Intl.DateTimeFormat('ko-KR', {
     month: 'long',
@@ -36,6 +40,7 @@ export function ChallengeListPage() {
 
         const mappedChallenges: Challenge[] = data.map((challenge) => ({
           challengeId: challenge.challengeId,
+          scheduleId: challenge.scheduleId,
           challengeTitle: challenge.challengeTitle,
           imageUrl: '/images/default-artwork.png',
           dayNo: challenge.dayNo,
@@ -66,8 +71,8 @@ export function ChallengeListPage() {
     }
   }, [])
 
-  const handleVerify = (challengeId: number) => {
-    navigate(`/challenge/${challengeId}/verify`)
+  const handleVerify = (challengeId: number, scheduleId: number) => {
+    navigate(`/challenge/${challengeId}/verification?scheduleId=${scheduleId}`)
   }
 
   return (
@@ -93,6 +98,7 @@ export function ChallengeListPage() {
           <ChallengeCardList
             challenges={challenges}
             onVerify={handleVerify}
+            onCardClick={handleChallengeClick}
           />
         )}
       </div>

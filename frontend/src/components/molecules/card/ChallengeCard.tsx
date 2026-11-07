@@ -7,6 +7,7 @@ import { Icon } from '../../atoms/icon/Icon'
 
 type ChallengeCardProps = {
   challengeId: number
+  scheduleId: number
   challengeTitle: string
   imageUrl: string
   dayNo: number
@@ -15,11 +16,13 @@ type ChallengeCardProps = {
   maxAttempts: number
   remainingTime: string
   status: 'available' | 'retry'
-  onVerify: (challengeId: number) => void
+  onVerify: (challengeId: number, scheduleId: number) => void
+  onClick?: () => void
 }
 
 export function ChallengeCard({
   challengeId,
+  scheduleId,
   challengeTitle,
   imageUrl,
   dayNo,
@@ -29,9 +32,23 @@ export function ChallengeCard({
   remainingTime,
   status,
   onVerify,
+  onClick,
 }: ChallengeCardProps) {
   return (
-    <div className="rounded-md p-4 shadow-sm card" style={{backgroundColor: '#fff8ed'}}>
+      <div
+        onClick={onClick}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.target !== e.currentTarget) return
+
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            onClick?.()
+          }
+        }}
+        className="rounded-md p-4 shadow-sm card bg-[#fff8ed]"
+      >
       <div className="flex gap-4">
         <BlurImage
           src={imageUrl}
@@ -60,7 +77,13 @@ export function ChallengeCard({
       </div>
 
       <div className="mt-4">
-        <SuccessButton icon="camera" onClick={() => onVerify(challengeId)}>
+        <SuccessButton
+          icon="camera"
+          onClick={(e) => {
+            e.stopPropagation()
+            onVerify(challengeId, scheduleId)
+          }}
+        >
           인증하기
         </SuccessButton>
       </div>
