@@ -73,6 +73,19 @@ public class Schedule {
     @Column(name = "upd_dt")
     private LocalDateTime updDt;
 
+    public void markVerificationSubmitted() {
+        this.attemptCount++;
+        this.status = Status.PROGRESSING;
+    }
+
+    // AI 기술 오류는 사용자 실패가 아니므로 접수 시 증가한 횟수를 돌려줍니다.
+    public void restoreTechnicalFailure() {
+        if (status == Status.PROGRESSING) {
+            attemptCount = Math.max(0, attemptCount - 1);
+            status = Status.OPEN;
+        }
+    }
+
     public static Schedule create(
             Long challengeId,
             int dayNo,
