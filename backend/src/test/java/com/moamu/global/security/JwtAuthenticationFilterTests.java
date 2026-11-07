@@ -1,5 +1,6 @@
 package com.moamu.global.security;
 
+import static org.junit.Assert.assertNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -130,5 +131,49 @@ class JwtAuthenticationFilterTests {
 
     // 인증을 통과한 요청이 다음 필터로 전달됐는지 확인
     verify(filterChain).doFilter(request, response);
+  }
+
+  // JWT가 유효해도 탈퇴한 회원이면 인증을 거절하고, 요청을 다음 필터로 전달하지 않는지 확인
+  @Test
+  void withdrawnUserReturns401() throws Exception {
+
+    // 유효한 토큰을 포함한 요청 준비
+    MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/test");
+
+    request.addHeader(
+        HttpHeaders.AUTHORIZATION,
+        "Bearer valid-token");
+
+    MockHttpServletResponse response = new MockHttpServletResponse();
+
+    // 토큰 검증은 성공하지만 회원은 탈퇴한 상황 설정
+    when(jwtTokenProvider.getUserId("valid-token"))
+        .thenReturn(10L);
+
+    User user = mock(User.class);
+    when(user.getStatus()).thenReturn(UserStatus.WITHDRAWN);
+
+    when(userRepository.findById(10L))
+        .thenReturn(Optional.of(user));
+
+    // 실제 인증 필터 실행
+    filter.doFilter(request, response, filterChain);
+
+    // 탈퇴 회원은 공통 인증 실패 응답을 반환하는지 확인
+    assertEquals(401, response.getStatus());
+
+    JsonNode body = objectMapper.readTree(
+        response.getContentAsString());
+
+    assertFalse(body.get("success").asBoolean());
+    assertEquals(
+        "INVALID_TOKEN",
+        body.get("error").get("code").asText());
+
+    // 인증 정보를 남기거나 다음 처리 단계로 넘어가지 않는지 확인
+    assertNull(
+        SecurityContextHolder.getContext().getAuthentication());
+
+    verifyNoInteractions(filterChain);
   }
 }
