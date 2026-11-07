@@ -333,4 +333,46 @@ public class UserServiceImplTests {
                 verifyNoInteractions(passwordEncoder);
                 verify(user, never()).getStatus();
         }
+
+        /**
+         * 이메일과 비밀번호가 일치해도 탈퇴 회원이면
+         * 로그인 불가 예외가 발생하는지 확인한다.
+         */
+        @Test
+        void loginRejectsWithdrawnUser() {
+
+                // 로그인 요청 정보 준비
+                UserLoginRequest request = mock(UserLoginRequest.class);
+
+                when(request.getLoginId()).thenReturn("Test@example.com");
+                when(request.getPassword()).thenReturn("Password123!");
+
+                // 비밀번호가 등록된 탈퇴 회원 설정
+                User user = mock(User.class);
+
+                when(user.getPassword()).thenReturn("stored-password-hash");
+                when(user.getStatus()).thenReturn(UserStatus.WITHDRAWN);
+
+                when(userRepository.findByLoginId("Test@example.com"))
+                                .thenReturn(Optional.of(user));
+
+                // 비밀번호 검증은 통과하도록 설정
+                when(passwordEncoder.matches(
+                                "Password123!", "stored-password-hash"))
+                                .thenReturn(true);
+
+                // 회원 상태 검증에서 로그인이 거절되는지 확인
+                BusinessException exception = assertThrows(
+                                BusinessException.class,
+                                () -> userService.login(request));
+
+                assertEquals(
+                                UserErrorCode.LOGIN_NOT_ALLOWED,
+                                exception.getErrorCode());
+
+                // 비밀번호 검증과 회원 상태 확인이 실행됐는지 확인
+                verify(passwordEncoder).matches(
+                                "Password123!", "stored-password-hash");
+                verify(user).getStatus();
+        }
 }
