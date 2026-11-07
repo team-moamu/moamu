@@ -73,6 +73,11 @@ public class Schedule {
     @Column(name = "upd_dt")
     private LocalDateTime updDt;
 
+    public void markVerificationSubmitted() {
+        this.attemptCount++;
+        this.status = Status.PROGRESSING;
+    }
+
     public static Schedule create(
             Long challengeId,
             int dayNo,
