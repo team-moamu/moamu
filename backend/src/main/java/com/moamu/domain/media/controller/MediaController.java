@@ -8,7 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestAttribute;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -25,11 +25,11 @@ public class MediaController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<MediaResponse>> uploadVerification(
-            @RequestAttribute(value = "userId", required = false) Long userId,
+            @AuthenticationPrincipal Long userId,
             @RequestParam(value = "image", required = false) MultipartFile image,
             @RequestParam(value = "scheduleId", required = false) Long scheduleId,
             @RequestHeader(value = "Idempotency-Key", required = false) String idempotencyKey) {
-        // JWT 토큰 구현 후, 사용자 확인 추가 예정
+        // JWT 필터가 서명·만료·활성 회원을 검증한 사용자 ID만 사용합니다.
         if (userId == null || userId <= 0) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(ApiResponse.failure("AUTHENTICATION_REQUIRED", "로그인이 필요합니다."));

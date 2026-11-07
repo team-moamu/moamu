@@ -150,7 +150,7 @@ macOS (zsh / bash):
 
 - `multipart/form-data`: `image`(사진), `scheduleId`(기존 인증 회차 ID)
 - 헤더: `Idempotency-Key`(1~100자, 같은 제출 재전송 시 동일 값)
-- 로그인 연동에서 설정한 요청 속성 `userId`가 필요합니다. 클라이언트의 임의 userId는 사용하지 않습니다.
+- `Authorization: Bearer {access_token}` 헤더가 필요합니다. JWT 필터가 검증한 활성 회원 ID를 사용하며, 본문이나 헤더의 임의 userId는 사용하지 않습니다.
 - 완료 후 `200 OK`: `data.verificationId`, `mediaId`, `aiTaskId`, `status`, `checks` 반환. `status`는 `SUCCESS` / `FAILED` / `REVIEW_REQUIRED`입니다.
 - 작업 상태: 등록 시 `PENDING` → AI 호출 직전 `RUNNING` → 판정 DB 저장 커밋 시 `SUCCEEDED`. 정상적인 부적합 판정도 작업 자체는 `SUCCEEDED`입니다.
 - 동일 키·회차·사진의 완료 요청은 저장된 결과를 반환하며 S3/AI를 다시 호출하지 않습니다. 처리 중 재전송은 `409`입니다.

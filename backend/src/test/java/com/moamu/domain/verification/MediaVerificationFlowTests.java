@@ -26,13 +26,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 // 실제 MySQL·서비스·Controller를 연결하고 외부 S3/AI만 대체합니다.
-@SpringBootTest
+@SpringBootTest(properties = {"jwt.secret=bW9hbXUtdGVzdC1vbmx5LWtleS0zMi1ieXRlcy1sb25nIQ==", "jwt.access-token-expiration=1800000"})
 @ActiveProfiles("test")
 @Import(BackendApplicationTests.ContainerConfiguration.class)
 class MediaVerificationFlowTests {
     private static final long TASK_ID = 9007199254740993L;
     @Autowired JdbcTemplate jdbc;
-    @Autowired MediaController controller;
+    @Autowired org.springframework.web.context.WebApplicationContext webContext;
+    @Autowired com.moamu.global.security.JwtTokenProvider tokens;
     @MockitoBean StorageService storage;
     @MockitoBean PhotoVerificationClient client;
     MockMvc mvc;
@@ -75,8 +76,8 @@ class MediaVerificationFlowTests {
         jdbc.update("DELETE FROM media");
         jdbc.update("UPDATE schedule SET status='OPEN', schedule_date=?", java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")));
         jdbc.update("UPDATE challenge SET status='IN_PROGRESS'");
-        mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.standaloneSetup(controller)
-                .setControllerAdvice(new com.moamu.global.exception.GlobalExceptionHandler()).build();
+        mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup(webContext)
+                .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity()).build();
         reset(storage, client);
         when(storage.saveVerification(any())).thenAnswer(call -> {
             var image = (org.springframework.web.multipart.MultipartFile) call.getArgument(0);
@@ -113,7 +114,7 @@ class MediaVerificationFlowTests {
 
     private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder upload(String key) throws Exception {
         return multipart("/api/media").file(image()).param("scheduleId", "50")
-                .header("Idempotency-Key", key).requestAttr("userId", 1L);
+                .header("Idempotency-Key", key).header("Authorization", "Bearer " + tokens.createAccessToken(1L));
     }
 
     @Test
@@ -168,7 +169,7 @@ class MediaVerificationFlowTests {
 
     @Test
     void missingSubmissionFieldsDoNotUploadAnything() throws Exception {
-        mvc.perform(multipart("/api/media").file(image()).requestAttr("userId", 1L))
+        mvc.perform(multipart("/api/media").file(image()).header("Authorization", "Bearer " + tokens.createAccessToken(1L)))
                 .andExpect(status().isBadRequest());
         verifyNoInteractions(storage, client);
     }
