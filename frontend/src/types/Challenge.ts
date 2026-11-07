@@ -1,9 +1,11 @@
 import type { ScheduleStatus } from "./schedule"
 
+// 사진 업로드 및 AI 인증 결과
 export type VerificationSubmitResponse = {
   verificationId: number
-  status: 'SUCCESS' | 'FAILED' | 'REVIEW_REQUIRED' | 'TECH_ERROR'
-  attemptCount: number
+  mediaId: number
+  aiTaskId: number
+  status: 'SUCCESS' | 'FAILED' | 'REVIEW_REQUIRED'
   checks: { code: string; status: 'MET' | 'NOT_MET' | 'UNCERTAIN'; reason: string }[]
 }
 
