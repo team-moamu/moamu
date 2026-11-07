@@ -235,4 +235,40 @@ public class UserServiceImplTests {
                 verify(passwordEncoder).matches(
                                 "Password123!", "stored-password-hash");
         }
+
+        // 비밀번호가 일치하지 않으면 인증 실패 예외를 발생시키고, 회원 상태 확인까지 진행하지 않는지 검증
+        @Test
+        void loginRejectsIncorrectPassword() {
+
+                // 로그인 요청 정보 준비
+                UserLoginRequest request = mock(UserLoginRequest.class);
+
+                when(request.getLoginId()).thenReturn("Test@example.com");
+                when(request.getPassword()).thenReturn("WrongPassword123!");
+
+                // 조회된 회원의 저장된 비밀번호 해시 설정
+                User user = mock(User.class);
+
+                when(user.getPassword()).thenReturn("stored-password-hash");
+
+                when(userRepository.findByLoginId("Test@example.com"))
+                                .thenReturn(Optional.of(user));
+
+                // 입력 비밀번호가 저장된 해시와 일치하지 않는 상황 설정
+                when(passwordEncoder.matches(
+                                "WrongPassword123!", "stored-password-hash"))
+                                .thenReturn(false);
+
+                // 비밀번호 불일치 시 인증 실패 예외가 발생하는지 확인
+                BusinessException exception = assertThrows(
+                                BusinessException.class,
+                                () -> userService.login(request));
+
+                assertEquals(
+                                UserErrorCode.INVALID_CREDENTIALS,
+                                exception.getErrorCode());
+
+                // 비밀번호 검증에서 실패하면 회원 상태를 확인하지 않음
+                verify(user, never()).getStatus();
+        }
 }
