@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router'
 
 import { Text } from '../../components/atoms/typography/Text'
@@ -9,6 +9,7 @@ import { Icon } from '../../components/atoms/icon/Icon'
 import { VerificationImage } from '../../components/molecules/form/VerificationImage'
 import { StatusMessage } from '../../components/molecules/feedback/StatusMessage'
 import { getChallengeVerification } from '../../api/ChallengeApi'
+import { uploadVerificationImage } from '../../api/MediaApi'
 import type { ChallengeVerificationResponse } from '../../types/Challenge'
 
 const MAX_ATTEMPTS = 3
@@ -18,6 +19,41 @@ export function VerificationPage() {
   const [searchParams] = useSearchParams()
   const scheduleId = searchParams.get('scheduleId')
   const [image, setImage] = useState<File | null>(null)
+  const [mediaId, setMediaId] = useState<number | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  const uploadController = useRef<AbortController | null>(null)
+
+  useEffect(() => {
+    return () => uploadController.current?.abort()
+  }, [])
+
+  const handleImageChange = async (file: File | null) => {
+    uploadController.current?.abort()
+    setImage(file)
+    setMediaId(null)
+    setUploadError(null)
+    setUploading(false)
+    if (!file) return
+
+    const controller = new AbortController()
+    uploadController.current = controller
+    setUploading(true)
+    try {
+      const result = await uploadVerificationImage(file, controller.signal)
+      if (!controller.signal.aborted) {
+        setMediaId(result.mediaId)
+      }
+    } catch (err) {
+      if (!controller.signal.aborted) {
+        setUploadError(err instanceof Error ? err.message : '사진 업로드에 실패했습니다.')
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        setUploading(false)
+      }
+    }
+  }
 
   const [challenge, setChallenge] = useState<ChallengeVerificationResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -25,6 +61,11 @@ export function VerificationPage() {
 
   useEffect(() => {
     const controller = new AbortController()
+    uploadController.current?.abort()
+    setImage(null)
+    setMediaId(null)
+    setUploadError(null)
+    setUploading(false)
 
     async function fetchVerification() {
       setLoading(true)
@@ -64,11 +105,13 @@ export function VerificationPage() {
       alert('인증 사진을 등록해주세요.')
       return
     }
+    if (uploading || mediaId === null) return
 
     // TODO: 인증 API 호출
     console.log('challengeId:', challengeId)
     console.log('scheduleId:', scheduleId)
     console.log('image:', image)
+    console.log('mediaId:', mediaId)
   }
 
   if (loading || error || !challenge) {
@@ -98,7 +141,17 @@ export function VerificationPage() {
         </div>
 
         {/* 인증 사진 */}
-        <VerificationImage onImageChange={setImage} />
+        <VerificationImage key={`${challengeId}-${scheduleId}`} onImageChange={handleImageChange} />
+        {uploading && <StatusMessage message="사진을 업로드하는 중입니다." />}
+        {uploadError && (
+          <div className="flex flex-col gap-2">
+            <StatusMessage message={uploadError} />
+            <SuccessButton onClick={() => handleImageChange(image)}>
+              업로드 다시 시도
+            </SuccessButton>
+          </div>
+        )}
+        {mediaId !== null && <StatusMessage message="사진 업로드가 완료되었습니다." />}
 
         {/* 인증 필수 조건 */}
         <section className="rounded-md border border-[#E4C9A4] bg-[#FFF8ED] p-4 shadow-sm">
@@ -136,7 +189,7 @@ export function VerificationPage() {
 
       {/* 하단 인증 버튼 */}
       <div className="mt-auto pb-2 pt-6">
-        <SuccessButton onClick={handleVerification}>
+        <SuccessButton onClick={handleVerification} disabled={uploading || mediaId === null}>
           인증하기
         </SuccessButton>
       </div>
