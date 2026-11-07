@@ -49,7 +49,7 @@ public class MediaService {
             );
         }
 
-        // 2. 실제 사진을 로컬 폴더에 저장
+        // 2. 실제 사진을 S3에 저장
         // 파일 검증/해시 계산/UUID 파일명 생성도 저장소에서 수행
         // 저장에 실패하면 예외가 발생하므로 DB 저장은 진행하지 않음
         StoredFile storedFile =
@@ -78,7 +78,7 @@ public class MediaService {
 
         } catch (RuntimeException dbException) {
             // 4. DB 저장 또는 커밋 실패 시 실제 파일도 정리
-            // DB 롤백은 로컬 파일까지 삭제해주지 않으므로 직접 처리
+            // DB 롤백은 S3 객체까지 삭제해주지 않으므로 직접 처리
             try {
                 storageService.delete(storedFile.imageKey());
             } catch (RuntimeException cleanupException) {
@@ -96,5 +96,19 @@ public class MediaService {
         // 여기서는 인증 시도를 생성하지 않으므로
         // verificationId는 설정하지 않음
         return response;
+    }
+
+    // 인증 접수 전에 실패한 업로드를 정리
+    // 인증 접수에 실패한 사진 삭제 (인증 기록에 연결되지 않은 사진만 호출자가 전달)
+    public void deleteUnsubmitted(Long mediaId, Long userId) {
+        var uploaded = mediaRepository.findById(mediaId).orElseThrow();
+        if (!userId.equals(uploaded.getUserId())) {
+            throw new IllegalArgumentException("본인 사진만 정리할 수 있습니다.");
+        }
+        transactionTemplate.executeWithoutResult(status -> {
+            mediaRepository.delete(uploaded);
+            mediaRepository.flush();
+        });
+        storageService.delete(uploaded.getImageKey());
     }
 }

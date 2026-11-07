@@ -96,7 +96,7 @@ Flyway SQL은 `src/main/resources/db/migration/`에 추가합니다. 테이블 �
 
 `PhotoVerificationService.verify(request)`는 사진의 S3 객체 키와 도전 인증 조건을 AI 서버의 `POST /internal/photo-verifications`로 전달하고, 조건별 판정을 종합해 최종 인증 결과를 반환합니다.
 
-현재 AI 호출·요청 및 응답 검증·최종 결과 판정까지 구현되어 있습니다. 사진 업로드 흐름 연결, 인증·AI 작업 및 판정 결과의 DB 저장, 인증 횟수 반영, 자동 재시도, 서버 간 인증은 아직 구현되지 않았습니다.
+현재 `/api/media`에서 사진 업로드·인증/AI 작업 생성·AI 호출·판정 결과 DB 저장까지 동기로 연결되어 있습니다. 자동 재시도·재시작 복구와 서버 간 인증은 후속 작업입니다.
 
 ### 연동 설정
 
@@ -142,6 +142,22 @@ macOS (zsh / bash):
 ```sh
 ./gradlew test --tests 'com.moamu.domain.verification.PhotoVerificationServiceTests'
 ```
+
+
+### 인증 사진 제출 및 동기 AI 판정
+
+`POST /api/media` 요청 한 번으로 사진 검증·S3/media 저장 → verification/ai_task 생성 → AI 호출 → 조건별 판정·최종 인증 결과 저장을 수행합니다.
+
+- `multipart/form-data`: `image`(사진), `scheduleId`(기존 인증 회차 ID)
+- 헤더: `Idempotency-Key`(1~100자, 같은 제출 재전송 시 동일 값)
+- `Authorization: Bearer {access_token}` 헤더가 필요합니다. JWT 필터가 검증한 활성 회원 ID를 사용하며, 본문이나 헤더의 임의 userId는 사용하지 않습니다.
+- 완료 후 `200 OK`: `data.verificationId`, `mediaId`, `aiTaskId`, `status`, `checks` 반환. `status`는 `SUCCESS` / `FAILED` / `REVIEW_REQUIRED`입니다.
+- 작업 상태: 등록 시 `PENDING` → AI 호출 직전 `RUNNING` → 판정 DB 저장 커밋 시 `SUCCEEDED`. 정상적인 부적합 판정도 작업 자체는 `SUCCEEDED`입니다.
+- 동일 키·회차·사진의 완료 요청은 저장된 결과를 반환하며 S3/AI를 다시 호출하지 않습니다. 처리 중 재전송은 `409`입니다.
+- AI 기술 오류는 `502 AI_TECHNICAL_ERROR`, 작업은 `FAILED_FINAL`, 인증은 `TECH_ERROR`로 기록하고 횟수를 복구합니다. 같은 키는 오류 결과를 유지하며 새 제출에는 새 키를 사용합니다. 자동 재시도·워커는 없습니다.
+- 인증 접수 실패 시 새 media/S3 사진 정리를 시도합니다. AI 호출 이후 오류에는 복구 근거인 사진과 인증 기록을 보존합니다.
+- 정상 판정 후 schedule 최종 상태/퍼즐 반영과 서버 강제 종료로 남은 RUNNING 작업 복구는 별도 후속 작업입니다.
+
 
 ## 미정 사항
 
