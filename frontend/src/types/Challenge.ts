@@ -1,5 +1,16 @@
 import type { ScheduleStatus } from "./schedule"
 
+// 인증 제출 페이지 조회
+export type ChallengeVerificationResponse = {
+  challengeId: number
+  challengeTitle: string
+  scheduleId: number
+  dayNo: number
+  dayCount: number
+  attemptCount: number
+  description: string[]
+}
+
 // 오늘의 도전 목표 조회
 export type TodayChallengeResponse = {
   challengeId: number
