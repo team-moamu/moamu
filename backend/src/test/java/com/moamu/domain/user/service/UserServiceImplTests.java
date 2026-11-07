@@ -271,4 +271,33 @@ public class UserServiceImplTests {
                 // 비밀번호 검증에서 실패하면 회원 상태를 확인하지 않음
                 verify(user, never()).getStatus();
         }
+
+        /**
+         * 등록되지 않은 이메일로 로그인하면 인증 실패 예외가 발생하고,
+         * 비밀번호 검증은 실행하지 않는지 확인한다.
+         */
+        @Test
+        void loginRejectsUnregisteredEmail() {
+
+                // 등록되지 않은 이메일로 로그인 요청 준비
+                UserLoginRequest request = mock(UserLoginRequest.class);
+
+                when(request.getLoginId()).thenReturn("unknown@example.com");
+
+                // 해당 이메일의 회원이 없는 상황 설정
+                when(userRepository.findByLoginId("unknown@example.com"))
+                                .thenReturn(Optional.empty());
+
+                // 회원이 없으면 인증 실패 예외가 발생하는지 확인
+                BusinessException exception = assertThrows(
+                                BusinessException.class,
+                                () -> userService.login(request));
+
+                assertEquals(
+                                UserErrorCode.INVALID_CREDENTIALS,
+                                exception.getErrorCode());
+
+                // 회원 조회에서 실패하면 비밀번호 검증을 진행하지 않음
+                verifyNoInteractions(passwordEncoder);
+        }
 }
