@@ -8,9 +8,10 @@ import { SuccessButton } from '../../components/atoms/button/successButton'
 import { Icon } from '../../components/atoms/icon/Icon'
 import { VerificationImage } from '../../components/molecules/form/VerificationImage'
 import { StatusMessage } from '../../components/molecules/feedback/StatusMessage'
-import { getChallengeVerification } from '../../api/ChallengeApi'
+import { VerificationLoading } from '../../components/molecules/feedback/VerificationLoading'
+import { getChallengeVerification, submitVerification } from '../../api/ChallengeApi'
 import { uploadVerificationImage } from '../../api/MediaApi'
-import type { ChallengeVerificationResponse } from '../../types/Challenge'
+import type { ChallengeVerificationResponse, VerificationSubmitResponse } from '../../types/Challenge'
 
 const MAX_ATTEMPTS = 3
 
@@ -23,12 +24,24 @@ export function VerificationPage() {
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
   const uploadController = useRef<AbortController | null>(null)
+  const submitController = useRef<AbortController | null>(null)
+  const submissionKey = useRef<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [result, setResult] = useState<VerificationSubmitResponse | null>(null)
 
   useEffect(() => {
-    return () => uploadController.current?.abort()
+    return () => {
+      uploadController.current?.abort()
+      submitController.current?.abort()
+    }
   }, [])
 
   const handleImageChange = async (file: File | null) => {
+    if (submitController.current) return
+    submissionKey.current = null
+    setSubmitError(null)
+    setResult(null)
     uploadController.current?.abort()
     setImage(file)
     setMediaId(null)
@@ -61,13 +74,18 @@ export function VerificationPage() {
 
   useEffect(() => {
     const controller = new AbortController()
+    submitController.current?.abort()
+    submitController.current = null
+    submissionKey.current = null
     uploadController.current?.abort()
-    setImage(null)
-    setMediaId(null)
-    setUploadError(null)
-    setUploading(false)
-
     async function fetchVerification() {
+      setImage(null)
+      setMediaId(null)
+      setUploadError(null)
+      setUploading(false)
+      setSubmitting(false)
+      setSubmitError(null)
+      setResult(null)
       setLoading(true)
       setError(null)
       setChallenge(null)
@@ -100,18 +118,38 @@ export function VerificationPage() {
     return () => controller.abort()
   }, [challengeId, scheduleId])
 
-  const handleVerification = () => {
+  const handleVerification = async () => {
     if (!image) {
       alert('인증 사진을 등록해주세요.')
       return
     }
-    if (uploading || mediaId === null) return
-
-    // TODO: 인증 API 호출
-    console.log('challengeId:', challengeId)
-    console.log('scheduleId:', scheduleId)
-    console.log('image:', image)
-    console.log('mediaId:', mediaId)
+    if (uploading || mediaId === null || !challenge || submitController.current) return
+    const controller = new AbortController()
+    submitController.current = controller
+    submissionKey.current ??= crypto.randomUUID()
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      const response = await submitVerification({
+        challengeId: challenge.challengeId,
+        scheduleId: challenge.scheduleId,
+        mediaId,
+        idempotencyKey: submissionKey.current,
+      }, controller.signal)
+      if (!controller.signal.aborted) {
+        setResult(response)
+        setChallenge(current => current ? { ...current, attemptCount: response.attemptCount } : current)
+      }
+    } catch (err) {
+      if (!controller.signal.aborted) {
+        setSubmitError(err instanceof Error ? err.message : '인증 요청에 실패했습니다.')
+      }
+    } finally {
+      if (!controller.signal.aborted) {
+        submitController.current = null
+        setSubmitting(false)
+      }
+    }
   }
 
   if (loading || error || !challenge) {
@@ -126,7 +164,11 @@ export function VerificationPage() {
   const remainingAttempts = Math.max(0, MAX_ATTEMPTS - challenge.attemptCount)
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-white px-5 pt-6">
+    <div className="relative flex h-full min-h-0 flex-col bg-white px-5 pt-6" aria-busy={submitting}>
+      {submitting && (
+        <VerificationLoading challengeTitle={challenge.challengeTitle} dayNo={challenge.dayNo} dayCount={challenge.dayCount} />
+      )}
+      <div className="contents" inert={submitting}>
       {/* 상단 콘텐츠 */}
       <div className="flex flex-col gap-3">
         {/* 도전 정보 */}
@@ -141,6 +183,16 @@ export function VerificationPage() {
         </div>
 
         {/* 인증 사진 */}
+        {submitError && <StatusMessage message={submitError} />}
+        {result && (
+          <section className="rounded-md border border-[#E4C9A4] bg-[#FFF8ED] p-4">
+            <StatusMessage message={result.status === 'SUCCESS' ? '인증에 성공했어요!'
+              : result.status === 'REVIEW_REQUIRED' ? '추가 검토가 필요한 사진이에요.'
+              : result.status === 'TECH_ERROR' ? 'AI 판정 중 오류가 발생했어요. 다시 시도해 주세요.'
+              : '인증 조건을 충족하지 못했어요.'} />
+            {result.checks.map(check => <p key={check.code} className="mt-2 text-sm">{check.reason}</p>)}
+          </section>
+        )}
         <VerificationImage key={`${challengeId}-${scheduleId}`} onImageChange={handleImageChange} />
         {uploading && <StatusMessage message="사진을 업로드하는 중입니다." />}
         {uploadError && (
@@ -189,9 +241,11 @@ export function VerificationPage() {
 
       {/* 하단 인증 버튼 */}
       <div className="mt-auto pb-2 pt-6">
-        <SuccessButton onClick={handleVerification} disabled={uploading || mediaId === null}>
+        <SuccessButton onClick={handleVerification} disabled={submitting || uploading || mediaId === null || (remainingAttempts === 0 && !submitError && result?.status !== 'TECH_ERROR')
+          || result?.status === 'SUCCESS' || result?.status === 'REVIEW_REQUIRED' || result?.status === 'FAILED'}>
           인증하기
         </SuccessButton>
+      </div>
       </div>
     </div>
   )

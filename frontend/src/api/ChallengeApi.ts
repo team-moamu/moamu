@@ -5,6 +5,25 @@ import type {
   ChallengeCreateRequest,
 } from '../types/Challenge'
 import type { ApiResponse } from '../types/ApiResponse'
+import type { VerificationSubmitResponse } from '../types/Challenge'
+
+export async function submitVerification(
+  request: { challengeId: number; scheduleId: number; mediaId: number; idempotencyKey: string },
+  signal?: AbortSignal,
+): Promise<VerificationSubmitResponse> {
+  const response = await fetch('/api/verification', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+    signal,
+  })
+  const body: ApiResponse<VerificationSubmitResponse> | null =
+    await response.json().catch(() => null)
+  if (!response.ok || !body || !body.success) {
+    throw new Error(body?.success === false ? body.error.message : '인증 요청에 실패했습니다. 다시 시도해 주세요.')
+  }
+  return body.data
+}
 
 // 인증 제출 페이지 조회
 export async function getChallengeVerification(

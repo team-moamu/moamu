@@ -1,5 +1,12 @@
 import type { ScheduleStatus } from "./schedule"
 
+export type VerificationSubmitResponse = {
+  verificationId: number
+  status: 'SUCCESS' | 'FAILED' | 'REVIEW_REQUIRED' | 'TECH_ERROR'
+  attemptCount: number
+  checks: { code: string; status: 'MET' | 'NOT_MET' | 'UNCERTAIN'; reason: string }[]
+}
+
 // 인증 제출 페이지 조회
 export type ChallengeVerificationResponse = {
   challengeId: number
