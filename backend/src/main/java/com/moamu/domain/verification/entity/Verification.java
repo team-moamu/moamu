@@ -39,8 +39,7 @@ public class Verification {
     // 제출 사진 SHA-256 해시
     @Column(name = "file_hash", nullable = false, columnDefinition = "CHAR(64)")
     private String fileHash;
-
-    // 인증 시도 처리 상태
+    @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private VerificationStatus status;
 
