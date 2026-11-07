@@ -1,6 +1,6 @@
 
 import { useState } from 'react'
-import { useParams } from 'react-router'
+import { useParams, useSearchParams } from 'react-router'
 
 import { Text } from '../../components/atoms/typography/Text'
 import { SubText } from '../../components/atoms/typography/SubText'
@@ -10,6 +10,8 @@ import { VerificationImage } from '../../components/molecules/form/VerificationI
 
 export function VerificationPage() {
   const { challengeId } = useParams()
+  const [searchParams] = useSearchParams()
+  const scheduleId = searchParams.get('scheduleId')
   const [image, setImage] = useState<File | null>(null)
 
   // TODO: API 연동 후 변경
@@ -36,6 +38,7 @@ export function VerificationPage() {
 
     // TODO: 인증 API 호출
     console.log('challengeId:', challengeId)
+    console.log('scheduleId:', scheduleId)
     console.log('image:', image)
   }
 

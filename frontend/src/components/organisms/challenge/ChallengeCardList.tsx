@@ -7,7 +7,7 @@ type Challenge = Omit<
 
 type ChallengeCardListProps = {
   challenges: Challenge[]
-  onVerify: (challengeId: number) => void
+  onVerify: (challengeId: number, scheduleId: number) => void
   onCardClick?: (challengeId: number) => void
 }
 

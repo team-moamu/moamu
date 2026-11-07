@@ -6,6 +6,7 @@ export type TodayChallengeResponse = {
   challengeTitle: string
   startDate: string
   endDate: string
+  scheduleId: number,
   dayNo: number
   scheduleStatus:
   | 'UPCOMING'

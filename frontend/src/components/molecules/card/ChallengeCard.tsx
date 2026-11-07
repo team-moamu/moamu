@@ -7,6 +7,7 @@ import { Icon } from '../../atoms/icon/Icon'
 
 type ChallengeCardProps = {
   challengeId: number
+  scheduleId: number
   challengeTitle: string
   imageUrl: string
   dayNo: number
@@ -15,12 +16,13 @@ type ChallengeCardProps = {
   maxAttempts: number
   remainingTime: string
   status: 'available' | 'retry'
-  onVerify: (challengeId: number) => void
+  onVerify: (challengeId: number, scheduleId: number) => void
   onClick?: () => void
 }
 
 export function ChallengeCard({
   challengeId,
+  scheduleId,
   challengeTitle,
   imageUrl,
   dayNo,
@@ -79,7 +81,7 @@ export function ChallengeCard({
           icon="camera"
           onClick={(e) => {
             e.stopPropagation()
-            onVerify(challengeId)
+            onVerify(challengeId, scheduleId)
           }}
         >
           인증하기
