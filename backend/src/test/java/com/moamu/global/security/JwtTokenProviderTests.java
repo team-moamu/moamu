@@ -5,13 +5,20 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.security.SecureRandom;
+import java.time.Instant;
 import java.util.Base64;
+import java.util.Date;
+
+import javax.crypto.SecretKey;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.moamu.global.config.JwtProperties;
 
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import io.jsonwebtoken.security.SignatureException;
 
 //실제 JWT 발급 및 검증 동작을 확인
@@ -74,5 +81,35 @@ class JwtTokenProviderTests {
         assertThrows(
                 SignatureException.class,
                 () -> jwtTokenProvider.getUserId(token));
+    }
+
+    // 올바른 키로 서명했더라도 유효 기간이 지난 토큰은 거절하는지 확인한다.
+    @Test
+    void expiredTokenIsRejected() {
+
+        // 토큰 발급과 검증에 동일하게 사용할 테스트용 키 생성
+        byte[] keyBytes = new byte[32];
+        new SecureRandom().nextBytes(keyBytes);
+
+        String secret = Base64.getEncoder().encodeToString(keyBytes);
+        SecretKey signingKey = Keys.hmacShaKeyFor(keyBytes);
+
+        JwtTokenProvider provider = new JwtTokenProvider(
+                new JwtProperties(secret, 1_800_000L));
+
+        // 발급과 만료 시각을 모두 과거로 설정
+        Instant now = Instant.now();
+
+        String expiredToken = Jwts.builder()
+                .subject("10")
+                .issuedAt(Date.from(now.minusSeconds(120)))
+                .expiration(Date.from(now.minusSeconds(60)))
+                .signWith(signingKey, Jwts.SIG.HS256)
+                .compact();
+
+        // 서명은 올바르지만 만료된 토큰이므로 인증 거절
+        assertThrows(
+                ExpiredJwtException.class,
+                () -> provider.getUserId(expiredToken));
     }
 }
