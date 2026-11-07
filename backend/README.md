@@ -96,7 +96,7 @@ Flyway SQL은 `src/main/resources/db/migration/`에 추가합니다. 테이블 �
 
 `PhotoVerificationService.verify(request)`는 사진의 S3 객체 키와 도전 인증 조건을 AI 서버의 `POST /internal/photo-verifications`로 전달하고, 조건별 판정을 종합해 최종 인증 결과를 반환합니다.
 
-현재 AI 호출·요청 및 응답 검증·최종 결과 판정까지 구현되어 있습니다. 사진 업로드 흐름 연결, 인증·AI 작업 및 판정 결과의 DB 저장, 인증 횟수 반영, 자동 재시도, 서버 간 인증은 아직 구현되지 않았습니다.
+현재 AI 호출·요청 및 응답 검증·최종 결과 판정까지 구현되어 있습니다. 사진 업로드 흐름 연결, AI 작업 및 판정 결과의 DB 저장, 기술 오류 횟수 복구, 자동 재시도, 서버 간 인증은 아직 구현되지 않았습니다. 인증 시도 저장은 아래 createVerification 메서드로 별도 제공합니다.
 
 ### 연동 설정
 

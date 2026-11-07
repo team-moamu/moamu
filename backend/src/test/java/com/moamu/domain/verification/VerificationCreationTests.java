@@ -33,6 +33,7 @@ import static org.mockito.Mockito.*;
 class VerificationCreationTests {
     @Autowired JdbcTemplate jdbc;
     @Autowired VerificationSubmissionService service;
+    @Autowired com.moamu.domain.verification.repository.PhotoVerificationRequestRepository requestRepository;
     @MockitoBean PhotoVerificationClient client;
     @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
     com.moamu.domain.verification.repository.VerificationRepository verificationRepository;
@@ -94,7 +95,25 @@ class VerificationCreationTests {
         assertThat(saved.get("submitted_at")).isNotNull();
         assertThat(jdbc.queryForObject("SELECT attempt_count FROM schedule", Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT status FROM schedule", String.class)).isEqualTo("PROGRESSING");
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ai_task", Integer.class)).isZero();
+        assertThat(result.aiTaskId()).isPositive();
+        var task = jdbc.queryForMap("SELECT * FROM ai_task WHERE ai_task_id=?", result.aiTaskId());
+        assertThat(((Number) task.get("verification_id")).longValue()).isEqualTo(result.verificationId());
+        assertThat(task.get("task_type")).isEqualTo("VERIFY");
+        assertThat(task.get("status")).isEqualTo("PENDING");
+        assertThat(task.get("task_version")).isEqualTo(1);
+        assertThat(task.get("retry_count")).isEqualTo(0);
+        assertThat(task.get("frst_reg_dt")).isNotNull();
+        for (String field : List.of("artwork_id", "next_retry_at", "locked_by", "locked_at",
+                "last_error", "started_at", "finished_at")) {
+            assertThat(task.get(field)).as(field).isNull();
+        }
+        // 새로 저장한 정보로 기존 AI 요청 조회 메서드가 올바른 요청을 구성하는지 확인합니다.
+        var request = requestRepository.findByAiTaskIdAndUserId(result.aiTaskId(), 1L).orElseThrow();
+        assertThat(request.aiTaskId()).isEqualTo(result.aiTaskId().toString());
+        assertThat(request.verificationId()).isEqualTo(result.verificationId().toString());
+        assertThat(request.imageKey()).isEqualTo("verifications/photo.jpg");
+        assertThat(request.conditions()).extracting(condition -> condition.code()).containsExactly("C1", "C2");
+        assertThat(requestRepository.findByAiTaskIdAndUserId(result.aiTaskId(), 2L)).isEmpty();
         verifyNoInteractions(client);
     }
 
@@ -105,6 +124,7 @@ class VerificationCreationTests {
         assertThatThrownBy(() -> service.createVerification(1L, 50L, 99L, "same"))
                 .isInstanceOf(BusinessException.class);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ai_task", Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT attempt_count FROM schedule", Integer.class)).isEqualTo(1);
     }
 
@@ -120,6 +140,7 @@ class VerificationCreationTests {
                     .isEqualTo(second.get(15, java.util.concurrent.TimeUnit.SECONDS));
         }
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ai_task", Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT attempt_count FROM schedule", Integer.class)).isEqualTo(1);
     }
 
@@ -149,6 +170,7 @@ class VerificationCreationTests {
                     .containsExactlyInAnyOrder(true, false);
         }
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ai_task", Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT attempt_count FROM schedule", Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT version FROM schedule", Integer.class)).isEqualTo(1);
     }
@@ -171,6 +193,7 @@ class VerificationCreationTests {
                     .isInstanceOf(DataAccessException.class)
                     .hasMessageContaining("test_insert_failure");
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ai_task", Integer.class)).isZero();
             assertThat(jdbc.queryForObject("SELECT attempt_count FROM schedule", Integer.class)).isZero();
             assertThat(jdbc.queryForObject("SELECT version FROM schedule", Integer.class)).isZero();
             assertThat(jdbc.queryForObject("SELECT status FROM schedule", String.class)).isEqualTo("UPCOMING");
@@ -186,6 +209,7 @@ class VerificationCreationTests {
         assertThat(result.attemptNo()).isEqualTo(1);
         verify(verificationRepository, times(2)).findByIdempotencyKey("retry-once");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ai_task", Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT attempt_count FROM schedule", Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT version FROM schedule", Integer.class)).isEqualTo(1);
     }
@@ -199,6 +223,7 @@ class VerificationCreationTests {
                         assertThat(exception.getErrorCode()).isEqualTo(CommonErrorCode.CONCURRENT_MODIFICATION));
         verify(verificationRepository, times(3)).findLastAttemptNo(50L);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ai_task", Integer.class)).isZero();
         assertThat(jdbc.queryForObject("SELECT attempt_count FROM schedule", Integer.class)).isZero();
         assertThat(jdbc.queryForObject("SELECT version FROM schedule", Integer.class)).isZero();
     }
@@ -224,9 +249,33 @@ class VerificationCreationTests {
                 .isInstanceOfSatisfying(BusinessException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_REQUEST));
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ai_task", Integer.class)).isZero();
         assertThat(jdbc.queryForObject("SELECT attempt_count FROM schedule", Integer.class)).isZero();
         assertThat(jdbc.queryForObject("SELECT version FROM schedule", Integer.class)).isZero();
         verify(verificationRepository, never()).findLastAttemptNo(50L);
+    }
+
+    @Test
+    void aiTaskInsertFailureRollsBackVerificationAndSchedule() {
+        // 실제 테스트 DB에서 AI 작업 INSERT만 실패시켜 전체 접수의 원자성을 확인합니다.
+        jdbc.execute("ALTER TABLE ai_task ADD CONSTRAINT test_ai_task_failure CHECK(task_version=0)");
+        try {
+            assertThatThrownBy(() -> service.createVerification(1L, 50L, 60L, "ai-task-failure"))
+                    .isInstanceOf(DataAccessException.class)
+                    .hasMessageContaining("test_ai_task_failure");
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ai_task", Integer.class)).isZero();
+            assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification", Integer.class)).isZero();
+            assertThat(jdbc.queryForObject("SELECT attempt_count FROM schedule", Integer.class)).isZero();
+            assertThat(jdbc.queryForObject("SELECT version FROM schedule", Integer.class)).isZero();
+            assertThat(jdbc.queryForObject("SELECT status FROM schedule", String.class)).isEqualTo("UPCOMING");
+            verifyNoInteractions(client);
+        } finally { jdbc.execute("ALTER TABLE ai_task DROP CHECK test_ai_task_failure"); }
+        // 실패한 접수의 멱등성 키가 남지 않아 동일 요청으로 다시 정상 접수할 수 있습니다.
+        var result = service.createVerification(1L, 50L, 60L, "ai-task-failure");
+        assertThat(result.aiTaskId()).isPositive();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ai_task", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT attempt_count FROM schedule", Integer.class)).isEqualTo(1);
     }
 
     @Test
@@ -240,6 +289,7 @@ class VerificationCreationTests {
         assertThatThrownBy(() -> service.createVerification(1L, 50L, 60L, "profile"))
                 .isInstanceOf(BusinessException.class);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ai_task", Integer.class)).isZero();
     }
 
     @Test
@@ -253,6 +303,7 @@ class VerificationCreationTests {
         jdbc.update("UPDATE schedule SET attempt_count=0,status='PROGRESSING'");
         assertThatThrownBy(() -> service.createVerification(1L, 50L, 60L, "pending")).isInstanceOf(BusinessException.class);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ai_task", Integer.class)).isZero();
     }
 
     @Test
@@ -264,6 +315,7 @@ class VerificationCreationTests {
                     .isInstanceOf(DataAccessException.class)
                     .hasMessageContaining("test_attempt_failure");
             assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification", Integer.class)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ai_task", Integer.class)).isZero();
             assertThat(jdbc.queryForObject("SELECT attempt_count FROM schedule", Integer.class)).isZero();
         } finally { jdbc.execute("ALTER TABLE schedule DROP CHECK test_attempt_failure"); }
     }

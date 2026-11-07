@@ -1,6 +1,9 @@
 package com.moamu.domain.verification.service;
 
 import com.moamu.domain.verification.repository.PhotoVerificationRequestRepository;
+import com.moamu.domain.aitask.entity.AiTask;
+import com.moamu.domain.aitask.enums.AiTaskType;
+import com.moamu.domain.aitask.repository.AiTaskRepository;
 import com.moamu.global.exception.BusinessException;
 import com.moamu.global.exception.CommonErrorCode;
 import org.springframework.stereotype.Service;
@@ -26,6 +29,7 @@ public class VerificationSubmissionService {
     private final PhotoVerificationService photoVerificationService;
 
     private final VerificationRepository verificationRepository;
+    private final AiTaskRepository aiTaskRepository;
     private final ScheduleRepository scheduleRepository;
     private final ChallengeRepository challengeRepository;
     private final MediaRepository mediaRepository;
@@ -37,6 +41,7 @@ public class VerificationSubmissionService {
             PhotoVerificationRequestRepository requestRepository,
             PhotoVerificationService photoVerificationService,
             VerificationRepository verificationRepository,
+            AiTaskRepository aiTaskRepository,
             ScheduleRepository scheduleRepository,
             ChallengeRepository challengeRepository,
             MediaRepository mediaRepository,
@@ -45,6 +50,7 @@ public class VerificationSubmissionService {
         this.requestRepository = requestRepository;
         this.photoVerificationService = photoVerificationService;
         this.verificationRepository = verificationRepository;
+        this.aiTaskRepository = aiTaskRepository;
         this.scheduleRepository = scheduleRepository;
         this.challengeRepository = challengeRepository;
         this.mediaRepository = mediaRepository;
@@ -71,7 +77,7 @@ public class VerificationSubmissionService {
     }
 
     // 소유자, 제출 가능 여부, 중복 요청 확인
-    // 인증 시도 저장과 회차 갱신을 함께 처리
+    // 인증 시도, AI 작업 저장과 회차 갱신을 함께 트랜잭션으로 처리
     private VerificationSubmissionResponse createInTransaction(
             Long userId, Long scheduleId, Long mediaId, String idempotencyKey) {
         if (userId == null || userId <= 0) {
@@ -102,7 +108,10 @@ public class VerificationSubmissionService {
             if (!scheduleId.equals(verification.getScheduleId()) || !mediaId.equals(verification.getMediaId())) {
                 throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
             }
-            return response(verification);
+            var task = aiTaskRepository.findByVerificationIdAndTaskType(
+                    verification.getVerificationId(), AiTaskType.VERIFY)
+                    .orElseThrow(() -> new IllegalStateException("기존 인증 시도에 연결된 AI 작업이 없습니다."));
+            return response(verification, task);
         }
 
         var now = LocalDateTime.now(ZoneId.of("Asia/Seoul"));
@@ -123,13 +132,17 @@ public class VerificationSubmissionService {
         var verification = Verification.submitted(scheduleId, mediaId, attemptNo,
                 idempotencyKey, media.getFileHash(), now);
         verificationRepository.saveAndFlush(verification);
-        return response(verification);
+        // 인증 ID가 생성된 후 대기 작업을 저장
+        // 실패시 인증과 회차 변경 롤백
+        var task = AiTask.pendingVerification(verification.getVerificationId(), now);
+        aiTaskRepository.saveAndFlush(task);
+        return response(verification, task);
     }
 
     // 인증 시도 엔티티 -> 접수 결과 응답 DTO로 변환
-    private VerificationSubmissionResponse response(Verification verification) {
+    private VerificationSubmissionResponse response(Verification verification, AiTask task) {
         return new VerificationSubmissionResponse(verification.getVerificationId(), verification.getMediaId(),
-                verification.getAttemptNo(), verification.getStatus().name());
+                verification.getAttemptNo(), verification.getStatus().name(), task.getAiTaskId());
     }
 
     // AI 작업과 조건을 조회
