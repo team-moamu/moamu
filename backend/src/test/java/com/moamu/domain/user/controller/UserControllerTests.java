@@ -8,9 +8,14 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import com.moamu.domain.user.dto.UserLoginRequest;
 import com.moamu.domain.user.dto.UserSignupRequest;
+import com.moamu.domain.user.entity.User;
+import com.moamu.domain.user.exception.UserErrorCode;
 import com.moamu.domain.user.service.UserService;
+import com.moamu.global.exception.BusinessException;
 import com.moamu.global.exception.GlobalExceptionHandler;
+import com.moamu.global.security.JwtTokenProvider;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
@@ -21,14 +26,18 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class UserControllerTests {
 
   private UserService userService;
+  private JwtTokenProvider jwtTokenProvider;
   private MockMvc mockMvc;
 
   @BeforeEach
   void setUp() {
     userService = mock(UserService.class);
 
+    // 컨트롤러에 전달할 토큰 발급 가짜 객체 생성
+    jwtTokenProvider = mock(JwtTokenProvider.class);
+
     mockMvc = MockMvcBuilders
-        .standaloneSetup(new UserController(userService))
+        .standaloneSetup(new UserController(userService, jwtTokenProvider))
         .setControllerAdvice(new GlobalExceptionHandler())
         .build();
   }
@@ -182,5 +191,68 @@ class UserControllerTests {
             .value("INVALID_REQUEST"));
 
     verifyNoInteractions(userService);
+  }
+
+  @Test
+  void validLoginReturnsAccessToken() throws Exception {
+
+    // 로그인 검증을 통과한 회원 준비
+    User user = mock(User.class);
+    when(user.getUserId()).thenReturn(10L);
+
+    when(userService.login(any(UserLoginRequest.class)))
+        .thenReturn(user);
+
+    // 검증된 회원에게 발급할 토큰 설정
+    when(jwtTokenProvider.createAccessToken(10L))
+        .thenReturn("test-access-token");
+
+    // 로그인 요청 및 응답 확인
+    mockMvc.perform(post("/api/users/login")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("""
+            {
+              "loginId": "Test@example.com",
+              "password": "Password123!"
+            }
+            """))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.accessToken")
+            .value("test-access-token"))
+        .andExpect(jsonPath("$.data.tokenType").value("Bearer"))
+        .andExpect(jsonPath("$.data.password").doesNotExist())
+        .andExpect(jsonPath("$.error").doesNotExist());
+
+    // 검증된 회원 ID로 토큰을 발급했는지 확인
+    verify(jwtTokenProvider).createAccessToken(10L);
+  }
+
+  //로그인 정보가 일치하지 않으면 401 응답을 반환
+  @Test
+  void invalidCredentialsReturn401() throws Exception {
+
+    // 서비스에서 로그인 검증에 실패한 상황 설정
+    when(userService.login(any(UserLoginRequest.class)))
+        .thenThrow(
+            new BusinessException(UserErrorCode.INVALID_CREDENTIALS));
+
+    // 형식은 올바르지만 인증에 실패하는 로그인 요청
+    mockMvc.perform(post("/api/users/login")
+        .contentType(MediaType.APPLICATION_JSON)
+        .content("""
+            {
+              "loginId": "test@example.com",
+              "password": "WrongPassword123!"
+            }
+            """))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.success").value(false))
+        .andExpect(jsonPath("$.error.code")
+            .value("INVALID_CREDENTIALS"))
+        .andExpect(jsonPath("$.data").doesNotExist());
+
+    // 로그인에 실패하면 토큰 발급기를 호출하지 않는지 확인
+    verifyNoInteractions(jwtTokenProvider);
   }
 }
