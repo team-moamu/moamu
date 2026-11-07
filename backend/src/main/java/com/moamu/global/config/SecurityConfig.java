@@ -104,7 +104,7 @@ public class SecurityConfig {
         return http.build();
     }
 
-    //보안 처리 중 발생한 오류를 공통 API 응답 형식으로 반환
+    // 보안 처리 중 발생한 오류를 공통 API 응답 형식으로 반환
     private void writeSecurityError(
             HttpServletResponse response,
             ObjectMapper objectMapper,
