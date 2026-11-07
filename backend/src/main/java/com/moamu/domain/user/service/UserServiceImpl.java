@@ -2,8 +2,6 @@ package com.moamu.domain.user.service;
 
 import lombok.RequiredArgsConstructor;
 
-import java.util.Locale;
-
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -93,25 +91,25 @@ public class UserServiceImpl implements UserService {
     @Override
     public User login(UserLoginRequest request) {
 
-        // 회원가입과 동일하게 이메일을 소문자로 변환하여 조회
+        // 이메일 대소문자를 유지하여 회원 조회
         String email = request.getLoginId();
 
-        // 해당 이메일의 회원이 없으면 로그인 실패
         User user = userRepository.findByLoginId(email)
                 .orElseThrow(() -> new BusinessException(UserErrorCode.INVALID_CREDENTIALS));
 
-        // 비밀번호가 없는 회원이나 비밀번호가 일치하지 않는 경우 로그인 실패
+        // 비밀번호가 없거나 일치하지 않으면 로그인 거절
         if (user.getPassword() == null
                 || !passwordEncoder.matches(
                         request.getPassword(), user.getPassword())) {
             throw new BusinessException(UserErrorCode.INVALID_CREDENTIALS);
         }
 
-        // 비밀번호 검증 후 탈퇴 등으로 로그인할 수 없는 회원인지 확인
+        // 활성 회원만 로그인 허용
         if (user.getStatus() != UserStatus.ACTIVE) {
             throw new BusinessException(UserErrorCode.LOGIN_NOT_ALLOWED);
         }
 
         return user;
     }
+
 }
