@@ -27,6 +27,7 @@ import java.util.Set;
 public class VerificationSubmissionService {
     private final PhotoVerificationRequestRepository requestRepository;
     private final PhotoVerificationService photoVerificationService;
+    private final VerificationResultService resultService;
 
     private final VerificationRepository verificationRepository;
     private final AiTaskRepository aiTaskRepository;
@@ -40,6 +41,7 @@ public class VerificationSubmissionService {
     public VerificationSubmissionService(
             PhotoVerificationRequestRepository requestRepository,
             PhotoVerificationService photoVerificationService,
+            VerificationResultService resultService,
             VerificationRepository verificationRepository,
             AiTaskRepository aiTaskRepository,
             ScheduleRepository scheduleRepository,
@@ -49,6 +51,7 @@ public class VerificationSubmissionService {
     ) {
         this.requestRepository = requestRepository;
         this.photoVerificationService = photoVerificationService;
+        this.resultService = resultService;
         this.verificationRepository = verificationRepository;
         this.aiTaskRepository = aiTaskRepository;
         this.scheduleRepository = scheduleRepository;
@@ -161,6 +164,8 @@ public class VerificationSubmissionService {
             throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
         }
 
-        return photoVerificationService.verify(request);
+        // 네트워크 호출은 결과 저장 트랜잭션 밖에서 수행
+        var result = photoVerificationService.verify(request);
+        return resultService.save(request, result);
     }
 }

@@ -87,7 +87,9 @@ class VerificationSubmissionServiceTests {
         assertThat(result.status()).isEqualTo(VerificationResult.SUCCESS);
         assertThat(result.response()).isEqualTo(response);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ai_task", Integer.class)).isEqualTo(1);
-        assertThat(jdbc.queryForObject("SELECT status FROM ai_task", String.class)).isEqualTo("PENDING");
+        assertThat(jdbc.queryForObject("SELECT status FROM ai_task", String.class)).isEqualTo("SUCCEEDED");
+        assertThat(jdbc.queryForObject("SELECT status FROM verification", String.class)).isEqualTo("SUCCESS");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification_check", Integer.class)).isEqualTo(2);
     }
 
     @Test
