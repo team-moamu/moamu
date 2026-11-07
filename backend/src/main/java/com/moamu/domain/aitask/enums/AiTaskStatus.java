@@ -14,8 +14,5 @@ public enum AiTaskStatus {
     RETRYING,
 
     // 더 이상 재시도하지 않는 기술적 실패
-    FAILED_FINAL,
-    
-    // 작업 취소
-    CANCELED
+    FAILED_FINAL
 }
