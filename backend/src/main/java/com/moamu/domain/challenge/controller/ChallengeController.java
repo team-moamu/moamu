@@ -3,6 +3,7 @@ package com.moamu.domain.challenge.controller;
 import com.moamu.domain.challenge.dto.ChallengeCreateRequest;
 import com.moamu.domain.challenge.dto.TodayChallengeResponse;
 import com.moamu.domain.challenge.service.ChallengeService;
+import com.moamu.global.response.ApiResponse;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -30,14 +31,15 @@ public class ChallengeController {
     }
 
     @GetMapping("/today")
-    public List<TodayChallengeResponse> getTodayChallenges(
+    public ApiResponse<List<TodayChallengeResponse>> getTodayChallenges(
         @RequestParam(name = "day", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate day, 
         @RequestParam(name = "sortType", required = false) String sortType
     ) {
         // 임시. 회원 기능 구현 후 수정 필요
         Long userId = 1L; 
+        List<TodayChallengeResponse> challenges = challengeService.getTodayChallenges(userId, day, sortType);
 
-        return challengeService.getTodayChallenges(userId, day, sortType);
+        return ApiResponse.success(challenges);
     }
     
 }

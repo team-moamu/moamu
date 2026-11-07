@@ -40,3 +40,10 @@ export type ChallengeDetailResponse = {
   scheduleDate: string
   scheduleStatus: ScheduleStatus
 }
+
+// 도전 생성 요청
+export interface ChallengeCreateRequest {
+  goalTemplateId: number
+  startDate: string
+  durationDays: number
+}

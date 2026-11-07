@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.moamu.domain.goal.dto.GoalTemplateListResponse;
 import com.moamu.domain.goal.service.GoalTemplateService;
+import com.moamu.global.response.ApiResponse;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,7 +20,8 @@ public class GoalTemplateController {
     private final GoalTemplateService goalTemplateService;
 
     @GetMapping
-    public List<GoalTemplateListResponse> getGoalTemplates() {
-        return goalTemplateService.selectGoalTemplates();
+    public ApiResponse<List<GoalTemplateListResponse>> getGoalTemplates() {
+        List<GoalTemplateListResponse> goalTemplates = goalTemplateService.selectGoalTemplates();
+        return ApiResponse.success(goalTemplates);
     }
 }
