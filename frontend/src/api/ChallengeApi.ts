@@ -38,8 +38,8 @@ export async function getChallengeVerification(
 }
 
 // 오늘의 도전 목록 조회
-export async function getTodayChallenges(): Promise<TodayChallengeResponse[]> {
-  const response = await fetch('/api/challenges/today')
+export async function getTodayChallenges(day?: string, signal?: AbortSignal): Promise<TodayChallengeResponse[]> {
+  const response = await fetch(`/api/challenges/today${day ? `?day=${encodeURIComponent(day)}` : ''}`, { signal })
 
   if (!response.ok) {
     throw new Error('오늘의 도전 목록 조회 실패')
