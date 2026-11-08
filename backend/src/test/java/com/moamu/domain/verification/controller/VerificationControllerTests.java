@@ -20,14 +20,42 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class VerificationControllerTests {
 
     private VerificationService verificationService;
+    private com.moamu.domain.verification.service.VerificationSubmissionService submissionService;
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         verificationService = mock(VerificationService.class);
-        mockMvc = MockMvcBuilders.standaloneSetup(new VerificationController(verificationService))
+        submissionService = mock(com.moamu.domain.verification.service.VerificationSubmissionService.class);
+        mockMvc = MockMvcBuilders.standaloneSetup(new VerificationController(verificationService,
+                submissionService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
+    }
+
+    @Test
+    void postUsesServerUserAndReturnsJudgment() throws Exception {
+        when(submissionService.submit(eq(1L), any())).thenReturn(
+                new com.moamu.domain.verification.dto.VerificationSubmitResponse(30L, "SUCCESS", 1, List.of()));
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/verification")
+                        .requestAttr("userId", 1L)
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"challengeId":10,"scheduleId":20,"mediaId":30,"idempotencyKey":"test-key"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.attemptCount").value(1));
+        verify(submissionService).submit(eq(1L), any());
+    }
+
+    @Test
+    void postRejectsMissingIdsBeforeCallingService() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/verification")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+        verifyNoInteractions(submissionService);
     }
 
     @Test

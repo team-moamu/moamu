@@ -121,4 +121,22 @@ public class Schedule {
 
         return schedule;
     }
+    
+    // 새 인증 접수: 시도 횟수 증가 및 AI 판정 진행 상태로 변경
+    public void startVerification() {
+        attemptCount++;
+        status = Status.PROGRESSING;
+    }
+
+    // 기술 오류 재시도: 시도 횟수는 유지하고 판정 진행 상태로 변경
+    public void retryVerification() {
+        status = Status.PROGRESSING;
+    }
+
+    // 판정 결과 반영. 성공 또는 최종 실패일 때만 회차 확정 시각 설정
+    public void completeVerification(Status status, String reason) {
+        this.status = status;
+        resultReason = reason;
+        decidedAt = status == Status.SUCCESS || status == Status.FAILED ? LocalDateTime.now() : null;
+    }
 }

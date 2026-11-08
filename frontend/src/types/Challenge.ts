@@ -1,5 +1,14 @@
 import type { ScheduleStatus } from "./schedule"
 
+// 사진 업로드 및 AI 인증 결과
+export type VerificationSubmitResponse = {
+  verificationId: number
+  mediaId: number
+  aiTaskId: number
+  status: 'SUCCESS' | 'FAILED' | 'REVIEW_REQUIRED'
+  checks: { code: string; status: 'MET' | 'NOT_MET' | 'UNCERTAIN'; reason: string }[]
+}
+
 // 인증 제출 페이지 조회
 export type ChallengeVerificationResponse = {
   challengeId: number
