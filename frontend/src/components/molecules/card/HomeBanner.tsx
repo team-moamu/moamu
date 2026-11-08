@@ -18,8 +18,8 @@ export function HomeGallery({ challenges, mode, isToday }: HomeGalleryProps) {
 
   if (mode === 'loading') {
     pieceSummary = '…'
-  } else if (challenges.length > 0) {
-    pieceSummary = '1 / 3'
+  } else if (mode === 'error') {
+    pieceSummary = '?'
   }
 
   return (

@@ -15,7 +15,7 @@ const greetingDateFormat = new Intl.DateTimeFormat('ko-KR', {
 export function HomePage() {
   const [today] = useState(() => shiftDate(new Date(), 0))
   const [selectedDate, setSelectedDate] = useState(today)
-  const { mode, challenges, dates } = useHomeChallenges(selectedDate, today)
+  const { mode, challenges, dates } = useHomeChallenges(selectedDate)
   const isToday = dateKey(selectedDate) === dateKey(today)
 
   function selectDate(date: Date) {
@@ -37,6 +37,11 @@ export function HomePage() {
         </h1>
       </div>
 
+      {mode === 'error' && (
+        <p role="alert" className="px-2 py-3 text-sm">
+          도전 목록을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.
+        </p>
+      )}
       <HomeGallery challenges={challenges} mode={mode} isToday={isToday} />
       <HomeDateSelector dates={dates} selectedDate={selectedDate} onSelect={selectDate} />
       <HomeChallengeSection challenges={challenges} mode={mode} isToday={isToday} />

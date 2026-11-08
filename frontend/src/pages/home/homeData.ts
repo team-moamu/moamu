@@ -2,6 +2,8 @@
 import type { ChallengeDetailResponse, TodayChallengeResponse } from '../../types/Challenge'
 
 export interface HomeChallenge {
+  completed: boolean
+  goalTemplateId: number
   id: number
   scheduleId: number
   title: string
@@ -9,11 +11,10 @@ export interface HomeChallenge {
   duration: number
   pieces: number | null
   status: ScheduleStatus
-  demo?: boolean
 }
 
 export type HomeRecords = Record<string, HomeChallenge[]>
-export type HomeDataMode = 'loading' | 'live' | 'unauthenticated'
+export type HomeDataMode = 'loading' | 'live' | 'unauthenticated' | 'error'
 
 export function dateKey(date: Date): string {
   const year = date.getFullYear()
@@ -46,6 +47,8 @@ export function toHomeChallenge(
   )).length
 
   return {
+    completed: challenge.challengeStatus === 'COMPLETED',
+    goalTemplateId: challenge.goalTemplateId,
     id: challenge.challengeId,
     scheduleId: challenge.scheduleId,
     title: challenge.challengeTitle,

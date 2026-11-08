@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router'
 import { ChallengeCardList } from '../../components/organisms/challenge/ChallengeCardList'
 import { getTodayChallenges } from '../../api/ChallengeApi'
 import backgroundMu from '../../assets/images/background_mu.png'
+import { goalArtworkImages } from '../../constants/goalArtworkImages'
 import { getRemainingTime } from '../../utils/time'
 
 type Challenge = React.ComponentProps<
@@ -42,7 +43,7 @@ export function ChallengeListPage() {
           challengeId: challenge.challengeId,
           scheduleId: challenge.scheduleId,
           challengeTitle: challenge.challengeTitle,
-          imageUrl: '/images/default-artwork.png',
+          imageUrl: goalArtworkImages[challenge.goalTemplateId] ?? backgroundMu,
           dayNo: challenge.dayNo,
           durationDays: 14,
           attemptCount: challenge.attemptCount,

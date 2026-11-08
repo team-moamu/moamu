@@ -24,7 +24,7 @@ export function HomeChallengeSection({ challenges, mode, isToday }: HomeChalleng
           <p className="px-2 py-[26px] text-center text-sm">도전을 불러오고 있어요.</p>
         ) : (
           <>
-            {challenges.length === 0 && (
+            {mode === 'live' && challenges.length === 0 && (
               <p className="px-2 py-[26px] text-center text-sm">이 날짜에는 도전이 없어요.</p>
             )}
             <div className="grid grid-cols-2 items-stretch gap-4 max-[350px]:gap-2.5">
