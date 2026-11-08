@@ -6,6 +6,7 @@ import { LabeledInput } from '../../components/molecules/form/LabeledInput'
 import { SocialLoginButton } from '../../components/molecules/form/SocialLoginButton'
 import { login, LoginError } from '../../api/AuthApi'
 import { useNavigate } from 'react-router'
+import { saveAccessToken } from '../../auth/authStorage'
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -24,10 +25,12 @@ export function LoginPage() {
     setErrorMessage('')
 
     try {
-      await login({
+      const result = await login({
         loginId: email,
         password,
       })
+
+      saveAccessToken(result.accessToken)
 
       navigate('/', { replace: true })
     } catch (error) {
