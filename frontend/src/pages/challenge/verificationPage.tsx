@@ -1,6 +1,6 @@
 
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useSearchParams } from 'react-router'
+import { useNavigate, useParams, useSearchParams } from 'react-router'
 
 import { Text } from '../../components/atoms/typography/Text'
 import { SubText } from '../../components/atoms/typography/SubText'
@@ -21,6 +21,7 @@ type VerificationPageProps = {
 }
 
 export function VerificationPage({ accessToken }: VerificationPageProps) {
+  const navigate = useNavigate()
   const { challengeId } = useParams()
   const [searchParams] = useSearchParams()
   const scheduleId = searchParams.get('scheduleId')
@@ -110,12 +111,14 @@ export function VerificationPage({ accessToken }: VerificationPageProps) {
     setSubmitting(true)
     setSubmitError(null)
     setRefreshError(null)
+    let completedResponse: VerificationSubmitResponse | null = null
     try {
       // /internal/photo-verifications 호출은 /api/media의 백엔드 내부에서 처리
       const response = await submitVerificationImage(image, challenge.scheduleId,
         submissionKey.current, controller.signal, accessToken)
       if (!controller.signal.aborted) {
         setResult(response)
+        completedResponse = response
       }
     } catch (err) {
       if (!controller.signal.aborted) {
@@ -145,6 +148,14 @@ export function VerificationPage({ accessToken }: VerificationPageProps) {
         submitController.current = null
         setSubmitting(false)
       }
+    }
+
+    // 판정이 완료된 응답만 결과 화면으로 전달. 기술 오류는 제출 화면에서 안내
+    if (completedResponse && !controller.signal.aborted) {
+      navigate(`/challenge/${challenge.challengeId}/verification/result/${completedResponse.verificationId}`, {
+        replace: true,
+        state: { result: completedResponse, challenge },
+      })
     }
   }
 

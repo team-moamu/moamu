@@ -26,13 +26,17 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
-@SpringBootTest
+// 외부 JWT_SECRET 설정 없이 실행할 수 있도록 테스트 전용 서명 키 지정
+@SpringBootTest(properties = {
+    "jwt.secret=bW9hbXUtdGVzdC1vbmx5LWtleS0zMi1ieXRlcy1sb25nIQ=="
+})
 @ActiveProfiles("test")
 @Import(BackendApplicationTests.ContainerConfiguration.class)
 class VerificationSubmissionIntegrationTests {
     @Autowired private JdbcTemplate jdbc;
     @Autowired private ChallengeService challengeService;
     @Autowired private VerificationSubmissionService service;
+    @Autowired private VerificationSuccessService successService;
     @MockitoBean private PhotoVerificationService ai;
     private long challengeId;
     private long scheduleId;
@@ -69,6 +73,37 @@ class VerificationSubmissionIntegrationTests {
 
     private VerificationSubmitRequest request() {
         return new VerificationSubmitRequest(challengeId, scheduleId, mediaId, UUID.randomUUID().toString());
+    }
+
+    @Test
+    void successResultReadsArtworkChecksAndProgressWithoutChangingRows() {
+        jdbc.update("UPDATE artwork SET artwork_title='Painting', media_id=? WHERE artwork_id=30", mediaId);
+        respond(VerificationResult.SUCCESS, CheckStatus.MET);
+        var submitted = service.submit(1L, request());
+        var before = jdbc.queryForList("SELECT * FROM schedule WHERE challenge_id=? ORDER BY day_no", challengeId);
+        var result = successService.getSuccess(1L, submitted.verificationId());
+        assertThat(result.challengeTitle()).isEqualTo("Read");
+        assertThat(result.artwork().artworkId()).isEqualTo(30);
+        assertThat(result.artwork().title()).isEqualTo("Painting");
+        assertThat(result.gridRows()).isEqualTo(3);
+        assertThat(result.gridCols()).isEqualTo(3);
+        assertThat(result.openedPieceIndex()).isZero();
+        assertThat(result.revealedPieceIndices()).containsExactly(0);
+        assertThat(result.earnedPieceCount()).isEqualTo(1);
+        assertThat(result.totalPieceCount()).isEqualTo(7);
+        assertThat(result.checks()).singleElement().satisfies(check -> {
+            assertThat(check.code()).isEqualTo("C1");
+            assertThat(check.description()).isEqualTo("Book");
+            assertThat(check.status()).isEqualTo(CheckStatus.MET);
+        });
+        assertThat(successService.getSuccess(1L, submitted.verificationId())).isEqualTo(result);
+        assertThat(jdbc.queryForList("SELECT * FROM schedule WHERE challenge_id=? ORDER BY day_no", challengeId))
+                .isEqualTo(before);
+        assertThatThrownBy(() -> successService.getSuccess(2L, submitted.verificationId()))
+                .isInstanceOf(BusinessException.class);
+        jdbc.update("UPDATE challenge SET del_yn='Y' WHERE challenge_id=?", challengeId);
+        assertThatThrownBy(() -> successService.getSuccess(1L, submitted.verificationId()))
+                .isInstanceOf(BusinessException.class);
     }
 
     private void respond(VerificationResult result, CheckStatus check) {

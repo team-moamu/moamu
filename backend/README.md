@@ -161,6 +161,54 @@ macOS (zsh / bash):
 - 퍼즐 반영, 날짜 경과에 따른 회차 마감, 서버 강제 종료로 남은 RUNNING 작업 복구는 별도 후속 작업입니다.
 
 
+### 인증 성공 화면 데이터 조회
+
+`POST /api/media` 또는 `POST /api/verification` 응답의 `data.status`가 `SUCCESS`이면,
+반환된 `verificationId`로 `GET /api/verification/{verificationId}/result`를 호출합니다.
+JWT Bearer 인증이 필요하며 해당 도전의 소유자만 조회할 수 있습니다.
+
+- 이 API는 조회 전용입니다. 인증 판정, 회차 상태, 시도 횟수, 조각 배정을 수정하지 않습니다.
+- 진입 기준은 `verification.status=SUCCESS`입니다. 다른 인증 상태는 `400 INVALID_REQUEST`,
+  없거나 다른 사용자의 인증 및 삭제된 도전은 `404 RESOURCE_NOT_FOUND`입니다.
+- 작품은 도전 생성 당시 선택된 `challenge.artwork_id → artwork.media_id → media`로 조회합니다.
+  현재 목표 템플릿의 작품 연결이 변경돼도 도전의 작품을 유지합니다.
+- `openedPieceIndex`는 해당 인증 회차에 미리 배정된 0 기반 위치입니다. 재조회에도 같은 값입니다.
+- `revealedPieceIndices`는 현재 `schedule.status=SUCCESS`인 회차의 위치를 오름차순으로 반환합니다.
+  `earnedPieceCount`는 그 목록의 크기, `totalPieceCount`는 도전의 전체 회차 수입니다.
+  7일 도전의 3×3 격자에서도 전체 조각 수는 7이며, 배정되지 않은 두 칸은 조각이 아닙니다.
+- `scheduleStatus`는 표시용 현재 상태이며 성공 화면 진입의 추가 조건이 아닙니다.
+  두 상태가 일치하지 않으면 공개 목록은 저장된 회차 상태를 그대로 반영합니다.
+- `checks`는 해당 인증 시도의 조건 ID·코드·설명·판정·사유입니다.
+- 작품 미디어가 없으면 `artwork.imageUrl`은 null입니다. local/prod에서는 기존 S3 버킷·리전과
+  서버 자격 증명으로 15분 유효한 GetObject URL을 생성합니다. 실행 역할에 작품 객체의
+  `s3:GetObject` 권한이 필요합니다. 만료 후에는 이 API로 URL을 다시 조회합니다.
+- 이미지 서명/조회 실패는 이미 확정된 인증 결과를 변경하지 않습니다.
+
+응답 예시 (imageUrl은 예시):
+
+```json
+{
+  "success": true,
+  "data": {
+    "verificationId": 101,
+    "status": "SUCCESS",
+    "challengeId": 10,
+    "challengeTitle": "매일 독서하기",
+    "scheduleId": 30,
+    "dayNo": 2,
+    "scheduleStatus": "SUCCESS",
+    "artwork": {"artworkId": 20, "title": "작품명", "imageUrl": "https://example.com/signed-artwork"},
+    "gridRows": 3,
+    "gridCols": 3,
+    "openedPieceIndex": 1,
+    "revealedPieceIndices": [0, 1],
+    "earnedPieceCount": 2,
+    "totalPieceCount": 7,
+    "checks": [{"conditionId": 50, "code": "C1", "description": "책이 보여야 합니다", "status": "MET", "reason": "책이 확인됩니다"}]
+  }
+}
+```
+
 ## 미정 사항
 
 - JWT·AI 서버 간 인증 방식
