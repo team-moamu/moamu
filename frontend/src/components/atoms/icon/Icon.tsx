@@ -24,6 +24,7 @@ export const iconMap = {
   camera: 'icon-[lucide--camera]',
   clock: 'icon-[lucide--clock]',
   check: 'icon-[lucide--circle-check]',
+  palette: 'icon-[lucide--palette]',
 } as const
 
 export type IconName = keyof typeof iconMap
