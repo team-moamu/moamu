@@ -5,6 +5,7 @@ import { ChallengeCreatePage } from '../pages/challenge/ChallengeCreatePage'
 import { ChallengeListPage } from '../pages/challenge/ChallengeListPage'
 import { ChallengeDetailPage } from '../pages/challenge/ChallengeDetailPage'
 import { VerificationPage } from '../pages/challenge/verificationPage'
+import { LoginPage } from '../pages/auth/LoginPage'
 
 function HomePage() {
   return <h1>모아뮤 홈 화면</h1>
@@ -68,8 +69,8 @@ export default function AppRoutes() {
       </Route>
 
       {/* 로그인 헤더 */}
-      <Route element={<MainLayout headerType="login" />}>
-        <Route path="/login" element={<HomePage />} />
+      <Route element={<MainLayout headerType="login" background="white"/>}>
+        <Route path="/login" element={<LoginPage />} />
       </Route>
     </Routes>
   )
