@@ -46,8 +46,8 @@ class VerificationResultTests {
                 VALUES (40, 1, 10, 20, 30, 'Test', 'Daily goal', 7, '2026-11-01', '2026-11-07', 'Visible result', 3, 3)
                 """);
         jdbc.update("""
-                INSERT INTO schedule (schedule_id, challenge_id, day_no, schedule_date, piece_index)
-                VALUES (50, 40, 1, '2026-11-01', 0)
+                INSERT INTO schedule (schedule_id, challenge_id, day_no, schedule_date, piece_index, status, attempt_count)
+                VALUES (50, 40, 1, '2026-11-01', 0, 'PROGRESSING', 1)
                 """);
         jdbc.update("""
                 INSERT INTO challenge_condition (challenge_condition_id, challenge_id, code, description)
@@ -109,12 +109,77 @@ class VerificationResultTests {
                 .isEqualTo(status == CheckStatus.MET ? "모든 인증 조건을 충족했습니다." : "두 번째 조건 사유");
     }
 
+    @ParameterizedTest
+    @EnumSource(CheckStatus.class)
+    void updatesScheduleWithoutConsumingAnotherAttempt(CheckStatus check) {
+        service.save(request(), result(check));
+        String expected = switch (check) {
+            case MET -> "SUCCESS";
+            case NOT_MET -> "OPEN";
+            case UNCERTAIN -> "IN_REVIEW";
+        };
+        var saved = jdbc.queryForMap("SELECT status, attempt_count, version, decided_at, result_reason FROM schedule");
+        assertThat(saved.get("status")).isEqualTo(expected);
+        assertThat(saved.get("attempt_count")).isEqualTo(1);
+        assertThat(saved.get("version")).isEqualTo(1);
+        if (check == CheckStatus.MET) assertThat(saved.get("decided_at")).isNotNull();
+        else assertThat(saved.get("decided_at")).isNull();
+        if (check == CheckStatus.UNCERTAIN) assertThat(saved.get("result_reason")).isEqualTo("두 번째 조건 사유");
+        else assertThat(saved.get("result_reason")).isNull();
+    }
+
+    @Test
+    void thirdFailureFinalizesSchedule() {
+        jdbc.update("UPDATE schedule SET attempt_count=3");
+        service.save(request(), result(CheckStatus.NOT_MET));
+        assertThat(jdbc.queryForObject("SELECT status FROM schedule", String.class)).isEqualTo("FAILED");
+        assertThat(jdbc.queryForMap("SELECT decided_at, result_reason FROM schedule").values()).doesNotContainNull();
+        assertThat(jdbc.queryForObject("SELECT attempt_count FROM schedule", Integer.class)).isEqualTo(3);
+    }
+
+    @Test
+    void finalizedScheduleCannotBeOverwritten() {
+        jdbc.update("UPDATE schedule SET status='SUCCESS'");
+        assertThatThrownBy(() -> service.save(request(), result(CheckStatus.NOT_MET)))
+                .isInstanceOf(IllegalStateException.class);
+        assertUnchanged();
+        assertThat(jdbc.queryForObject("SELECT status FROM schedule", String.class)).isEqualTo("SUCCESS");
+    }
+
+    @Test
+    void scheduleWriteFailureRollsBackAllResults() {
+        jdbc.execute("ALTER TABLE schedule ADD CONSTRAINT test_schedule_failure CHECK(status <> 'SUCCESS')");
+        try {
+            assertThatThrownBy(() -> service.save(request(), result(CheckStatus.MET))).isInstanceOf(RuntimeException.class);
+            assertUnchanged();
+            assertThat(jdbc.queryForObject("SELECT status FROM schedule", String.class)).isEqualTo("PROGRESSING");
+            assertThat(jdbc.queryForObject("SELECT version FROM schedule", Integer.class)).isZero();
+        } finally { jdbc.execute("ALTER TABLE schedule DROP CHECK test_schedule_failure"); }
+    }
+
+    @Test
+    void olderAttemptCannotUpdateScheduleForNewerSubmission() {
+        jdbc.update("""
+                INSERT INTO verification (verification_id, schedule_id, media_id, attempt_no,
+                    idempotency_key, file_hash, submitted_at)
+                VALUES (71, 50, 99, 2, 'newer-submission', ?, CURRENT_TIMESTAMP)
+                """, "b".repeat(64));
+        assertThatThrownBy(() -> service.save(request(), result(CheckStatus.MET)))
+                .isInstanceOf(PhotoVerificationTechnicalException.class);
+        assertThat(jdbc.queryForObject("SELECT status FROM ai_task", String.class)).isEqualTo("PENDING");
+        assertThat(jdbc.queryForObject("SELECT status FROM verification WHERE verification_id=70", String.class)).isEqualTo("SUBMITTED");
+        assertThat(jdbc.queryForObject("SELECT status FROM schedule", String.class)).isEqualTo("PROGRESSING");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification_check", Integer.class)).isZero();
+    }
+
     @Test
     void duplicateResponseKeepsFirstResultAndTimestamps() {
         var first = service.save(request(), result(CheckStatus.MET));
         var before = jdbc.queryForMap("SELECT * FROM verification");
+        var scheduleBefore = jdbc.queryForMap("SELECT * FROM schedule");
         assertThat(service.save(request(), result(CheckStatus.NOT_MET))).isEqualTo(first);
         assertThat(jdbc.queryForMap("SELECT * FROM verification")).isEqualTo(before);
+        assertThat(jdbc.queryForMap("SELECT * FROM schedule")).isEqualTo(scheduleBefore);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification_check", Integer.class)).isEqualTo(2);
     }
 
