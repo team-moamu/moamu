@@ -7,6 +7,7 @@ import { ChallengeDetailPage } from '../pages/challenge/ChallengeDetailPage'
 import { VerificationPage } from '../pages/challenge/verificationPage'
 import { SignupPage } from '../pages/signup/SignupPage'
 import { EmailSignupPage } from '../pages/signup/EmailSignupPage'
+import { VerificationResultPage } from '../pages/challenge/VerificationResultPage'
 
 function HomePage() {
   return <h1>모아뮤 홈 화면</h1>
@@ -31,6 +32,8 @@ function MyPage() {
 export default function AppRoutes() {
   return (
     <Routes>
+      {/* 인증 결과는 자체 레이아웃 사용: 실패·검토 화면에만 하단 내비게이션 표시 */}
+      <Route path="/challenge/:challengeId/verification/result/:verificationId" element={<VerificationResultPage />} />
       {/* 
         - element에 showBottomNav 추가하면 네비게이션바가 생깁니다. 
         - headerType: MainLayout.tsx에 있는 헤더 타입

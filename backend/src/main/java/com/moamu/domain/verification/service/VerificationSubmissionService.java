@@ -18,6 +18,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 import com.moamu.domain.verification.entity.Verification;
 import com.moamu.domain.verification.repository.VerificationRepository;
 import com.moamu.domain.verification.dto.VerificationSubmissionResponse;
+import com.moamu.domain.verification.dto.VerificationSubmitRequest;
+import com.moamu.domain.verification.dto.VerificationSubmitResponse;
 import com.moamu.domain.schedule.repository.ScheduleRepository;
 import com.moamu.domain.challenge.repository.ChallengeRepository;
 import com.moamu.domain.media.repository.MediaRepository;
@@ -29,6 +31,7 @@ import java.util.Set;
 
 @Service
 public class VerificationSubmissionService {
+    private final VerificationSubmissionTransactionService transactionService;
     private final PhotoVerificationRequestRepository requestRepository;
     private final PhotoVerificationService photoVerificationService;
     private final VerificationResultService resultService;
@@ -55,6 +58,7 @@ public class VerificationSubmissionService {
             ScheduleRepository scheduleRepository,
             ChallengeRepository challengeRepository,
             MediaRepository mediaRepository,
+            VerificationSubmissionTransactionService transactionService,
             PlatformTransactionManager transactionManager
     ) {
         this.requestRepository = requestRepository;
@@ -67,9 +71,27 @@ public class VerificationSubmissionService {
         this.scheduleRepository = scheduleRepository;
         this.challengeRepository = challengeRepository;
         this.mediaRepository = mediaRepository;
+        this.transactionService = transactionService;
         this.submissionTransaction = new TransactionTemplate(transactionManager);
         this.submissionTransaction.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
         this.submissionTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+    }
+
+    // 기존 호출부에서 사용하는 인증 접수 -> AI 판정 -> 결과 저장 흐름 유지
+    public VerificationSubmitResponse submit(Long userId, VerificationSubmitRequest request) {
+        if (userId == null || userId <= 0) {
+            throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
+        }
+        var submission = transactionService.prepare(userId, request);
+        if (submission.completed() != null) return submission.completed();
+
+        try {
+            var result = photoVerificationService.verify(submission.request());
+            return transactionService.complete(submission, result);
+        } catch (RuntimeException exception) {
+            transactionService.fail(submission);
+            throw exception;
+        }
     }
 
     // 인증 접수를 처리

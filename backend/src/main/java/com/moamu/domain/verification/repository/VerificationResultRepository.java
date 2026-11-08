@@ -32,6 +32,16 @@ public class VerificationResultRepository {
                 """, (row, index) -> new Condition(row.getLong(1), row.getString(2), row.getString(3)), verificationId);
     }
 
+    // 이전 시도의 늦은 결과가 새 시도의 회차 상태를 덮어쓰지 않도록 최신 시도만 연결합니다.
+    public Optional<Long> findLatestAttemptScheduleId(long verificationId) {
+        return jdbc.query("""
+                SELECT v.schedule_id FROM verification v
+                WHERE v.verification_id=? AND NOT EXISTS (
+                    SELECT 1 FROM verification newer
+                    WHERE newer.schedule_id=v.schedule_id AND newer.attempt_no>v.attempt_no)
+                """, (row, index) -> row.getLong(1), verificationId).stream().findFirst();
+    }
+
     // 동일 작업의 완료 결과 한 번만 반영
     public boolean completeTask(long taskId, long verificationId, LocalDateTime now) {
         return jdbc.update("""

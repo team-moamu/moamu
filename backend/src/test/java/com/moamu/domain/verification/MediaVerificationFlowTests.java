@@ -118,6 +118,26 @@ class MediaVerificationFlowTests {
     }
 
     @Test
+    void successResultRequiresJwtAndChallengeOwnership() throws Exception {
+        mvc.perform(upload("success-view")).andExpect(status().isOk());
+        var id = jdbc.queryForObject("SELECT verification_id FROM verification", Long.class);
+        String path = "/api/verification/" + id + "/result";
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(path))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(path)
+                        .header("Authorization", "Bearer " + tokens.createAccessToken(2L)))
+                .andExpect(status().isNotFound());
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(path)
+                        .header("Authorization", "Bearer " + tokens.createAccessToken(1L)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("SUCCESS"))
+                .andExpect(jsonPath("$.data.earnedPieceCount").value(1))
+                .andExpect(jsonPath("$.data.totalPieceCount").value(1))
+                .andExpect(jsonPath("$.data.checks.length()").value(2));
+        verify(client, times(1)).verify(any());
+    }
+
+    @Test
     void singleHttpRequestStoresAllRecordsAndReplayDoesNotCallExternalServers() throws Exception {
         var first = mvc.perform(upload("one")).andExpect(status().isOk())
                 .andExpect(jsonPath("data.status").value("SUCCESS"))
@@ -132,6 +152,8 @@ class MediaVerificationFlowTests {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification", Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification_check", Integer.class)).isEqualTo(2);
         assertThat(jdbc.queryForObject("SELECT attempt_count FROM schedule", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT status FROM schedule", String.class)).isEqualTo("SUCCESS");
+        assertThat(jdbc.queryForObject("SELECT version FROM schedule", Integer.class)).isEqualTo(2);
         assertThat(jdbc.queryForMap("SELECT started_at, finished_at FROM ai_task").values()).doesNotContainNull();
     }
 
@@ -142,6 +164,21 @@ class MediaVerificationFlowTests {
         mvc.perform(upload("negative")).andExpect(status().isOk())
                 .andExpect(jsonPath("data.status").value(check == CheckStatus.NOT_MET ? "FAILED" : "REVIEW_REQUIRED"));
         assertThat(jdbc.queryForObject("SELECT status FROM ai_task", String.class)).isEqualTo("SUCCEEDED");
+    }
+
+    @Test
+    void failedSubmissionsReopenUntilThirdAttemptThenRejectAnotherSubmission() throws Exception {
+        doAnswer(call -> answer(call.getArgument(0), CheckStatus.NOT_MET)).when(client).verify(any());
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            mvc.perform(upload("attempt-" + attempt)).andExpect(status().isOk())
+                    .andExpect(jsonPath("data.status").value("FAILED"));
+            assertThat(jdbc.queryForObject("SELECT attempt_count FROM schedule", Integer.class)).isEqualTo(attempt);
+            assertThat(jdbc.queryForObject("SELECT status FROM schedule", String.class))
+                    .isEqualTo(attempt < 3 ? "OPEN" : "FAILED");
+        }
+        mvc.perform(upload("attempt-4")).andExpect(status().isBadRequest());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification", Integer.class)).isEqualTo(3);
+        verify(client, times(3)).verify(any());
     }
 
     @Test
