@@ -13,7 +13,7 @@ export interface HomeChallenge {
 }
 
 export type HomeRecords = Record<string, HomeChallenge[]>
-export type HomeDataMode = 'loading' | 'live' | 'demo'
+export type HomeDataMode = 'loading' | 'live' | 'demo' | 'unauthenticated'
 
 export function dateKey(date: Date): string {
   const year = date.getFullYear()

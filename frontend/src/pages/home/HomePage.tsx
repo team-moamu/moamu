@@ -1,5 +1,6 @@
 ﻿import { useState } from 'react'
 import { HomeGallery } from './components/HomeGallery'
+import { Navigate } from 'react-router'
 import { HomeDateSelector } from './components/HomeDateSelector'
 import { HomeChallengeSection } from './components/HomeChallengeSection'
 import { dateKey, shiftDate } from './homeData'
@@ -21,6 +22,10 @@ export function HomePage() {
     if (dateKey(date) !== dateKey(selectedDate)) {
       setSelectedDate(date)
     }
+  }
+
+  if (mode === 'unauthenticated') {
+    return <Navigate to="/login" replace />
   }
 
   return (

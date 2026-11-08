@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getChallengeDetail, getTodayChallenges } from '../../api/ChallengeApi'
+import { AuthenticationRequiredError } from '../../api/authenticatedFetch'
+import { getAccessToken } from '../../auth/authStorage'
 import { centeredDates, dateKey, demoChallenges, toHomeChallenge } from './homeData'
 import type { HomeDataMode, HomeRecords } from './homeData'
 
@@ -19,7 +21,10 @@ async function loadHomeRecords(selectedDate: Date, signal: AbortSignal): Promise
   const challengeIds = [...new Set(dailyChallenges.flat().map(challenge => challenge.challengeId))]
   const histories = new Map(await Promise.all(
     challengeIds.map(async id => (
-      [id, await getChallengeDetail(id).catch(() => null)] as const
+      [id, await getChallengeDetail(id, signal).catch(error => {
+        if (error instanceof AuthenticationRequiredError) throw error
+        return null
+      })] as const
     )),
   ))
 
@@ -34,6 +39,7 @@ async function loadHomeRecords(selectedDate: Date, signal: AbortSignal): Promise
 }
 
 export function useHomeChallenges(selectedDate: Date, today: Date) {
+  const accessToken = getAccessToken()
   const selectedKey = dateKey(selectedDate)
   const [state, setState] = useState<HomeDataState>({
     selectedKey,
@@ -42,6 +48,8 @@ export function useHomeChallenges(selectedDate: Date, today: Date) {
   })
 
   useEffect(() => {
+    if (!accessToken) return
+
     const controller = new AbortController()
 
     async function load() {
@@ -51,19 +59,25 @@ export function useHomeChallenges(selectedDate: Date, today: Date) {
         if (!controller.signal.aborted) {
           setState({ selectedKey: dateKey(selectedDate), mode: 'live', records })
         }
-      } catch {
+      } catch (error) {
         if (!controller.signal.aborted) {
-          setState({ selectedKey: dateKey(selectedDate), mode: 'demo', records: {} })
+          const mode = error instanceof AuthenticationRequiredError ? 'unauthenticated' : 'demo'
+          setState({ selectedKey: dateKey(selectedDate), mode, records: {} })
         }
       }
     }
 
     void load()
     return () => controller.abort()
-  }, [selectedDate])
+  }, [selectedDate, accessToken])
 
   // 날짜 변경 직후에는 이전 날짜의 도전이 보이지 않도록 한다.
-  const mode = state.selectedKey === selectedKey ? state.mode : 'loading'
+  let mode: HomeDataMode = 'loading'
+  if (!accessToken) {
+    mode = 'unauthenticated'
+  } else if (state.selectedKey === selectedKey) {
+    mode = state.mode
+  }
   const records = state.selectedKey === selectedKey ? state.records : {}
   const challenges = mode === 'demo'
     ? demoChallenges(selectedDate, today)

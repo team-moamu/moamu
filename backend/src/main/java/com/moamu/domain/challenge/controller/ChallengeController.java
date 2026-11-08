@@ -44,20 +44,19 @@ public class ChallengeController {
     }
 
     @PostMapping
-    public void createChallenge( @Valid @RequestBody ChallengeCreateRequest request) {
-        // 임시. 회원 기능 구현 후 수정 필요
-        Long userId = 1L; 
-
+    public void createChallenge(
+        @AuthenticationPrincipal Long userId,
+        @Valid @RequestBody ChallengeCreateRequest request
+    ) {
         challengeService.createChallenge(userId, request);
     }
 
     @GetMapping("/today")
     public ApiResponse<List<TodayChallengeResponse>> getTodayChallenges(
+        @AuthenticationPrincipal Long userId,
         @RequestParam(name = "day", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate day, 
         @RequestParam(name = "sortType", required = false) String sortType
     ) {
-        // 임시. 회원 기능 구현 후 수정 필요
-        Long userId = 1L; 
         List<TodayChallengeResponse> challenges = challengeService.getTodayChallenges(userId, day, sortType);
 
         return ApiResponse.success(challenges);

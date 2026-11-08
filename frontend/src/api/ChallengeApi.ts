@@ -6,6 +6,7 @@ import type {
   ChallengeCompletionResponse,
 } from '../types/Challenge'
 import type { ApiResponse } from '../types/ApiResponse'
+import { authenticatedFetch } from './authenticatedFetch'
 
 export class ChallengeCompletionError extends Error {
   readonly code: string | undefined
@@ -23,10 +24,9 @@ export async function getChallengeCompletion(
   signal?: AbortSignal,
   accessToken?: string,
 ): Promise<ChallengeCompletionResponse> {
-  const response = await fetch(`/api/challenges/${challengeId}/completion`, {
+  const response = await authenticatedFetch(`/api/challenges/${challengeId}/completion`, {
     signal,
-    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
-  })
+  }, accessToken)
   const body: ApiResponse<ChallengeCompletionResponse> | null = await response.json().catch(() => null)
   if (!response.ok || !body || !body.success) {
     const code = body?.success === false ? body.error.code : undefined
@@ -47,10 +47,10 @@ export async function getChallengeVerification(
   signal?: AbortSignal,
   accessToken?: string,
 ): Promise<ChallengeVerificationResponse | null> {
-  // 로그인 연결 시 전달받은 JWT로 인증 제출 페이지 조회
-  const response = await fetch(
+  const response = await authenticatedFetch(
     `/api/verification?challengeId=${challengeId}&scheduleId=${scheduleId}`,
-    { signal, headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined },
+    { signal },
+    accessToken,
   )
   const body: ApiResponse<ChallengeVerificationResponse | null> | null =
     await response.json().catch(() => null)
@@ -72,8 +72,12 @@ export async function getChallengeVerification(
 }
 
 // 오늘의 도전 목록 조회
-export async function getTodayChallenges(day?: string, signal?: AbortSignal): Promise<TodayChallengeResponse[]> {
-  const response = await fetch(`/api/challenges/today${day ? `?day=${encodeURIComponent(day)}` : ''}`, { signal })
+export async function getTodayChallenges(
+  day?: string,
+  signal?: AbortSignal,
+): Promise<TodayChallengeResponse[]> {
+  const query = day ? `?day=${encodeURIComponent(day)}` : ''
+  const response = await authenticatedFetch(`/api/challenges/today${query}`, { signal })
 
   if (!response.ok) {
     throw new Error('오늘의 도전 목록 조회 실패')
@@ -91,10 +95,12 @@ export async function getTodayChallenges(day?: string, signal?: AbortSignal): Pr
 
 // 도전 회차 상세 조회
 export async function getChallengeDetail(
-  challengeId: number
+  challengeId: number,
+  signal?: AbortSignal,
 ): Promise<ChallengeDetailResponse[]> {
-  const response = await fetch(
-    `/api/schedule/detail?challengeId=${challengeId}`
+  const response = await authenticatedFetch(
+    `/api/schedule/detail?challengeId=${challengeId}`,
+    { signal },
   )
 
   if (!response.ok) {
@@ -115,7 +121,7 @@ export async function getChallengeDetail(
 export async function createChallenge(
   request: ChallengeCreateRequest
 ): Promise<void> {
-  const response = await fetch('/api/challenges', {
+  const response = await authenticatedFetch('/api/challenges', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),

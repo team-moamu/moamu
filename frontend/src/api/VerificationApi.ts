@@ -1,5 +1,6 @@
 import type { ApiResponse } from '../types/ApiResponse'
 import type { VerificationSuccessResponse } from '../types/Challenge'
+import { authenticatedFetch } from './authenticatedFetch'
 
 // 인증 성공 결과 조회. 실패해도 사진 인증을 다시 제출하지 않음
 export async function getVerificationSuccess(
@@ -7,10 +8,9 @@ export async function getVerificationSuccess(
   signal?: AbortSignal,
   accessToken?: string,
 ): Promise<VerificationSuccessResponse> {
-  const response = await fetch(`/api/verification/${verificationId}/result`, {
+  const response = await authenticatedFetch(`/api/verification/${verificationId}/result`, {
     signal,
-    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
-  })
+  }, accessToken)
   const body: ApiResponse<VerificationSuccessResponse> | null = await response.json().catch(() => null)
 
   if (!response.ok || !body || !body.success) {
