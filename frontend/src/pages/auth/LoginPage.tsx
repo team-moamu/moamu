@@ -5,22 +5,23 @@ import { Text } from '../../components/atoms/typography/Text'
 import { LabeledInput } from '../../components/molecules/form/LabeledInput'
 import { SocialLoginButton } from '../../components/molecules/form/SocialLoginButton'
 import { login, LoginError } from '../../api/AuthApi'
+import { useNavigate } from 'react-router'
 
 export function LoginPage() {
+  const navigate = useNavigate()
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [autoLogin, setAutoLogin] = useState(false)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
-  const [successMessage, setSuccessMessage] = useState('')
 
   async function handleLogin() {
     if (isSubmitting) return
 
     setIsSubmitting(true)
     setErrorMessage('')
-    setSuccessMessage('')
 
     try {
       await login({
@@ -28,7 +29,7 @@ export function LoginPage() {
         password,
       })
 
-      setSuccessMessage('로그인에 성공했어요.')
+      navigate('/', { replace: true })
     } catch (error) {
       if (error instanceof LoginError) {
         switch (error.code) {
@@ -119,14 +120,6 @@ export function LoginPage() {
           </p>
         )}
 
-        {successMessage && (
-          <p
-            role="status"
-            className="text-caption text-[var(--color-primary)]"
-          >
-            {successMessage}
-          </p>
-        )}
         <Button
           type="submit"
           disabled={isSubmitting}
