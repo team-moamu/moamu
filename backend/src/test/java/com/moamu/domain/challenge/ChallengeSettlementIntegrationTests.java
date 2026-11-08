@@ -24,6 +24,9 @@ import com.moamu.domain.challenge.dto.ChallengeSettlementResponse;
 import com.moamu.domain.challenge.enums.Status;
 import com.moamu.domain.challenge.exception.ChallengeErrorCode;
 import com.moamu.domain.challenge.service.ChallengeService;
+import com.moamu.domain.challenge.repository.ChallengeRepository;
+import com.moamu.domain.schedule.service.ScheduleService;
+import com.moamu.domain.schedule.scheduler.ScheduleClosingScheduler;
 import com.moamu.global.exception.BusinessException;
 import com.moamu.global.exception.CommonErrorCode;
 import com.moamu.global.security.JwtTokenProvider;
@@ -40,6 +43,8 @@ class ChallengeSettlementIntegrationTests {
 
     @Autowired private JdbcTemplate jdbc;
     @Autowired private ChallengeService challengeService;
+    @Autowired private ScheduleService scheduleService;
+    @Autowired private ChallengeRepository challengeRepository;
     @Autowired private MockMvc mockMvc;
     @Autowired private JwtTokenProvider tokens;
     private long challengeId;
@@ -86,7 +91,84 @@ class ChallengeSettlementIntegrationTests {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"UPCOMING", "OPEN", "PROGRESSING", "IN_REVIEW", "PENDING_SETTLEMENT"})
+    @ValueSource(strings = {"UPCOMING", "OPEN"})
+    void closesExpiredUnsubmittedRoundOnceAndCompletesChallenge(String status) {
+        jdbc.update("UPDATE schedule SET status=? WHERE day_no=7", status);
+        assertThat(scheduleService.closeExpiredSchedules(1L, challengeId)).isEqualTo(1);
+        var decided = jdbc.queryForList("SELECT status, decided_at, result_reason, version, attempt_count, piece_index FROM schedule WHERE day_no=7");
+        assertThat(decided.getFirst().get("status")).isEqualTo("FAILED");
+        assertThat(decided.getFirst().get("decided_at")).isNotNull();
+        assertThat(decided.getFirst().get("result_reason")).isEqualTo("인증 기한 내에 인증을 완료하지 않았습니다.");
+        assertThat(decided.getFirst().get("attempt_count")).isEqualTo(0);
+        assertThat(scheduleService.closeExpiredSchedules(1L, challengeId)).isZero();
+        assertThat(jdbc.queryForList("SELECT status, decided_at, result_reason, version, attempt_count, piece_index FROM schedule WHERE day_no=7"))
+            .isEqualTo(decided);
+        assertThat(challengeService.settle(1L, challengeId).status()).isEqualTo(Status.COMPLETED);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"SUBMITTED", "ANALYZING", "REVIEW_REQUIRED", "TECH_ERROR", "SUCCESS"})
+    void latestUnresolvedOrSuccessfulVerificationIsNotClosedAsFailure(String status) {
+        insertVerification(1, status);
+        jdbc.update("UPDATE schedule SET status='OPEN' WHERE day_no=7");
+        assertThat(scheduleService.closeExpiredSchedules(1L, challengeId)).isZero();
+        assertThat(challengeService.settle(1L, challengeId).status()).isEqualTo(Status.SETTLING);
+        assertThat(jdbc.queryForObject("SELECT status FROM schedule WHERE day_no=7", String.class)).isEqualTo("OPEN");
+    }
+
+    @Test
+    void failedAttemptAfterOldTechnicalErrorCanBeClosedAtDeadline() {
+        insertVerification(1, "TECH_ERROR");
+        insertVerification(2, "FAILED");
+        jdbc.update("UPDATE schedule SET status='OPEN', attempt_count=1 WHERE day_no=7");
+        var response = challengeService.settle(1L, challengeId);
+        assertThat(response.status()).isEqualTo(Status.COMPLETED);
+        assertThat(response.failedScheduleCount()).isEqualTo(1);
+    }
+
+    @Test
+    void schedulerClosesPastRoundsButKeepsTodayAndFutureRoundsOpen() {
+        // 7일 도전 중 4일째: 지난 3개 회차만 마감하고 오늘·미래 회차는 유지
+        jdbc.update("UPDATE challenge SET start_date=DATE_ADD(start_date, INTERVAL 4 DAY), end_date=DATE_ADD(end_date, INTERVAL 4 DAY)");
+        jdbc.update("UPDATE schedule SET status='UPCOMING', schedule_date=DATE_ADD(schedule_date, INTERVAL 4 DAY)");
+        ScheduleClosingScheduler scheduler = new ScheduleClosingScheduler(challengeRepository, scheduleService, challengeService);
+        scheduler.closeExpiredSchedules();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM schedule WHERE status='FAILED'", Integer.class)).isEqualTo(3);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM schedule WHERE status='UPCOMING'", Integer.class)).isEqualTo(4);
+        assertThat(jdbc.queryForObject("SELECT status FROM challenge", String.class)).isEqualTo("IN_PROGRESS");
+        assertThat(jdbc.queryForObject("SELECT status FROM schedule WHERE day_no=4", String.class)).isEqualTo("UPCOMING");
+    }
+
+    @Test
+    void schedulerClosesExpiredChallengeAndRetainsTechnicalErrorsForNextRun() {
+        jdbc.update("UPDATE schedule SET status='OPEN'");
+        insertVerification(1, "TECH_ERROR");
+        ScheduleClosingScheduler scheduler = new ScheduleClosingScheduler(challengeRepository, scheduleService, challengeService);
+        scheduler.closeExpiredSchedules();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM schedule WHERE status='FAILED'", Integer.class)).isEqualTo(6);
+        assertThat(jdbc.queryForObject("SELECT status FROM schedule WHERE day_no=7", String.class)).isEqualTo("OPEN");
+        assertThat(jdbc.queryForObject("SELECT status FROM challenge", String.class)).isEqualTo("SETTLING");
+
+        // 협의 후 별도 담당자가 결과를 확정한 상황. 다음 실행에서 완료로 전환
+        jdbc.update("UPDATE verification SET status='FAILED'");
+        scheduler.closeExpiredSchedules();
+        assertThat(jdbc.queryForObject("SELECT status FROM challenge", String.class)).isEqualTo("COMPLETED");
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM schedule WHERE status='FAILED'", Integer.class)).isEqualTo(7);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"READY", "STOPPED", "COMPLETED"})
+    void automaticClosingSkipsInactiveChallengeStates(String status) {
+        jdbc.update("UPDATE schedule SET status='OPEN'");
+        jdbc.update("UPDATE challenge SET status=?", status);
+        ScheduleClosingScheduler scheduler = new ScheduleClosingScheduler(challengeRepository, scheduleService, challengeService);
+        scheduler.closeExpiredSchedules();
+        assertThat(scheduleService.closeExpiredSchedules(1L, challengeId)).isZero();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM schedule WHERE status='OPEN'", Integer.class)).isEqualTo(7);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"PROGRESSING", "IN_REVIEW", "PENDING_SETTLEMENT"})
     void leavesUnconfirmedScheduleInSettlement(String status) {
         jdbc.update("UPDATE schedule SET status=? WHERE day_no=7", status);
         ChallengeSettlementResponse response = challengeService.settle(1L, challengeId);

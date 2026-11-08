@@ -79,6 +79,19 @@ public class Schedule {
         this.status = Status.PROGRESSING;
     }
 
+    // 한국 시간 기준 다음 날이 된 미제출·재시도 가능 회차만 실패 확정
+    // 처리 중인 인증 유무는 서비스에서 확인한 후 호출
+    public boolean closeIfExpired(LocalDateTime now) {
+        if (!scheduleDate.isBefore(now.toLocalDate())
+                || (status != Status.UPCOMING && status != Status.OPEN)) {
+            return false;
+        }
+        status = Status.FAILED;
+        resultReason = "인증 기한 내에 인증을 완료하지 않았습니다.";
+        decidedAt = now;
+        return true;
+    }
+
     // AI 기술 오류는 사용자 실패가 아니므로 접수 시 증가한 횟수를 돌려줍니다.
     public void restoreTechnicalFailure() {
         if (status == Status.PROGRESSING) {

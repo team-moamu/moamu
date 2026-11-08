@@ -27,6 +27,7 @@ import com.moamu.domain.goal.repository.GoalTemplateArtworkRepository;
 import com.moamu.domain.goal.repository.GoalTemplateConditionRepository;
 import com.moamu.domain.goal.repository.GoalTemplateRepository;
 import com.moamu.domain.schedule.entity.Schedule;
+import com.moamu.domain.schedule.service.ScheduleService;
 import com.moamu.domain.media.repository.MediaRepository;
 import com.moamu.domain.verification.service.ArtworkImageUrlService;
 import com.moamu.domain.verification.enums.VerificationStatus;
@@ -53,6 +54,7 @@ public class ChallengeService {
     private final VerificationRepository verificationRepository;
     private final MediaRepository mediaRepository;
     private final ArtworkImageUrlService artworkImageUrlService;
+    private final ScheduleService scheduleService;
 
     // 최종 공개 상태와 집계를 동일한 시점으로 조회하며 인증·회차·전시 상태는 변경하지 않음
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
@@ -258,7 +260,11 @@ public class ChallengeService {
         List<Schedule> schedules = scheduleRepository.findSchedulesForSettlement(challengeId);
         validateSchedules(challenge, schedules);
 
-        // 회차 상태는 읽기만 하며 기한 경과에 따른 실패 확정은 회차 담당 로직에서 수행
+        // 스케줄러 실행 전 호출돼도 동일한 정책으로 지난 미제출 회차 마감
+        // 동일 트랜잭션에 참여하므로 이후 도전 확정이 실패하면 회차 변경도 롤백
+        scheduleService.closeExpiredSchedules(userId, challengeId);
+
+        // 마감된 회차 상태로 도전 전체의 확정 여부 집계
         int successCount = 0;
         int failedCount = 0;
         for (Schedule schedule : schedules) {

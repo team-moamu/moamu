@@ -10,6 +10,25 @@ import org.springframework.data.repository.query.Param;
 
 public interface VerificationRepository extends JpaRepository<Verification, Long> {
 
+    // 최신 시도가 실패 외의 상태이면 자동 마감 제외: 기술 오류·처리 중·성공 결과 보호
+    @Query("""
+        SELECT v.scheduleId
+        FROM Verification v
+        INNER JOIN Schedule s ON s.scheduleId = v.scheduleId
+        WHERE s.challengeId = :challengeId
+            AND v.status <> :failedStatus
+            AND NOT EXISTS (
+                SELECT newer.verificationId
+                FROM Verification newer
+                WHERE newer.scheduleId = v.scheduleId
+                    AND newer.attemptNo > v.attemptNo
+            )
+        """)
+    List<Long> findScheduleIdsExcludedFromClosing(
+        @Param("challengeId") Long challengeId,
+        @Param("failedStatus") VerificationStatus failedStatus
+    );
+
     // 과거의 기술 오류가 이후 확정된 판정을 막지 않도록 회차별 최신 시도만 확인
     @Query("""
         SELECT COUNT(v)
