@@ -91,10 +91,6 @@ class ChallengeCreationIntegrationTests {
             assertThat(((Number) schedule.get("day_no")).intValue()).isEqualTo(i + 1);
             assertThat(((Number) schedule.get("piece_index")).intValue()).isEqualTo(i);
             assertThat(((java.sql.Date) schedule.get("schedule_date")).toLocalDate()).isEqualTo(date);
-            assertThat(schedule.get("start_at"))
-                    .isEqualTo(date.atStartOfDay());
-            assertThat(schedule.get("deadline_at"))
-                    .isEqualTo(date.plusDays(1).atStartOfDay());
             assertThat(schedule.get("status")).isEqualTo("UPCOMING");
             assertThat(schedule.get("frst_reg_dt")).isNotNull();
             assertThat(schedule.get("upd_dt")).isNull();

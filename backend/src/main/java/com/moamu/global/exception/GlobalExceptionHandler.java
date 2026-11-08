@@ -1,5 +1,7 @@
 package com.moamu.global.exception;
 
+import com.moamu.domain.verification.exception.PhotoVerificationTechnicalException;
+
 import com.moamu.global.response.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
@@ -31,6 +33,14 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         }
         return super.handleExceptionInternal(exception,
                 ApiResponse.failure(errorCode.getCode(), errorCode.getMessage()), headers, status, request);
+    }
+
+    @ExceptionHandler(PhotoVerificationTechnicalException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAiTechnicalException(
+            PhotoVerificationTechnicalException exception) {
+        log.error("AI verification failed", exception);
+        return ResponseEntity.status(502).body(ApiResponse.failure(
+                "AI_TECHNICAL_ERROR", "AI 판정 처리 중 기술 오류가 발생했습니다. 사용자 인증 실패가 아닙니다."));
     }
 
     @ExceptionHandler(Exception.class)

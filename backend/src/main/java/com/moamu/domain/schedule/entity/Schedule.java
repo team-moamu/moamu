@@ -8,6 +8,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import com.moamu.domain.schedule.enums.Status;
+import com.moamu.domain.verification.enums.VerificationResult;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -73,6 +74,36 @@ public class Schedule {
     @Column(name = "upd_dt")
     private LocalDateTime updDt;
 
+    public void markVerificationSubmitted() {
+        this.attemptCount++;
+        this.status = Status.PROGRESSING;
+    }
+
+    // AI 기술 오류는 사용자 실패가 아니므로 접수 시 증가한 횟수를 돌려줍니다.
+    public void restoreTechnicalFailure() {
+        if (status == Status.PROGRESSING) {
+            attemptCount = Math.max(0, attemptCount - 1);
+            status = Status.OPEN;
+        }
+    }
+
+    // 정상 AI 결과를 회차에 반영합니다. 실패해도 기회가 남으면 다시 제출할 수 있습니다.
+    public void applyVerificationResult(
+            VerificationResult result,
+            String reason, LocalDateTime now) {
+        if (status != Status.PROGRESSING) {
+            throw new IllegalStateException("판정 결과를 반영할 수 없는 회차 상태입니다.");
+        }
+        this.status = switch (result) {
+            case SUCCESS -> Status.SUCCESS;
+            case REVIEW_REQUIRED -> Status.IN_REVIEW;
+            case FAILED -> attemptCount >= 3 ? Status.FAILED : Status.OPEN;
+        };
+        // 검토 중이거나 재제출 가능한 회차는 아직 최종 확정된 상태가 아닙니다.
+        this.decidedAt = status == Status.SUCCESS || status == Status.FAILED ? now : null;
+        this.resultReason = status == Status.FAILED || status == Status.IN_REVIEW ? reason : null;
+    }
+
     public static Schedule create(
             Long challengeId,
             int dayNo,
@@ -89,5 +120,23 @@ public class Schedule {
         schedule.pieceIndex = pieceIndex;
 
         return schedule;
+    }
+    
+    // 새 인증 접수: 시도 횟수 증가 및 AI 판정 진행 상태로 변경
+    public void startVerification() {
+        attemptCount++;
+        status = Status.PROGRESSING;
+    }
+
+    // 기술 오류 재시도: 시도 횟수는 유지하고 판정 진행 상태로 변경
+    public void retryVerification() {
+        status = Status.PROGRESSING;
+    }
+
+    // 판정 결과 반영. 성공 또는 최종 실패일 때만 회차 확정 시각 설정
+    public void completeVerification(Status status, String reason) {
+        this.status = status;
+        resultReason = reason;
+        decidedAt = status == Status.SUCCESS || status == Status.FAILED ? LocalDateTime.now() : null;
     }
 }

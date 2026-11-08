@@ -1,6 +1,9 @@
 package com.moamu.domain.schedule.repository;
 
 import java.util.List;
+import java.util.Optional;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -12,6 +15,7 @@ import com.moamu.domain.verification.dto.ChallengeVerificationResponseDto;
 import org.springframework.data.repository.query.Param;
 
 public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
+
     @Query ("""
     SELECT new com.moamu.domain.schedule.dto.ScheduleDetailResponse (
         c.challengeId,
@@ -49,4 +53,9 @@ public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
         AND s.scheduleId = :scheduleId
         """)
     List<ChallengeVerificationResponseDto> findByChallengeIdAndScheduleId(@Param("challengeId") Long challengeId, @Param("scheduleId") Long scheduleId);
+
+    //@Lock: 먼저 조회한 트랜잭션이 해당 회차를 잠금 -> 같은 회차에 인증 요청이 동시에 들어오는 것을 막기 위함.
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM Schedule s WHERE s.scheduleId = :scheduleId")
+    Optional<Schedule> findForVerification(@Param("scheduleId") Long scheduleId);
 }
