@@ -8,8 +8,8 @@ import jakarta.validation.constraints.NotNull;
 
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public record PhotoVerificationErrorResponse(
-        @NotBlank String aiTaskId,
-        @NotBlank String verificationId,
+        String aiTaskId,
+        String verificationId,
         @NotBlank String processingStatus,
         @NotNull @Valid Error error) {
 

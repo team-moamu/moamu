@@ -106,7 +106,7 @@ public class PhotoVerificationClient {
         PhotoVerificationErrorResponse response = read(
                 exception.getResponseBodyAsString(), PhotoVerificationErrorResponse.class);
         validateFields(response, "AI 오류 응답의 필수 값이 올바르지 않습니다.");
-        validateIds(request, response.aiTaskId(), response.verificationId());
+        validateErrorIds(request, response, exception.getStatusCode().value());
         int expectedStatus = switch (response.error().code()) {
             case "INVALID_REQUEST" -> 400;
             case "UNSUPPORTED_IMAGE", "IMAGE_FETCH_FAILED" -> 422;
@@ -154,6 +154,21 @@ public class PhotoVerificationClient {
         if (value == null || !validator.validate(value).isEmpty()) {
             throw new PhotoVerificationTechnicalException(message);
         }
+    }
+
+    // 요청을 읽지 못한 400 오류에 한해서 식별자 null 허용.
+    // 반환된 식별자가 있다면 반드시 원 요청과 일치해야 한다.
+    private void validateErrorIds(PhotoVerificationRequest request,
+            PhotoVerificationErrorResponse response, int httpStatus) {
+        if (httpStatus == 400 && "INVALID_REQUEST".equals(response.error().code())) {
+            if ((response.aiTaskId() != null && !request.aiTaskId().equals(response.aiTaskId()))
+                    || (response.verificationId() != null
+                    && !request.verificationId().equals(response.verificationId()))) {
+                throw new PhotoVerificationTechnicalException("AI 판정 요청과 응답의 ID가 일치하지 않습니다.");
+            }
+            return;
+        }
+        validateIds(request, response.aiTaskId(), response.verificationId());
     }
 
     // 요청과 응답의 작업 ID,인증 ID 일치 여부 확인
