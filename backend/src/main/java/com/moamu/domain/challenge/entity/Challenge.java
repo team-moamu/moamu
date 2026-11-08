@@ -100,6 +100,14 @@ public class Challenge extends BaseEntity {
     @Column(name = "is_exhibited")
     private char isExhibited = 'N';
 
+    // 기간 종료 후 회차 확정 여부에 따라 정산 대기 또는 완료 처리. 전시 여부는 변경하지 않음
+    public void settle(boolean allSchedulesFinalized) {
+        if (status != Status.IN_PROGRESS && status != Status.SETTLING) {
+            throw new IllegalStateException("종료 처리할 수 없는 도전 상태입니다.");
+        }
+        status = allSchedulesFinalized ? Status.COMPLETED : Status.SETTLING;
+    }
+
     // 도전 생성
     public static Challenge create(Long userId, Long cateId, Long goalTemplateId, Long artworkId, String challengeTitle, String goalText, String inputGoalText,
             String photoGuide, int durationDays, LocalDate startDate, LocalDate endDate, String verificationScope, int gridRows, int gridCols ) {

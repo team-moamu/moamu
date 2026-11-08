@@ -209,6 +209,46 @@ JWT Bearer 인증이 필요하며 해당 도전의 소유자만 조회할 수 �
 }
 ```
 
+### 기간 종료 후 도전 종료 처리 API
+
+`POST /api/challenges/{challengeId}/settlement` — 본문 없이 JWT Bearer 인증으로 호출합니다.
+로그인 사용자가 소유한 삭제되지 않은 도전만 처리합니다.
+
+- 한국 시간 기준 `endDate` 당일까지는 `409 CHALLENGE_NOT_ENDED`입니다.
+- `IN_PROGRESS`·`SETTLING` 도전은 기간 종료 후 정산할 수 있습니다.
+  `READY`·`STOPPED`는 `409 CHALLENGE_SETTLEMENT_NOT_ALLOWED`입니다.
+- 도전 기간만큼의 회차가 존재하고 날짜·순번이 일치해야 합니다.
+  누락 또는 불일치는 `409 INVALID_CHALLENGE_SCHEDULES`이며 도전을 변경하지 않습니다.
+- 모든 회차가 `SUCCESS`·`FAILED`이고 최신 미확정 인증이 없으면 `COMPLETED`입니다.
+  일부 또는 0개 조각 획득도 완료할 수 있으며 `isExhibited`는 변경하지 않습니다.
+- 미확정 회차 또는 최신 `SUBMITTED`·`ANALYZING`·`REVIEW_REQUIRED`·`TECH_ERROR`가 있으면
+  `SETTLING`입니다. 과거 기술 오류 이후 최신 인증이 확정됐다면 과거 오류는 완료를 막지 않습니다.
+- 이 API는 **challenge만 갱신**합니다. 회차의 기한 경과 실패 처리와 기술 오류 재처리는
+  회차 담당 로직에서 결정·구현합니다. `OPEN` 등 미확정 회차를 이 API가 강제로 실패 처리하지 않습니다.
+- 완료된 도전의 재호출은 같은 결과를 반환합니다. 도전과 회차 잠금으로 동시 종료 요청을 직렬화합니다.
+- 자동 스케줄러, 신규 인증 접수 정책 수정, 완료 화면 및 작품 조회는 이번 API 범위에 포함하지 않습니다.
+  회차 결과가 확정된 후 다시 호출해야 `SETTLING`에서 `COMPLETED`로 전환됩니다.
+
+전체 7회차 중 3개 성공·4개 실패가 확정된 경우의 응답 예시:
+
+```json
+{
+  "success": true,
+  "data": {
+    "challengeId": 10,
+    "status": "COMPLETED",
+    "endDate": "2026-11-07",
+    "durationDays": 7,
+    "totalScheduleCount": 7,
+    "successScheduleCount": 3,
+    "failedScheduleCount": 4,
+    "pendingScheduleCount": 0,
+    "pendingVerificationCount": 0,
+    "completionAvailable": true
+  }
+}
+```
+
 ## 미정 사항
 
 - JWT·AI 서버 간 인증 방식
