@@ -4,11 +4,52 @@ import { Input } from '../../components/atoms/input/Input'
 import { Text } from '../../components/atoms/typography/Text'
 import { LabeledInput } from '../../components/molecules/form/LabeledInput'
 import { SocialLoginButton } from '../../components/molecules/form/SocialLoginButton'
+import { login, LoginError } from '../../api/AuthApi'
 
 export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [autoLogin, setAutoLogin] = useState(false)
+
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [errorMessage, setErrorMessage] = useState('')
+  const [successMessage, setSuccessMessage] = useState('')
+
+  async function handleLogin() {
+    if (isSubmitting) return
+
+    setIsSubmitting(true)
+    setErrorMessage('')
+    setSuccessMessage('')
+
+    try {
+      await login({
+        loginId: email,
+        password,
+      })
+
+      setSuccessMessage('로그인에 성공했어요.')
+    } catch (error) {
+      if (error instanceof LoginError) {
+        switch (error.code) {
+          case 'INVALID_CREDENTIALS':
+            setErrorMessage('이메일 또는 비밀번호를 확인해 주세요.')
+            break
+
+          case 'LOGIN_NOT_ALLOWED':
+            setErrorMessage('로그인할 수 없는 계정입니다.')
+            break
+
+          default:
+            setErrorMessage(error.message)
+        }
+      } else {
+        setErrorMessage('잠시 후 다시 시도해 주세요.')
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   return (
     <section className="px-6 py-6">
@@ -22,8 +63,10 @@ export function LoginPage() {
 
       <form
         className="flex flex-col gap-3"
+        aria-busy={isSubmitting}
         onSubmit={(event) => {
           event.preventDefault()
+          void handleLogin()
         }}
       >
         <LabeledInput
@@ -36,6 +79,7 @@ export function LoginPage() {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
           className="min-h-[52px] rounded-xl px-4 text-base"
+          disabled={isSubmitting}
           required
         />
 
@@ -49,6 +93,7 @@ export function LoginPage() {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           className="min-h-[52px] rounded-xl px-4 text-base"
+          disabled={isSubmitting}
           required
         />
 
@@ -68,14 +113,29 @@ export function LoginPage() {
           </span>
         </label>
 
+        {errorMessage && (
+          <p role="alert" className="field__error">
+            {errorMessage}
+          </p>
+        )}
+
+        {successMessage && (
+          <p
+            role="status"
+            className="text-caption text-[var(--color-primary)]"
+          >
+            {successMessage}
+          </p>
+        )}
         <Button
           type="submit"
+          disabled={isSubmitting}
           className="
             button button--primary button--full
             mt-1 text-base font-normal
           "
         >
-          로그인
+          {isSubmitting ? '로그인 중…' : '로그인'}
         </Button>
       </form>
 
