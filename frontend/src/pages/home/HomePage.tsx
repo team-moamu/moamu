@@ -1,8 +1,8 @@
 ﻿import { useState } from 'react'
-import { HomeGallery } from './components/HomeGallery'
+import { HomeGallery } from '../../components/molecules/card/HomeBanner'
 import { Navigate } from 'react-router'
-import { HomeDateSelector } from './components/HomeDateSelector'
-import { HomeChallengeSection } from './components/HomeChallengeSection'
+import { HomeDateSelector } from '../../components/molecules/select/HomeDateSelector'
+import { HomeChallengeSection } from '../../components/molecules/card/HomeChallengeSection'
 import { dateKey, shiftDate } from './homeData'
 import { useHomeChallenges } from './useHomeChallenges'
 

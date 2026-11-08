@@ -1,8 +1,8 @@
 import { Link } from 'react-router'
-import { ProgressBar } from '../../../components/atoms/progressBar/ProgressBar'
+import { ProgressBar } from '../../atoms/progressBar/ProgressBar'
 import artwork from '../../../mockTest/artwork-preview.svg'
 import type { ScheduleStatus } from '../../../types/schedule'
-import type { HomeChallenge } from '../homeData'
+import type { HomeChallenge } from '../../../pages/home/homeData'
 
 const statusLabels: Record<ScheduleStatus, string> = {
   UPCOMING: '시작 예정',
@@ -75,10 +75,6 @@ function ChallengeAction({ challenge, isToday }: { challenge: HomeChallenge; isT
   const label = isToday ? statusLabels[challenge.status] : '기록 보기'
   const actionClassName = `mt-auto flex min-h-[38px] items-center self-end pt-2
     text-sm text-[var(--color-text)] no-underline`
-
-  if (challenge.demo) {
-    return <span className={actionClassName}>예시 · 인증 전</span>
-  }
 
   return (
     <Link className={actionClassName} to={destination}>
