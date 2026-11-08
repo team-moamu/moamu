@@ -51,8 +51,8 @@ class VerificationSubmissionServiceTests {
                 VALUES (40, 1, 10, 20, 30, 'Test', 'Daily goal', 7, '2026-11-01', '2026-11-07', 'Visible result', 3, 3)
                 """);
         jdbc.update("""
-                INSERT INTO schedule (schedule_id, challenge_id, day_no, schedule_date, piece_index)
-                VALUES (50, 40, 1, '2026-11-01', 0)
+                INSERT INTO schedule (schedule_id, challenge_id, day_no, schedule_date, piece_index, status, attempt_count)
+                VALUES (50, 40, 1, '2026-11-01', 0, 'PROGRESSING', 1)
                 """);
         jdbc.update("""
                 INSERT INTO challenge_condition (challenge_condition_id, challenge_id, code, description)

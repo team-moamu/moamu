@@ -132,6 +132,8 @@ class MediaVerificationFlowTests {
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification", Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification_check", Integer.class)).isEqualTo(2);
         assertThat(jdbc.queryForObject("SELECT attempt_count FROM schedule", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT status FROM schedule", String.class)).isEqualTo("SUCCESS");
+        assertThat(jdbc.queryForObject("SELECT version FROM schedule", Integer.class)).isEqualTo(2);
         assertThat(jdbc.queryForMap("SELECT started_at, finished_at FROM ai_task").values()).doesNotContainNull();
     }
 
@@ -142,6 +144,21 @@ class MediaVerificationFlowTests {
         mvc.perform(upload("negative")).andExpect(status().isOk())
                 .andExpect(jsonPath("data.status").value(check == CheckStatus.NOT_MET ? "FAILED" : "REVIEW_REQUIRED"));
         assertThat(jdbc.queryForObject("SELECT status FROM ai_task", String.class)).isEqualTo("SUCCEEDED");
+    }
+
+    @Test
+    void failedSubmissionsReopenUntilThirdAttemptThenRejectAnotherSubmission() throws Exception {
+        doAnswer(call -> answer(call.getArgument(0), CheckStatus.NOT_MET)).when(client).verify(any());
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            mvc.perform(upload("attempt-" + attempt)).andExpect(status().isOk())
+                    .andExpect(jsonPath("data.status").value("FAILED"));
+            assertThat(jdbc.queryForObject("SELECT attempt_count FROM schedule", Integer.class)).isEqualTo(attempt);
+            assertThat(jdbc.queryForObject("SELECT status FROM schedule", String.class))
+                    .isEqualTo(attempt < 3 ? "OPEN" : "FAILED");
+        }
+        mvc.perform(upload("attempt-4")).andExpect(status().isBadRequest());
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification", Integer.class)).isEqualTo(3);
+        verify(client, times(3)).verify(any());
     }
 
     @Test
