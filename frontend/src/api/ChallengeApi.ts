@@ -3,8 +3,42 @@ import type {
   ChallengeDetailResponse,
   ChallengeVerificationResponse,
   ChallengeCreateRequest,
+  ChallengeCompletionResponse,
 } from '../types/Challenge'
 import type { ApiResponse } from '../types/ApiResponse'
+
+export class ChallengeCompletionError extends Error {
+  readonly code: string | undefined
+
+  constructor(message: string, code?: string) {
+    super(message)
+    this.name = 'ChallengeCompletionError'
+    this.code = code
+  }
+}
+
+// 완료 조회만 수행. 정산 POST나 인증 요청을 대신 실행하지 않음
+export async function getChallengeCompletion(
+  challengeId: number,
+  signal?: AbortSignal,
+  accessToken?: string,
+): Promise<ChallengeCompletionResponse> {
+  const response = await fetch(`/api/challenges/${challengeId}/completion`, {
+    signal,
+    headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+  })
+  const body: ApiResponse<ChallengeCompletionResponse> | null = await response.json().catch(() => null)
+  if (!response.ok || !body || !body.success) {
+    const code = body?.success === false ? body.error.code : undefined
+    const message = code === 'CHALLENGE_NOT_COMPLETED' ? '아직 도전 결과가 확정되지 않았어요. 정산이 끝난 뒤 다시 확인해 주세요.'
+      : body?.success === false ? body.error.message : '완료 결과를 불러오지 못했어요.'
+    throw new ChallengeCompletionError(message, code)
+  }
+  if (!body.data || body.data.status !== 'COMPLETED' || body.data.challengeId !== challengeId) {
+    throw new ChallengeCompletionError('완료 결과 정보가 올바르지 않아요.')
+  }
+  return body.data
+}
 
 // 인증 제출 페이지 조회
 export async function getChallengeVerification(

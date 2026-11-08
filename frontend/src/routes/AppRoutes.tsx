@@ -6,6 +6,7 @@ import { ChallengeListPage } from '../pages/challenge/ChallengeListPage'
 import { ChallengeDetailPage } from '../pages/challenge/ChallengeDetailPage'
 import { VerificationPage } from '../pages/challenge/verificationPage'
 import { VerificationResultPage } from '../pages/challenge/VerificationResultPage'
+import { ChallengeCompletionPage } from '../pages/challenge/ChallengeCompletionPage'
 
 function HomePage() {
   return <h1>모아뮤 홈 화면</h1>
@@ -30,6 +31,8 @@ function MyPage() {
 export default function AppRoutes() {
   return (
     <Routes>
+      {/* 도전 전체 완료: 축하 화면을 먼저 표시한 뒤 결과 화면으로 자동 전환 */}
+      <Route path="/challenge/:challengeId/completion" element={<ChallengeCompletionPage />} />
       {/* 인증 결과는 자체 레이아웃 사용: 실패·검토 화면에만 하단 내비게이션 표시 */}
       <Route path="/challenge/:challengeId/verification/result/:verificationId" element={<VerificationResultPage />} />
       {/* 
