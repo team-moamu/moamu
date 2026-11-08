@@ -1,30 +1,34 @@
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { createChallenge } from '../../api/ChallengeApi'
+import { getGoalTemplates } from '../../api/GoalTemplateApi'
 import { GoalCardList } from '../../components/molecules/card/GoalCardList'
 import { CalendarInput } from '../../components/molecules/form/CalendarInput'
 import { DurationSelector } from '../../components/molecules/select/DurationSelector'
 import { SuccessButton } from '../../components/atoms/button/successButton'
 import type { IconName } from '../../components/atoms/icon/Icon'
 
-// 임시 목표 데이터 (추후 API 연동)
-const goals: {
+type Goal = {
   goalTemplateId: number
   title: string
   description: string
   icon: IconName
-}[] = [
-  { goalTemplateId: 1, title: '공부', description: '복습하기', icon: 'study' },
-  { goalTemplateId: 2, title: '운동', description: '매일 계단 오르기', icon: 'exercise' },
-  { goalTemplateId: 3, title: '물 마시기', description: '하루 2L', icon: 'water' },
-  { goalTemplateId: 4, title: '알고리즘', description: '매일 1시간 학습', icon: 'algorithm' },
-  { goalTemplateId: 5, title: '영양제', description: '매일 챙겨먹기', icon: 'supplement' },
-  { goalTemplateId: 6, title: '명찰', description: '매일 명찰 챙기기', icon: 'nametag' },
-]
+}
+
+function getGoalIcon(name: string): IconName {
+  if (name.includes('명찰')) return 'nametag'
+  if (name.includes('영양제')) return 'supplement'
+  if (name.includes('알고리즘')) return 'algorithm'
+  if (name.includes('물 마시기')) return 'water'
+  if (name.includes('운동') || name.includes('계단')) return 'exercise'
+  return 'study'
+}
 
 export function ChallengeCreatePage() {
   const navigate = useNavigate()
+  const [goals, setGoals] = useState<Goal[]>([])
+  const [isLoadingGoals, setIsLoadingGoals] = useState(true)
   // 목표 선택
   const [selectedGoalId, setSelectedGoalId] = useState<number | null>(null)
 
@@ -37,9 +41,33 @@ export function ChallengeCreatePage() {
   const [error, setError] = useState('')
   const submissionInFlight = useRef(false)
 
+  useEffect(() => {
+    const controller = new AbortController()
+    getGoalTemplates(controller.signal)
+      .then((templates) => {
+        if (controller.signal.aborted) return
+        setGoals(templates.map((template) => ({
+          goalTemplateId: template.goalTemplateId,
+          title: template.goalName,
+          description: template.description,
+          icon: getGoalIcon(template.goalName),
+        })))
+      })
+      .catch((error: unknown) => {
+        if (!controller.signal.aborted) {
+          setError(error instanceof Error ? error.message : '목표 목록을 불러오지 못했어요.')
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsLoadingGoals(false)
+      })
+    return () => controller.abort()
+  }, [])
+
   // 모든 항목 선택 여부
   const isDisabled =
     isSubmitting ||
+    isLoadingGoals ||
     selectedGoalId === null ||
     startDate === '' ||
     durationDays === null
@@ -73,6 +101,8 @@ export function ChallengeCreatePage() {
           어떤 도전을 만들어 볼까요?
         </h2>
 
+        {isLoadingGoals && <p role="status">목표 목록을 불러오는 중...</p>}
+        {!isLoadingGoals && goals.length === 0 && !error && <p>선택할 수 있는 목표가 없어요.</p>}
         <GoalCardList
           goals={goals}
           value={selectedGoalId}
