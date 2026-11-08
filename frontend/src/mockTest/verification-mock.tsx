@@ -4,6 +4,8 @@ import { createRoot } from 'react-dom/client'
 import { MemoryRouter, Route, Routes } from 'react-router'
 import { MainLayout } from '../components/layout/MainLayout'
 import { VerificationPage } from '../pages/challenge/verificationPage'
+import { VerificationResultPage } from '../pages/challenge/VerificationResultPage'
+import { sampleSuccess } from './verification-result-fixtures'
 import '../index.css'
 
 // 일반 앱의 진입점에서는 불러오지 않으며 로컬 개발 서버에서만 실행
@@ -49,6 +51,10 @@ window.fetch = async (input, init) => {
   const target = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
   const url = new URL(target, location.origin)
   if (!url.pathname.startsWith('/api/')) return originalFetch(input, init)
+
+  if (/^\/api\/verification\/\d+\/result$/.test(url.pathname)) {
+    return json(200, { success: true, data: sampleSuccess(Number(url.pathname.split('/')[3])) })
+  }
 
   // 로그인 없이 인증 페이지를 표시하고 제출 후 최신 시도 횟수 반환
   if (url.pathname === '/api/verification' && (!init?.method || init.method === 'GET')) {
@@ -138,6 +144,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MemoryRouter initialEntries={['/challenge/5/verification?scheduleId=36']}>
       <Routes>
+        <Route path="/challenge/:challengeId/verification/result/:verificationId" element={<VerificationResultPage />} />
         <Route element={<MainLayout showBottomNav background="white" headerType="title" title="오늘의 인증" />}>
           <Route path="/challenge/:challengeId/verification" element={<VerificationPage />} />
         </Route>
