@@ -1,11 +1,13 @@
 
 import { useState } from 'react'
+import { useNavigate } from 'react-router'
 import { AuthLink } from '../../components/atoms/link/AuthLink'
 import { Button } from '../../components/atoms/button/Button'
 import { SignupIntro } from '../../components/molecules/signup/SignupIntro'
 import { TermsModal } from '../../components/molecules/modal/TermsModal'
 
 export function SignupPage() {
+  const navigate = useNavigate()
   const [isTermsOpen, setIsTermsOpen] = useState(false)
   return (
     <section className="px-6 py-8">
@@ -32,9 +34,10 @@ export function SignupPage() {
       <TermsModal
           onClose={() => setIsTermsOpen(false)}
           onAgree={(marketingAgreed) => {
-          // 다음 단계에서 동의 정보를 보관하고 이메일 입력 화면으로 이동합니다.
-          console.log('마케팅 수신 동의:', marketingAgreed)
           setIsTermsOpen(false)
+          navigate('/signup/email', {
+            state: { serviceAgreed: true, privacyAgreed: true, marketingAgreed },
+          })
           }}
       />
       )}

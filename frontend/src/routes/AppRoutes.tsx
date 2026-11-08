@@ -6,6 +6,7 @@ import { ChallengeListPage } from '../pages/challenge/ChallengeListPage'
 import { ChallengeDetailPage } from '../pages/challenge/ChallengeDetailPage'
 import { VerificationPage } from '../pages/challenge/verificationPage'
 import { SignupPage } from '../pages/signup/SignupPage'
+import { EmailSignupPage } from '../pages/signup/EmailSignupPage'
 
 function HomePage() {
   return <h1>모아뮤 홈 화면</h1>
@@ -76,6 +77,10 @@ export default function AppRoutes() {
       {/* 회원가입 헤더 */}
       <Route element={<MainLayout headerType="back" title="회원가입" background="white"/>}>
         <Route path="/signup" element={<SignupPage />} />
+      </Route>
+      {/* 이메일 회원가입 헤더 */}
+      <Route element={<MainLayout headerType="back" title="이메일 회원가입" background="white" />}>
+        <Route path="/signup/email" element={<EmailSignupPage />} />
       </Route>
     </Routes>
   )
