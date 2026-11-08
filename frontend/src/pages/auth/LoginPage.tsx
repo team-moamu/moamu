@@ -3,6 +3,7 @@ import { Button } from '../../components/atoms/button/Button'
 import { Input } from '../../components/atoms/input/Input'
 import { Text } from '../../components/atoms/typography/Text'
 import { LabeledInput } from '../../components/molecules/form/LabeledInput'
+import { SocialLoginButton } from '../../components/molecules/form/SocialLoginButton'
 
 export function LoginPage() {
   const [email, setEmail] = useState('')
@@ -56,7 +57,9 @@ export function LoginPage() {
             name="autoLogin"
             type="checkbox"
             checked={autoLogin}
-            onChange={(event) => setAutoLogin(event.target.checked)}
+            onChange={(event) => {
+              setAutoLogin(event.target.checked)
+            }}
             className="size-3 accent-[var(--color-primary)]"
           />
 
@@ -75,6 +78,38 @@ export function LoginPage() {
           로그인
         </Button>
       </form>
+
+      <div className="mt-3 flex justify-center">
+        <Button
+          disabled
+          className="
+            text-caption text-[var(--color-primary)]
+            disabled:cursor-not-allowed
+          "
+        >
+          비밀번호 찾기
+        </Button>
+      </div>
+
+      <div className="mt-3">
+        <p className="text-caption text-muted mb-5 text-center">
+          또는 구글 계정으로 시작하기
+        </p>
+
+        <SocialLoginButton disabled />
+      </div>
+
+      <div className="mt-5 flex justify-center">
+        <Button
+          disabled
+          className="
+            text-caption text-[var(--color-primary)]
+            disabled:cursor-not-allowed
+          "
+        >
+          처음 오셨나요? 이메일 회원가입
+        </Button>
+      </div>
     </section>
   )
 }
