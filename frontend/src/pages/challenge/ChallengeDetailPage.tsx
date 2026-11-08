@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useOutletContext, useParams } from 'react-router'
+import { Link, useOutletContext, useParams } from 'react-router'
 import { ChallengeStatus } from '../../components/molecules/card/ChallengeStatus'
 import { ScheduleList } from '../../components/organisms/schedule/ScheduleList'
 import { getChallengeDetail } from '../../api/ChallengeApi'
@@ -17,6 +17,7 @@ export function ChallengeDetailPage() {
   const [details, setDetails] = useState<ChallengeDetailResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [canViewCompletion, setCanViewCompletion] = useState(false)
 
   useEffect(() => {
     let cancelled = false
@@ -25,6 +26,7 @@ export function ChallengeDetailPage() {
       setLoading(true)
       setError(null)
       setDetails([])
+      setCanViewCompletion(false)
       setPageTitle('')
 
       try {
@@ -38,6 +40,12 @@ export function ChallengeDetailPage() {
 
         if (!cancelled) {
           setDetails(data)
+          // 목록 데이터로는 진입 후보만 판단. 실제 완료 확정 여부는 완료 API에서 다시 검증
+          const today = new Intl.DateTimeFormat('sv-SE', {
+            timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit',
+          }).format(new Date())
+          setCanViewCompletion(data.length > 0 && data.every(detail =>
+            detail.scheduleDate.slice(0, 10) < today && ['SUCCESS', 'FAILED'].includes(detail.scheduleStatus)))
           setPageTitle(data[0]?.challengeTitle ?? '')
         }
       } catch (err) {
@@ -106,6 +114,12 @@ export function ChallengeDetailPage() {
       />
 
       <ScheduleList schedules={sortedSchedules} />
+      {canViewCompletion && (
+        <Link to={`/challenge/${challengeId}/completion`}
+          className="rounded-md bg-[var(--color-primary)] px-5 py-3 text-center text-white">
+          도전 완료 결과 보기
+        </Link>
+      )}
     </div>
   )
 }

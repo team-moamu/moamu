@@ -5,10 +5,12 @@ import { ChallengeCreatePage } from '../pages/challenge/ChallengeCreatePage'
 import { ChallengeListPage } from '../pages/challenge/ChallengeListPage'
 import { ChallengeDetailPage } from '../pages/challenge/ChallengeDetailPage'
 import { VerificationPage } from '../pages/challenge/verificationPage'
+import { LoginPage } from '../pages/auth/LoginPage'
 import { SignupPage } from '../pages/signup/SignupPage'
 import { EmailSignupPage } from '../pages/signup/EmailSignupPage'
 import { VerificationResultPage } from '../pages/challenge/VerificationResultPage'
 import { HomePage } from '../pages/home/HomePage'
+import { ChallengeCompletionPage } from '../pages/challenge/ChallengeCompletionPage'
 
 function ChallengePage() {
   return <h1>도전하기 화면</h1>
@@ -29,6 +31,8 @@ function MyPage() {
 export default function AppRoutes() {
   return (
     <Routes>
+      {/* 도전 전체 완료: 축하 화면을 먼저 표시한 뒤 결과 화면으로 자동 전환 */}
+      <Route path="/challenge/:challengeId/completion" element={<ChallengeCompletionPage />} />
       {/* 인증 결과는 자체 레이아웃 사용: 실패·검토 화면에만 하단 내비게이션 표시 */}
       <Route path="/challenge/:challengeId/verification/result/:verificationId" element={<VerificationResultPage />} />
       {/* 
@@ -71,8 +75,8 @@ export default function AppRoutes() {
       </Route>
 
       {/* 로그인 헤더 */}
-      <Route element={<MainLayout headerType="login" />}>
-        <Route path="/login" element={<HomePage />} />
+      <Route element={<MainLayout headerType="login" background="white"/>}>
+        <Route path="/login" element={<LoginPage />} />
       </Route>
 
       {/* 회원가입 헤더 */}

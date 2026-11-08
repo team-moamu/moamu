@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MOAMU 작품 완성 목업</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px; background: #eae6df; color: #493725; font: 14px/1.6 system-ui, sans-serif; }
+    .preview-layout { display: flex; justify-content: center; align-items: flex-start; gap: 32px; }
+    aside { width: 280px; padding: 24px; background: #fff8ec; border: 1px solid #dcc8ab; border-radius: 16px; }
+    h1 { font-size: 22px; margin: 0 0 8px; }
+    label { display: block; margin-top: 16px; font-weight: 600; }
+    select, button { padding: 10px; width: 100%; margin-top: 8px; border: 1px solid #dcc8ab; border-radius: 8px; background: white; color: inherit; font: inherit; }
+    button { cursor: pointer; }
+    .notice { font-size: 12px; color: #746451; }
+    .device { width: 390px; flex-shrink: 0; }
+    iframe { display: block; border: 3px solid #6b5138; border-radius: 24px; width: 100%; height: 820px; background: #fff8ec; }
+    @media(max-width: 760px) { body { padding: 12px; } .preview-layout { flex-direction: column; align-items: center; gap: 16px; } aside { width: 100%; max-width: 430px; padding: 16px; } .device { max-width: 100%; } }
+  </style>
+</head>
+<body>
+  <div class="preview-layout">
+    <aside>
+      <h1>작품 완성 미리보기</h1>
+      <p>축하 화면 4.5초 → 부드럽게 결과 화면으로 전환</p>
+      <p class="notice">로그인·실제 API 호출 없이 확인합니다.<br />작품은 샘플, 캐릭터는 기존 뮤 자산입니다.</p>
+      <label for="scenario">획득 결과</label>
+      <select id="scenario">
+        <option value="partial">일부 획득 · 미획득 위치 검정</option>
+        <option value="full">전체 획득 · 작품 전체 공개</option>
+        <option value="zero">0개 획득 · 전체 검정</option>
+        <option value="pending">진행 중·미확정 · 진입 차단</option>
+        <option value="error">조회 오류 → 재조회 성공</option>
+        <option value="no-image">작품 이미지 없음</option>
+      </select>
+      <label for="duration">도전 기간</label>
+      <select id="duration"><option value="7">7일</option><option value="14" selected>14일</option><option value="30">30일</option></select>
+      <label for="width">화면 너비</label>
+      <select id="width"><option value="320">320px</option><option value="390" selected>390px</option><option value="430">430px</option></select>
+      <button id="reset" type="button">축하 화면부터 다시 보기</button>
+      <p class="notice">미확정·조회 오류에는 축하 화면이 나오지 않습니다. 전시·보관함 연동은 포함하지 않습니다.</p>
+    </aside>
+    <section class="device" id="device" aria-label="모바일 화면">
+      <iframe id="preview" title="작품 완성 화면"></iframe>
+    </section>
+  </div>
+  <script type="module">
+    if (!import.meta.env.DEV || !['localhost', '127.0.0.1'].includes(location.hostname)) throw new Error('로컬 개발 전용입니다.');
+    const scenario = document.getElementById('scenario');
+    const duration = document.getElementById('duration');
+    const width = document.getElementById('width');
+    const frame = document.getElementById('preview');
+    const urlParams = new URL(location.href).searchParams;
+    if ([...scenario.options].some(option => option.value === urlParams.get('case'))) scenario.value = urlParams.get('case');
+    if (['7','14','30'].includes(urlParams.get('duration'))) duration.value = urlParams.get('duration');
+    function reset() {
+      const url = new URL(location.href);
+      url.searchParams.set('case', scenario.value);
+      url.searchParams.set('duration', duration.value);
+      history.replaceState(null, '', url);
+      frame.src = './challenge-completion-preview.html?' + url.searchParams.toString();
+    }
+    scenario.addEventListener('change', reset);
+    duration.addEventListener('change', reset);
+    width.addEventListener('change', () => { document.getElementById('device').style.width = width.value + 'px'; });
+    document.getElementById('reset').addEventListener('click', reset);
+    reset();
+  </script>
+</body>
+</html>
+

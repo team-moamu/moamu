@@ -148,3 +148,17 @@ textarea.input {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+
+/* 로그인 입력창 */
+.login-input {
+  min-height: var(--button-height-primary);
+  padding-inline: var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-body);
+  line-height: var(--line-height-body);
+}
+
+.login-button {
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-regular);
+}

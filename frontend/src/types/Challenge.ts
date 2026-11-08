@@ -1,5 +1,23 @@
 import type { ScheduleStatus } from "./schedule"
 
+// 도전 전체 완료 결과. 일일 인증 성공 응답과 구분
+export type ChallengeCompletionResponse = {
+  challengeId: number
+  challengeTitle: string
+  status: 'COMPLETED'
+  startDate: string
+  endDate: string
+  durationDays: number
+  artwork: { artworkId: number; title: string | null; imageUrl: string | null }
+  gridRows: number
+  gridCols: number
+  revealedPieceIndices: number[]
+  totalPieceCount: number
+  earnedPieceCount: number
+  missingPieceCount: number
+  allPiecesEarned: boolean
+}
+
 // 인증 성공 화면 조회 응답
 export type VerificationSuccessResponse = {
   verificationId: number
