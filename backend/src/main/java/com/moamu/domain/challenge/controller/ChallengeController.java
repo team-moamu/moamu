@@ -1,6 +1,7 @@
 package com.moamu.domain.challenge.controller;
 
 import com.moamu.domain.challenge.dto.ChallengeCreateRequest;
+import com.moamu.domain.challenge.dto.ChallengeCompletionResponse;
 import com.moamu.domain.challenge.dto.ChallengeSettlementResponse;
 import com.moamu.domain.challenge.dto.TodayChallengeResponse;
 import com.moamu.domain.challenge.service.ChallengeService;
@@ -23,6 +24,15 @@ import org.springframework.web.bind.annotation.*;
 public class ChallengeController {
 
     private final ChallengeService challengeService;
+
+    // 완료된 도전의 작품 및 최종 퍼즐 집계 조회
+    @GetMapping("/{challengeId}/completion")
+    public ApiResponse<ChallengeCompletionResponse> getCompletion(
+        @AuthenticationPrincipal Long userId,
+        @PathVariable("challengeId") Long challengeId
+    ) {
+        return ApiResponse.success(challengeService.getCompletion(userId, challengeId));
+    }
 
     // 로그인 사용자가 소유한 도전의 기간 종료 처리. 반복 호출해도 중복 반영하지 않음
     @PostMapping("/{challengeId}/settlement")

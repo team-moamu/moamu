@@ -9,7 +9,9 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 import com.moamu.domain.artwork.repository.ArtworkRepository;
+import com.moamu.domain.artwork.entity.Artwork;
 import com.moamu.domain.challenge.dto.ChallengeCreateRequest;
+import com.moamu.domain.challenge.dto.ChallengeCompletionResponse;
 import com.moamu.domain.challenge.dto.ChallengeSettlementResponse;
 import com.moamu.domain.challenge.enums.Status;
 import com.moamu.domain.challenge.exception.ChallengeErrorCode;
@@ -25,6 +27,8 @@ import com.moamu.domain.goal.repository.GoalTemplateArtworkRepository;
 import com.moamu.domain.goal.repository.GoalTemplateConditionRepository;
 import com.moamu.domain.goal.repository.GoalTemplateRepository;
 import com.moamu.domain.schedule.entity.Schedule;
+import com.moamu.domain.media.repository.MediaRepository;
+import com.moamu.domain.verification.service.ArtworkImageUrlService;
 import com.moamu.domain.verification.enums.VerificationStatus;
 import com.moamu.domain.verification.repository.VerificationRepository;
 import com.moamu.global.exception.BusinessException;
@@ -47,6 +51,86 @@ public class ChallengeService {
     private final GoalTemplateConditionRepository goalTemplateConditionRepository;
     private final ChallengeConditionRepository challengeConditionRepository;
     private final VerificationRepository verificationRepository;
+    private final MediaRepository mediaRepository;
+    private final ArtworkImageUrlService artworkImageUrlService;
+
+    // 최종 공개 상태와 집계를 동일한 시점으로 조회하며 인증·회차·전시 상태는 변경하지 않음
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public ChallengeCompletionResponse getCompletion(Long userId, Long challengeId) {
+        // 로그인 사용자와 대상 ID 검증
+        if (userId == null || userId <= 0) {
+            throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
+        }
+        if (challengeId == null || challengeId <= 0) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
+        }
+
+        Challenge challenge = challengeRepository.findOwned(userId, challengeId)
+            .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
+
+        // 기간이 끝났더라도 정산 전인 도전은 조회로 완료 처리하지 않음
+        if (challenge.getStatus() != Status.COMPLETED
+                || !challenge.getEndDate().isBefore(LocalDate.now(ZoneId.of("Asia/Seoul")))) {
+            throw new BusinessException(ChallengeErrorCode.CHALLENGE_NOT_COMPLETED);
+        }
+
+        // 완료 상태와 실제 회차가 일치하는지 확인 후 공개 위치 구성
+        List<Schedule> schedules = scheduleRepository.findForCompletion(challengeId);
+        validateSchedules(challenge, schedules);
+        List<Integer> revealedPieceIndices = new ArrayList<>();
+        for (Schedule schedule : schedules) {
+            switch (schedule.getStatus()) {
+                case SUCCESS -> revealedPieceIndices.add(schedule.getPieceIndex());
+                case FAILED -> { }
+                default -> throw new BusinessException(ChallengeErrorCode.CHALLENGE_NOT_COMPLETED);
+            }
+            if (schedule.getPieceIndex() < 0 || schedule.getPieceIndex() >= schedules.size()) {
+                throw new BusinessException(ChallengeErrorCode.INVALID_CHALLENGE_SCHEDULES);
+            }
+        }
+        if (challenge.getGridRows() <= 0 || challenge.getGridCols() <= 0
+                || (long) challenge.getGridRows() * challenge.getGridCols() < schedules.size()) {
+            throw new BusinessException(ChallengeErrorCode.INVALID_CHALLENGE_SCHEDULES);
+        }
+        long pendingVerificationCount = verificationRepository.countPendingLatestVerifications(
+            challengeId,
+            List.of(VerificationStatus.SUBMITTED, VerificationStatus.ANALYZING,
+                VerificationStatus.REVIEW_REQUIRED, VerificationStatus.TECH_ERROR)
+        );
+        if (pendingVerificationCount > 0) {
+            throw new BusinessException(ChallengeErrorCode.CHALLENGE_NOT_COMPLETED);
+        }
+        revealedPieceIndices.sort(Integer::compareTo);
+
+        // 도전 생성 당시 연결된 작품과 기존 S3 서명 URL 생성 기능 재사용
+        Artwork artwork = artworkRepository.findByArtworkIdAndDelYn(challenge.getArtworkId(), "N")
+            .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
+        String imageKey = artwork.getMediaId() == null ? null : mediaRepository.findById(artwork.getMediaId())
+            .map(media -> media.getImageKey()).orElse(null);
+        ChallengeCompletionResponse.Artwork artworkResponse = new ChallengeCompletionResponse.Artwork(
+            artwork.getArtworkId(), artwork.getArtworkTitle(), artworkImageUrlService.resolve(imageKey)
+        );
+
+        // 미획득 수는 전체 회차 수에서 성공 조각 수를 빼서 계산
+        int totalPieceCount = schedules.size();
+        int earnedPieceCount = revealedPieceIndices.size();
+        return new ChallengeCompletionResponse(
+            challengeId,
+            challenge.getChallengeTitle(),
+            challenge.getStatus(),
+            challenge.getStartDate(),
+            challenge.getEndDate(),
+            challenge.getDurationDays(),
+            artworkResponse,
+            challenge.getGridRows(),
+            challenge.getGridCols(),
+            revealedPieceIndices,
+            totalPieceCount,
+            earnedPieceCount,
+            totalPieceCount - earnedPieceCount,
+            earnedPieceCount == totalPieceCount
+        );
+    }
 
     @Transactional
     public void createChallenge(Long userId, ChallengeCreateRequest request) {

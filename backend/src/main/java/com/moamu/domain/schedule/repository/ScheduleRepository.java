@@ -16,6 +16,15 @@ import org.springframework.data.repository.query.Param;
 
 public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
 
+    // 완료 결과 조회용 회차 목록. 종료 처리와 달리 쓰기 잠금을 사용하지 않음
+    @Query("""
+        SELECT s
+        FROM Schedule s
+        WHERE s.challengeId = :challengeId
+        ORDER BY s.dayNo ASC
+        """)
+    List<Schedule> findForCompletion(@Param("challengeId") Long challengeId);
+
     // 판정 저장과 종료 판단이 엇갈리지 않도록 종료 대상 회차를 순서대로 잠금
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""

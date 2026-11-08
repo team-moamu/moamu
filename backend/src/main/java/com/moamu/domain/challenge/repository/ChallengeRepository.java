@@ -17,6 +17,19 @@ import org.springframework.data.repository.query.Param;
 
 public interface ChallengeRepository extends JpaRepository<Challenge, Long> {
 
+    // 완료 화면 조회용. 소유권·삭제 여부만 확인하며 조회 과정에서 상태를 변경하지 않음
+    @Query("""
+        SELECT c
+        FROM Challenge c
+        WHERE c.challengeId = :challengeId
+            AND c.userId = :userId
+            AND c.delYn = 'N'
+        """)
+    Optional<Challenge> findOwned(
+        @Param("userId") Long userId,
+        @Param("challengeId") Long challengeId
+    );
+
     // 동일 도전의 종료 요청을 직렬화하며 다른 사용자의 도전은 조회하지 않음
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
