@@ -1,5 +1,6 @@
 package com.moamu.domain.verification.service;
 
+import com.moamu.domain.schedule.repository.ScheduleRepository;
 import com.moamu.domain.verification.dto.PhotoVerificationRequest;
 import com.moamu.domain.verification.dto.PhotoVerificationResponse;
 import com.moamu.domain.verification.enums.CheckStatus;
@@ -19,13 +20,16 @@ import org.springframework.transaction.annotation.Transactional;
 public class VerificationResultService {
     private final VerificationResultRepository repository;
     private final Validator validator;
+    private final ScheduleRepository schedules;
 
-    public VerificationResultService(VerificationResultRepository repository, Validator validator) {
+    public VerificationResultService(VerificationResultRepository repository, Validator validator,
+            ScheduleRepository schedules) {
         this.repository = repository;
         this.validator = validator;
+        this.schedules = schedules;
     }
 
-    // AI 호출이 끝난 뒤 조건별 판정, 인증 결과, 작업 완료를 같은 트랜잭션 저장
+    // AI 호출 후 조건별 판정·인증 결과·작업 완료·회차 상태를 같은 트랜잭션에 저장
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public PhotoVerificationService.Result save(
             PhotoVerificationRequest request, PhotoVerificationService.Result result) {
@@ -60,6 +64,13 @@ public class VerificationResultService {
         for (var check : response.checks()) {
             repository.insertCheck(verificationId, byCode.get(check.code()).id(), check, now);
         }
+        var scheduleId = repository.findLatestAttemptScheduleId(verificationId)
+                .orElseThrow(() -> technical("최신 인증 시도가 아니므로 회차에 반영할 수 없습니다."));
+        var schedule = schedules.findById(scheduleId)
+                .orElseThrow(() -> technical("인증 회차를 찾을 수 없습니다."));
+        schedule.applyVerificationResult(result.status(), summary(response), now);
+        // JPA의 @Version 검사 실패 시 앞서 저장한 판정과 작업 완료도 함께 롤백됩니다.
+        schedules.flush();
         return result;
     }
 
