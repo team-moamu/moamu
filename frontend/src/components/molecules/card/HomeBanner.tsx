@@ -1,4 +1,4 @@
-import type { HomeChallenge, HomeDataMode } from '../homeData'
+import type { HomeChallenge, HomeDataMode } from '../../../pages/home/homeData'
 
 const tileColors = [
   'bg-[#305536]', 'bg-[#dfe8d3]', 'bg-[#e9b964]',
@@ -18,8 +18,8 @@ export function HomeGallery({ challenges, mode, isToday }: HomeGalleryProps) {
 
   if (mode === 'loading') {
     pieceSummary = '…'
-  } else if (mode === 'demo' && challenges.length > 0) {
-    pieceSummary = '1 / 3'
+  } else if (mode === 'error') {
+    pieceSummary = '?'
   }
 
   return (

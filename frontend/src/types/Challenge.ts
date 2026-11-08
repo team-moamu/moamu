@@ -59,6 +59,8 @@ export type ChallengeVerificationResponse = {
 
 // 오늘의 도전 목표 조회
 export type TodayChallengeResponse = {
+  challengeStatus: 'READY' | 'IN_PROGRESS' | 'SETTLING' | 'COMPLETED' | 'STOPPED'
+  goalTemplateId: number
   challengeId: number
   challengeTitle: string
   startDate: string

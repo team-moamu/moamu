@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { getChallengeDetail, getTodayChallenges } from '../../api/ChallengeApi'
 import { AuthenticationRequiredError } from '../../api/authenticatedFetch'
 import { getAccessToken } from '../../auth/authStorage'
-import { centeredDates, dateKey, demoChallenges, toHomeChallenge } from './homeData'
+import { centeredDates, dateKey, toHomeChallenge } from './homeData'
 import type { HomeDataMode, HomeRecords } from './homeData'
 
 interface HomeDataState {
@@ -38,7 +38,7 @@ async function loadHomeRecords(selectedDate: Date, signal: AbortSignal): Promise
   }))
 }
 
-export function useHomeChallenges(selectedDate: Date, today: Date) {
+export function useHomeChallenges(selectedDate: Date) {
   const accessToken = getAccessToken()
   const selectedKey = dateKey(selectedDate)
   const [state, setState] = useState<HomeDataState>({
@@ -61,7 +61,7 @@ export function useHomeChallenges(selectedDate: Date, today: Date) {
         }
       } catch (error) {
         if (!controller.signal.aborted) {
-          const mode = error instanceof AuthenticationRequiredError ? 'unauthenticated' : 'demo'
+          const mode = error instanceof AuthenticationRequiredError ? 'unauthenticated' : 'error'
           setState({ selectedKey: dateKey(selectedDate), mode, records: {} })
         }
       }
@@ -79,15 +79,11 @@ export function useHomeChallenges(selectedDate: Date, today: Date) {
     mode = state.mode
   }
   const records = state.selectedKey === selectedKey ? state.records : {}
-  const challenges = mode === 'demo'
-    ? demoChallenges(selectedDate, today)
-    : records[selectedKey] ?? []
+  const challenges = records[selectedKey] ?? []
 
   const dates = centeredDates(selectedDate).map(date => ({
     date,
-    hasRecord: mode === 'demo'
-      ? demoChallenges(date, today).length > 0
-      : (records[dateKey(date)]?.length ?? 0) > 0,
+    hasRecord: (records[dateKey(date)]?.length ?? 0) > 0,
   }))
 
   return { mode, challenges, dates }

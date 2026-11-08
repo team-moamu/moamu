@@ -2,6 +2,8 @@
 import type { ChallengeDetailResponse, TodayChallengeResponse } from '../../types/Challenge'
 
 export interface HomeChallenge {
+  completed: boolean
+  goalTemplateId: number
   id: number
   scheduleId: number
   title: string
@@ -9,11 +11,10 @@ export interface HomeChallenge {
   duration: number
   pieces: number | null
   status: ScheduleStatus
-  demo?: boolean
 }
 
 export type HomeRecords = Record<string, HomeChallenge[]>
-export type HomeDataMode = 'loading' | 'live' | 'demo' | 'unauthenticated'
+export type HomeDataMode = 'loading' | 'live' | 'unauthenticated' | 'error'
 
 export function dateKey(date: Date): string {
   const year = date.getFullYear()
@@ -46,6 +47,8 @@ export function toHomeChallenge(
   )).length
 
   return {
+    completed: challenge.challengeStatus === 'COMPLETED',
+    goalTemplateId: challenge.goalTemplateId,
     id: challenge.challengeId,
     scheduleId: challenge.scheduleId,
     title: challenge.challengeTitle,
@@ -54,36 +57,4 @@ export function toHomeChallenge(
     pieces,
     status: challenge.scheduleStatus,
   }
-}
-
-export function demoChallenges(selectedDate: Date, today: Date): HomeChallenge[] {
-  const selectedKey = dateKey(selectedDate)
-  const isYesterday = selectedKey === dateKey(shiftDate(today, -1))
-
-  if (selectedKey !== dateKey(today) && !isYesterday) {
-    return []
-  }
-
-  return [
-    {
-      id: 1,
-      scheduleId: 1,
-      title: '명찰 챙기기',
-      day: isYesterday ? 3 : 4,
-      duration: 14,
-      pieces: isYesterday ? 2 : 3,
-      status: 'OPEN',
-      demo: true,
-    },
-    {
-      id: 2,
-      scheduleId: 2,
-      title: isYesterday ? '계단 오르기' : '물 마시기',
-      day: 1,
-      duration: 7,
-      pieces: 0,
-      status: 'OPEN',
-      demo: true,
-    },
-  ]
 }

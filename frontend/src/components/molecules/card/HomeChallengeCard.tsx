@@ -1,8 +1,9 @@
 import { Link } from 'react-router'
-import { ProgressBar } from '../../../components/atoms/progressBar/ProgressBar'
-import artwork from '../../../mockTest/artwork-preview.svg'
+import { ProgressBar } from '../../atoms/progressBar/ProgressBar'
+import { goalArtworkImages } from '../../../constants/goalArtworkImages'
+import backgroundMu from '../../../assets/images/background_mu.png'
 import type { ScheduleStatus } from '../../../types/schedule'
-import type { HomeChallenge } from '../homeData'
+import type { HomeChallenge } from '../../../pages/home/homeData'
 
 const statusLabels: Record<ScheduleStatus, string> = {
   UPCOMING: '시작 예정',
@@ -58,11 +59,13 @@ function ChallengeArtwork({ challenge }: { challenge: HomeChallenge }) {
           <ProgressBar value={challenge.pieces} max={challenge.duration} />
         )}
       </div>
-      <img
-        src={artwork}
-        alt="작품 미리보기"
-        className="aspect-square w-[48%] rounded-[9px] border-2 border-[#cebd9e] object-cover"
-      />
+      <div className="aspect-square w-[48%] overflow-hidden rounded-[9px] border-2 border-[#cebd9e]">
+        <img
+          src={goalArtworkImages[challenge.goalTemplateId] ?? backgroundMu}
+          alt={`${challenge.title} 작품 미리보기`}
+          className={`h-full w-full object-cover ${challenge.completed ? '' : 'blur-md'}`}
+        />
+      </div>
     </div>
   )
 }
@@ -75,10 +78,6 @@ function ChallengeAction({ challenge, isToday }: { challenge: HomeChallenge; isT
   const label = isToday ? statusLabels[challenge.status] : '기록 보기'
   const actionClassName = `mt-auto flex min-h-[38px] items-center self-end pt-2
     text-sm text-[var(--color-text)] no-underline`
-
-  if (challenge.demo) {
-    return <span className={actionClassName}>예시 · 인증 전</span>
-  }
 
   return (
     <Link className={actionClassName} to={destination}>

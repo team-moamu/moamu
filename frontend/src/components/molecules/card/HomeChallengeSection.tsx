@@ -1,5 +1,5 @@
 import { Link } from 'react-router'
-import type { HomeChallenge, HomeDataMode } from '../homeData'
+import type { HomeChallenge, HomeDataMode } from '../../../pages/home/homeData'
 import { HomeChallengeCard } from './HomeChallengeCard'
 
 interface HomeChallengeSectionProps {
@@ -19,17 +19,12 @@ export function HomeChallengeSection({ challenges, mode, isToday }: HomeChalleng
       >
         나의 도전
       </h2>
-      {mode === 'demo' && (
-        <p className="mx-2 -mt-[3px] mb-[9px] text-[11px] text-[var(--color-text-muted)]">
-          서버에 연결할 수 없어 예시 기록을 표시해요.
-        </p>
-      )}
       <div aria-live="polite">
         {isLoading ? (
           <p className="px-2 py-[26px] text-center text-sm">도전을 불러오고 있어요.</p>
         ) : (
           <>
-            {challenges.length === 0 && (
+            {mode === 'live' && challenges.length === 0 && (
               <p className="px-2 py-[26px] text-center text-sm">이 날짜에는 도전이 없어요.</p>
             )}
             <div className="grid grid-cols-2 items-stretch gap-4 max-[350px]:gap-2.5">

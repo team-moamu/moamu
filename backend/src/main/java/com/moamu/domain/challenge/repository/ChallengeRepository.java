@@ -83,7 +83,9 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long> {
         s.dayNo,
         s.status,
         s.attemptCount,
-        s.resultReason
+        s.resultReason,
+        c.goalTemplateId,
+        c.status
       )
       FROM Schedule s
       INNER JOIN Challenge c

@@ -1,4 +1,4 @@
-import { dateKey } from '../homeData'
+import { dateKey } from '../../../pages/home/homeData'
 
 const weekdays = ['일', '월', '화', '수', '목', '금', '토']
 
