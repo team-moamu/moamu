@@ -9,11 +9,8 @@ import { LoginPage } from '../pages/auth/LoginPage'
 import { SignupPage } from '../pages/signup/SignupPage'
 import { EmailSignupPage } from '../pages/signup/EmailSignupPage'
 import { VerificationResultPage } from '../pages/challenge/VerificationResultPage'
+import { HomePage } from '../pages/home/HomePage'
 import { ChallengeCompletionPage } from '../pages/challenge/ChallengeCompletionPage'
-
-function HomePage() {
-  return <h1>모아뮤 홈 화면</h1>
-}
 
 function ChallengePage() {
   return <h1>도전하기 화면</h1>
@@ -61,6 +58,7 @@ export default function AppRoutes() {
 
       {/* 제목 헤더 */}
       <Route element={<MainLayout showBottomNav headerType="title" title="미술관" />} >
+        <Route path="/museum" element={<GalleryPage />} />
         <Route path="/challenge/complete" element={<GalleryPage />} />
       </Route>
 

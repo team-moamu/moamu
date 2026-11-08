@@ -37,7 +37,7 @@ export function MainLayout({
   }
 
   return (
-    <div className="flex min-h-dvh w-full flex-col">
+    <div className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col">
       {renderHeader()}
 
       <main
