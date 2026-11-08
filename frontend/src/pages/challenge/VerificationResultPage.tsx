@@ -8,7 +8,6 @@ import { VerificationChecks } from '../../components/molecules/feedback/Verifica
 import { VerificationPuzzle } from '../../components/organisms/puzzle/VerificationPuzzle'
 import { BottomNavigation } from '../../components/layout/navigation/BottomNavigation'
 import type { ChallengeVerificationResponse, VerificationSubmitResponse, VerificationSuccessResponse } from '../../types/Challenge'
-import './VerificationResultPage.css'
 
 export interface VerificationResultLocationState {
   result: VerificationSubmitResponse
@@ -77,14 +76,14 @@ export function VerificationResultPage({ accessToken }: VerificationResultPagePr
   }
 
   return (
-    <div className={`verification-result-page ${isSuccess ? '' : 'has-bottom-nav'}`}>
-      <main className="verification-result-content" aria-busy={loading}>
+    <div className={`min-h-dvh bg-[var(--color-background)] text-[var(--color-text)] [&_button:focus-visible]:outline-[3px] [&_button:focus-visible]:outline-[#b88a3c] [&_button:focus-visible]:outline-offset-[3px] ${isSuccess ? '' : 'pb-[calc(88px+env(safe-area-inset-bottom))]'}`}>
+      <main className={`relative mx-auto flex w-full max-w-[430px] flex-col px-6 pt-16 max-[350px]:px-4 ${isSuccess ? 'min-h-dvh pb-[max(28px,env(safe-area-inset-bottom))]' : 'min-h-[calc(100dvh-88px)] pb-7'}`} aria-busy={loading}>
         {isSuccess && (
-          <button className="verification-result-close" type="button" aria-label="닫고 홈으로 이동" onClick={() => navigate('/')}>×</button>
+          <button className="absolute top-7 right-4 h-11 w-11 cursor-pointer text-[32px] leading-none text-[var(--color-text-muted)]" type="button" aria-label="닫고 홈으로 이동" onClick={() => navigate('/')}>×</button>
         )}
-        <header className="verification-result-header">
-          <h1>{isSuccess ? '오늘도 성공했어요!' : isReview ? '확인이 필요한 인증이에요' : '인증에 실패했어요'}</h1>
-          <p>{isSuccess ? '새로운 조각을 발견했어요' : isReview
+        <header className="mb-5 text-center">
+          <h1 className="[font-family:var(--font-description)] text-[26px] font-bold leading-[1.4]">{isSuccess ? '오늘도 성공했어요!' : isReview ? '확인이 필요한 인증이에요' : '인증에 실패했어요'}</h1>
+          <p className="mt-2 text-[13px]">{isSuccess ? '새로운 조각을 발견했어요' : isReview
             ? '판단이 어려운 조건이 있어 검토가 필요해요.' : '아래 내용을 확인하고 다시 시도해 주세요.'}</p>
         </header>
 
@@ -94,42 +93,42 @@ export function VerificationResultPage({ accessToken }: VerificationResultPagePr
               <>
                 <VerificationPuzzle result={successResult} />
                 <VerificationChecks checks={successResult.checks} />
-                <p className="verification-result-encouragement">꾸준히 하는 모습이 정말 멋져요!</p>
+                <p className="mt-2 text-center text-[12px]">꾸준히 하는 모습이 정말 멋져요!</p>
               </>
             )}
           </>
         ) : (
           <>
-            <img className="verification-result-character" src={sadMu} alt={isReview ? '검토 결과를 기다리는 뮤' : '인증에 실패해 속상한 뮤'} />
+            <img className="mt-2 mb-6 h-[280px] w-full max-w-[310px] self-center object-contain" src={sadMu} alt={isReview ? '검토 결과를 기다리는 뮤' : '인증에 실패해 속상한 뮤'} />
             {submission && <VerificationChecks checks={submission.result.checks} />}
-            <section className="verification-attempts" aria-label="남은 인증 시도">
-              <strong>남은 시도</strong>
+            <section className="mt-3.5 flex items-center justify-between rounded-[10px] border border-[var(--color-border)] p-3 text-[13px] shadow-[0_1px_4px_rgb(73_55_37/12%)]" aria-label="남은 인증 시도">
+              <strong className="[font-family:var(--font-description)] text-[18px]">남은 시도</strong>
               <span>{remainingAttempts === null ? '확인 중' : `${remainingAttempts} / ${MAX_ATTEMPTS}`}</span>
             </section>
-            {!isReview && remainingAttempts === 0 && <p className="verification-result-encouragement">오늘의 인증 기회를 모두 사용했어요.</p>}
+            {!isReview && remainingAttempts === 0 && <p className="mt-2 text-center text-[12px]">오늘의 인증 기회를 모두 사용했어요.</p>}
           </>
         )}
 
-        {loading && <p className="verification-result-notice" role="status">결과를 불러오는 중이에요.</p>}
+        {loading && <p className="mt-4 text-center text-[13px]" role="status">결과를 불러오는 중이에요.</p>}
         {error && (
-          <div className="verification-result-notice" role="alert">
+          <div className="mt-4 text-center text-[13px]" role="alert">
             <p>{error}</p>
-            <button type="button" onClick={() => setReloadCount(count => count + 1)}>다시 불러오기</button>
+            <button className="cursor-pointer px-4 py-2.5 underline" type="button" onClick={() => setReloadCount(count => count + 1)}>다시 불러오기</button>
           </div>
         )}
 
-        <div className="verification-result-actions">
+        <div className="mt-auto grid gap-2.5 pt-10">
           {isSuccess ? (
             <>
-              <button className="verification-result-primary" type="button" onClick={() => navigate('/challenge/complete')}>내 미술관 보러가기</button>
-              <button className="verification-result-secondary" type="button" onClick={() => navigate('/')}>홈으로 돌아가기</button>
+              <button className="min-h-12 w-full cursor-pointer rounded-[11px] bg-[var(--color-primary)] p-3 text-[14px] text-white disabled:cursor-not-allowed disabled:bg-[#d9d9d9] disabled:text-[#777]" type="button" onClick={() => navigate('/challenge/complete')}>내 미술관 보러가기</button>
+              <button className="min-h-12 w-full cursor-pointer rounded-[11px] border border-[var(--color-border)] bg-white p-3 text-[14px]" type="button" onClick={() => navigate('/')}>홈으로 돌아가기</button>
             </>
           ) : (
             <>
-              <button className="verification-result-primary" type="button"
+              <button className="min-h-12 w-full cursor-pointer rounded-[11px] bg-[var(--color-primary)] p-3 text-[14px] text-white disabled:cursor-not-allowed disabled:bg-[#d9d9d9] disabled:text-[#777]" type="button"
                 disabled={loading || !!error || isReview || remainingAttempts === null || remainingAttempts <= 0}
                 onClick={retryVerification}>{isReview ? '검토 대기 중' : '다시 인증하기'}</button>
-              <button className="verification-result-secondary" type="button" onClick={() => navigate('/challenge/list')}>
+              <button className="min-h-12 w-full cursor-pointer rounded-[11px] border border-[var(--color-border)] bg-white p-3 text-[14px]" type="button" onClick={() => navigate('/challenge/list')}>
                 {isReview ? '도전 목록으로 돌아가기' : '오늘 인증 넘기기'}
               </button>
             </>
