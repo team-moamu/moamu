@@ -6,6 +6,7 @@ import { ChallengeListPage } from '../pages/challenge/ChallengeListPage'
 import { ChallengeDetailPage } from '../pages/challenge/ChallengeDetailPage'
 import { VerificationPage } from '../pages/challenge/verificationPage'
 import { LoginPage } from '../pages/auth/LoginPage'
+import { SignupPage } from '../pages/auth/SignupPage'
 
 function HomePage() {
   return <h1>모아뮤 홈 화면</h1>
@@ -48,7 +49,7 @@ export default function AppRoutes() {
       </Route>
 
       <Route element={<MainLayout showBottomNav headerType="back" title="도전" />}>
-        <Route path="/challenge" element={<ChallengePage />} /> 
+        <Route path="/challenge" element={<ChallengePage />} />
       </Route>
 
       {/* 제목 헤더 */}
@@ -60,18 +61,32 @@ export default function AppRoutes() {
         <Route path="/challenge/list" element={<ChallengeListPage />} />
       </Route>
 
-      <Route element={ <MainLayout showBottomNav background="white" headerType="title"/>}>
+      <Route element={<MainLayout showBottomNav background="white" headerType="title" />}>
         <Route path="/challenge/:challengeId" element={<ChallengeDetailPage />} />
       </Route>
 
-      <Route element={ <MainLayout showBottomNav background="white" headerType="title" title='오늘의 인증'/>}>
+      <Route element={<MainLayout showBottomNav background="white" headerType="title" title='오늘의 인증' />}>
         <Route path="/challenge/:challengeId/verification" element={<VerificationPage />} />
       </Route>
 
       {/* 로그인 헤더 */}
-      <Route element={<MainLayout headerType="login" background="white"/>}>
+      <Route element={<MainLayout headerType="login" background="white" />}>
         <Route path="/login" element={<LoginPage />} />
       </Route>
+
+      {/* 회원가입 */}
+      <Route
+        element={
+          <MainLayout
+            headerType="back"
+            title="이메일 회원가입"
+            background="white"
+          />
+        }
+      >
+        <Route path="/signup" element={<SignupPage />} />
+      </Route>
+      
     </Routes>
   )
 }

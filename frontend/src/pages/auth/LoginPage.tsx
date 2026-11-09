@@ -5,7 +5,7 @@ import { Text } from '../../components/atoms/typography/Text'
 import { LabeledInput } from '../../components/molecules/form/LabeledInput'
 import { SocialLoginButton } from '../../components/molecules/form/SocialLoginButton'
 import { login, LoginError } from '../../api/AuthApi'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { saveAccessToken } from '../../auth/authStorage'
 
 export function LoginPage() {
@@ -156,15 +156,12 @@ export function LoginPage() {
       </div>
 
       <div className="mt-5 flex justify-center">
-        <Button
-          disabled
-          className="
-            text-caption text-[var(--color-primary)]
-            disabled:cursor-not-allowed
-          "
+        <Link
+          to="/signup"
+          className="text-caption text-[var(--color-primary)]"
         >
           처음 오셨나요? 이메일 회원가입
-        </Button>
+        </Link>
       </div>
     </section>
   )
