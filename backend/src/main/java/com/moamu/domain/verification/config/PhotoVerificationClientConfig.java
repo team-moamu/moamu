@@ -17,6 +17,8 @@ public class PhotoVerificationClientConfig {
             @Value("${app.ai.connect-timeout}") Duration connectTimeout,
             @Value("${app.ai.read-timeout}") Duration readTimeout) {
         HttpClient httpClient = HttpClient.newBuilder()
+                // AI 서버의 HTTP/2 cleartext(h2c) 업그레이드 처리 오류 방지
+                .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(connectTimeout)
                 .build();
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
