@@ -6,11 +6,11 @@ import { ChallengeListPage } from '../pages/challenge/ChallengeListPage'
 import { ChallengeDetailPage } from '../pages/challenge/ChallengeDetailPage'
 import { VerificationPage } from '../pages/challenge/verificationPage'
 import { LoginPage } from '../pages/auth/LoginPage'
-import { SignupPage } from '../pages/auth/SignupPage'
-
-function HomePage() {
-  return <h1>모아뮤 홈 화면</h1>
-}
+import { SignupPage } from '../pages/signup/SignupPage'
+import { EmailSignupPage } from '../pages/signup/EmailSignupPage'
+import { VerificationResultPage } from '../pages/challenge/VerificationResultPage'
+import { HomePage } from '../pages/home/HomePage'
+import { ChallengeCompletionPage } from '../pages/challenge/ChallengeCompletionPage'
 
 function ChallengePage() {
   return <h1>도전하기 화면</h1>
@@ -31,6 +31,10 @@ function MyPage() {
 export default function AppRoutes() {
   return (
     <Routes>
+      {/* 도전 전체 완료: 축하 화면을 먼저 표시한 뒤 결과 화면으로 자동 전환 */}
+      <Route path="/challenge/:challengeId/completion" element={<ChallengeCompletionPage />} />
+      {/* 인증 결과는 자체 레이아웃 사용: 실패·검토 화면에만 하단 내비게이션 표시 */}
+      <Route path="/challenge/:challengeId/verification/result/:verificationId" element={<VerificationResultPage />} />
       {/* 
         - element에 showBottomNav 추가하면 네비게이션바가 생깁니다. 
         - headerType: MainLayout.tsx에 있는 헤더 타입
@@ -54,6 +58,7 @@ export default function AppRoutes() {
 
       {/* 제목 헤더 */}
       <Route element={<MainLayout showBottomNav headerType="title" title="미술관" />} >
+        <Route path="/museum" element={<GalleryPage />} />
         <Route path="/challenge/complete" element={<GalleryPage />} />
       </Route>
 
@@ -79,14 +84,26 @@ export default function AppRoutes() {
         element={
           <MainLayout
             headerType="back"
-            title="이메일 회원가입"
+            title="회원가입"
             background="white"
           />
         }
       >
         <Route path="/signup" element={<SignupPage />} />
       </Route>
-      
-    </Routes>
+
+      {/* 이메일 회원가입 */}
+      <Route
+        element={
+          <MainLayout
+            headerType="back"
+            title="이메일 회원가입"
+            background="white"
+          />
+        }
+      >
+        <Route path="/signup/email" element={<EmailSignupPage />} />
+      </Route>
+    </Routes >
   )
 }

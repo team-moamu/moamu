@@ -9,7 +9,12 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 
 import com.moamu.domain.artwork.repository.ArtworkRepository;
+import com.moamu.domain.artwork.entity.Artwork;
 import com.moamu.domain.challenge.dto.ChallengeCreateRequest;
+import com.moamu.domain.challenge.dto.ChallengeCompletionResponse;
+import com.moamu.domain.challenge.dto.ChallengeSettlementResponse;
+import com.moamu.domain.challenge.enums.Status;
+import com.moamu.domain.challenge.exception.ChallengeErrorCode;
 import com.moamu.domain.challenge.dto.TodayChallengeResponse;
 import com.moamu.domain.challenge.entity.Challenge;
 import com.moamu.domain.challenge.entity.ChallengeCondition;
@@ -22,12 +27,16 @@ import com.moamu.domain.goal.repository.GoalTemplateArtworkRepository;
 import com.moamu.domain.goal.repository.GoalTemplateConditionRepository;
 import com.moamu.domain.goal.repository.GoalTemplateRepository;
 import com.moamu.domain.schedule.entity.Schedule;
+import com.moamu.domain.schedule.service.ScheduleService;
+import com.moamu.domain.media.repository.MediaRepository;
+import com.moamu.domain.verification.service.ArtworkImageUrlService;
+import com.moamu.domain.verification.enums.VerificationStatus;
+import com.moamu.domain.verification.repository.VerificationRepository;
 import com.moamu.global.exception.BusinessException;
 import com.moamu.global.exception.CommonErrorCode;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Isolation;
 import lombok.RequiredArgsConstructor;
 
 @Service 
@@ -42,6 +51,88 @@ public class ChallengeService {
     private final GoalTemplateArtworkRepository goalTemplateArtworkRepository;
     private final GoalTemplateConditionRepository goalTemplateConditionRepository;
     private final ChallengeConditionRepository challengeConditionRepository;
+    private final VerificationRepository verificationRepository;
+    private final MediaRepository mediaRepository;
+    private final ArtworkImageUrlService artworkImageUrlService;
+    private final ScheduleService scheduleService;
+
+    // 최종 공개 상태와 집계를 동일한 시점으로 조회하며 인증·회차·전시 상태는 변경하지 않음
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
+    public ChallengeCompletionResponse getCompletion(Long userId, Long challengeId) {
+        // 로그인 사용자와 대상 ID 검증
+        if (userId == null || userId <= 0) {
+            throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
+        }
+        if (challengeId == null || challengeId <= 0) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
+        }
+
+        Challenge challenge = challengeRepository.findOwned(userId, challengeId)
+            .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
+
+        // 기간이 끝났더라도 정산 전인 도전은 조회로 완료 처리하지 않음
+        if (challenge.getStatus() != Status.COMPLETED
+                || !challenge.getEndDate().isBefore(LocalDate.now(ZoneId.of("Asia/Seoul")))) {
+            throw new BusinessException(ChallengeErrorCode.CHALLENGE_NOT_COMPLETED);
+        }
+
+        // 완료 상태와 실제 회차가 일치하는지 확인 후 공개 위치 구성
+        List<Schedule> schedules = scheduleRepository.findForCompletion(challengeId);
+        validateSchedules(challenge, schedules);
+        List<Integer> revealedPieceIndices = new ArrayList<>();
+        for (Schedule schedule : schedules) {
+            switch (schedule.getStatus()) {
+                case SUCCESS -> revealedPieceIndices.add(schedule.getPieceIndex());
+                case FAILED -> { }
+                default -> throw new BusinessException(ChallengeErrorCode.CHALLENGE_NOT_COMPLETED);
+            }
+            if (schedule.getPieceIndex() < 0 || schedule.getPieceIndex() >= schedules.size()) {
+                throw new BusinessException(ChallengeErrorCode.INVALID_CHALLENGE_SCHEDULES);
+            }
+        }
+        if (challenge.getGridRows() <= 0 || challenge.getGridCols() <= 0
+                || (long) challenge.getGridRows() * challenge.getGridCols() < schedules.size()) {
+            throw new BusinessException(ChallengeErrorCode.INVALID_CHALLENGE_SCHEDULES);
+        }
+        long pendingVerificationCount = verificationRepository.countPendingLatestVerifications(
+            challengeId,
+            List.of(VerificationStatus.SUBMITTED, VerificationStatus.ANALYZING,
+                VerificationStatus.REVIEW_REQUIRED, VerificationStatus.TECH_ERROR)
+        );
+        if (pendingVerificationCount > 0) {
+            throw new BusinessException(ChallengeErrorCode.CHALLENGE_NOT_COMPLETED);
+        }
+        revealedPieceIndices.sort(Integer::compareTo);
+
+        // 도전 생성 당시 연결된 작품과 기존 S3 서명 URL 생성 기능 재사용
+        Artwork artwork = artworkRepository.findByArtworkIdAndDelYn(challenge.getArtworkId(), "N")
+            .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
+        String imageKey = artwork.getMediaId() == null ? null : mediaRepository.findById(artwork.getMediaId())
+            .map(media -> media.getImageKey()).orElse(null);
+        ChallengeCompletionResponse.Artwork artworkResponse = new ChallengeCompletionResponse.Artwork(
+            artwork.getArtworkId(), artwork.getArtworkTitle(), artworkImageUrlService.resolve(imageKey)
+        );
+
+        // 미획득 수는 전체 회차 수에서 성공 조각 수를 빼서 계산
+        int totalPieceCount = schedules.size();
+        int earnedPieceCount = revealedPieceIndices.size();
+        return new ChallengeCompletionResponse(
+            challengeId,
+            challenge.getChallengeTitle(),
+            challenge.getStatus(),
+            challenge.getStartDate(),
+            challenge.getEndDate(),
+            challenge.getDurationDays(),
+            artworkResponse,
+            challenge.getGridRows(),
+            challenge.getGridCols(),
+            revealedPieceIndices,
+            totalPieceCount,
+            earnedPieceCount,
+            totalPieceCount - earnedPieceCount,
+            earnedPieceCount == totalPieceCount
+        );
+    }
 
     @Transactional
     public void createChallenge(Long userId, ChallengeCreateRequest request) {
@@ -141,6 +232,94 @@ public class ChallengeService {
 
         // Schedule 저장
         scheduleRepository.saveAll(Schedules);
+    }
+
+    // 종료일 당일까지 인증 허용. 한국 시간으로 다음 날이 된 이후에만 종료 처리
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public ChallengeSettlementResponse settle(Long userId, Long challengeId) {
+        if (userId == null || userId <= 0) {
+            throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
+        }
+        if (challengeId == null || challengeId <= 0) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
+        }
+
+        // 소유권 및 삭제 여부 확인 후 도전 잠금
+        Challenge challenge = challengeRepository.findOwnedForSettlement(userId, challengeId)
+            .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
+
+        if (!challenge.getEndDate().isBefore(LocalDate.now(ZoneId.of("Asia/Seoul")))) {
+            throw new BusinessException(ChallengeErrorCode.CHALLENGE_NOT_ENDED);
+        }
+        if (challenge.getStatus() != Status.IN_PROGRESS && challenge.getStatus() != Status.SETTLING
+                && challenge.getStatus() != Status.COMPLETED) {
+            throw new BusinessException(ChallengeErrorCode.CHALLENGE_SETTLEMENT_NOT_ALLOWED);
+        }
+
+        // 누락되거나 기간과 맞지 않는 회차로 도전이 완료되는 것을 방지
+        List<Schedule> schedules = scheduleRepository.findSchedulesForSettlement(challengeId);
+        validateSchedules(challenge, schedules);
+
+        // 스케줄러 실행 전 호출돼도 동일한 정책으로 지난 미제출 회차 마감
+        // 동일 트랜잭션에 참여하므로 이후 도전 확정이 실패하면 회차 변경도 롤백
+        scheduleService.closeExpiredSchedules(userId, challengeId);
+
+        // 마감된 회차 상태로 도전 전체의 확정 여부 집계
+        int successCount = 0;
+        int failedCount = 0;
+        for (Schedule schedule : schedules) {
+            switch (schedule.getStatus()) {
+                case SUCCESS -> successCount++;
+                case FAILED -> failedCount++;
+                default -> { }
+            }
+        }
+        int pendingCount = schedules.size() - successCount - failedCount;
+
+        // 기술 오류 재처리 정책은 미정이므로 최신 TECH_ERROR도 완료 대기 대상으로 유지
+        long pendingVerificationCount = verificationRepository.countPendingLatestVerifications(
+            challengeId,
+            List.of(VerificationStatus.SUBMITTED, VerificationStatus.ANALYZING,
+                VerificationStatus.REVIEW_REQUIRED, VerificationStatus.TECH_ERROR)
+        );
+        boolean allFinalized = pendingCount == 0 && pendingVerificationCount == 0;
+
+        // 이미 완료된 도전은 그대로 반환. 잘못된 확정 상태를 되돌리거나 덮어쓰지 않음
+        if (challenge.getStatus() == Status.COMPLETED) {
+            if (!allFinalized) {
+                throw new BusinessException(ChallengeErrorCode.CHALLENGE_SETTLEMENT_NOT_ALLOWED);
+            }
+        } else {
+            challenge.settle(allFinalized);
+        }
+
+        return new ChallengeSettlementResponse(
+            challengeId,
+            challenge.getStatus(),
+            challenge.getEndDate(),
+            challenge.getDurationDays(),
+            schedules.size(),
+            successCount,
+            failedCount,
+            pendingCount,
+            pendingVerificationCount,
+            allFinalized
+        );
+    }
+
+    // 종료 처리 전 도전 기간과 회차의 개수·날짜·순번 검증
+    private void validateSchedules(Challenge challenge, List<Schedule> schedules) {
+        if (schedules.size() != challenge.getDurationDays()
+                || !challenge.getStartDate().plusDays(challenge.getDurationDays() - 1L).equals(challenge.getEndDate())) {
+            throw new BusinessException(ChallengeErrorCode.INVALID_CHALLENGE_SCHEDULES);
+        }
+        for (int index = 0; index < schedules.size(); index++) {
+            Schedule schedule = schedules.get(index);
+            if (schedule.getDayNo() != index + 1
+                    || !schedule.getScheduleDate().equals(challenge.getStartDate().plusDays(index))) {
+                throw new BusinessException(ChallengeErrorCode.INVALID_CHALLENGE_SCHEDULES);
+            }
+        }
     }
 
     // 도전 기간 검증 메서드

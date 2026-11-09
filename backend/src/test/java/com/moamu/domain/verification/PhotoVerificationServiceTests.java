@@ -282,6 +282,55 @@ class PhotoVerificationServiceTests {
         assertThat(serviceFor(SERVER_URL + "/").verify(REQUEST).status()).isEqualTo(VerificationResult.SUCCESS);
     }
 
+    @ParameterizedTest
+    @CsvSource({"true,true", "true,false", "false,true"})
+    void invalidRequestAcceptsUnreadableIds(boolean nullTask, boolean nullVerification) throws Exception {
+        ObjectNode body = (ObjectNode) MAPPER.readTree(errorJson("INVALID_REQUEST"));
+        if (nullTask) body.putNull("ai_task_id");
+        if (nullVerification) body.putNull("verification_id");
+        server.expect(requestTo(ENDPOINT)).andRespond(withStatus(HttpStatus.BAD_REQUEST)
+                .contentType(MediaType.APPLICATION_JSON).body(body.toString()));
+
+        assertThatThrownBy(() -> service.verify(REQUEST))
+                .isInstanceOf(PhotoVerificationTechnicalException.class)
+                .hasMessage("AI 판정 기술 오류: INVALID_REQUEST");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"ai_task_id", "verification_id"})
+    void invalidRequestStillRejectsNonMatchingIds(String field) throws Exception {
+        for (String value : List.of("wrong-id", "", " ")) {
+            ObjectNode body = (ObjectNode) MAPPER.readTree(errorJson("INVALID_REQUEST"));
+            body.putNull("ai_task_id");
+            body.putNull("verification_id");
+            body.put(field, value);
+            server.expect(requestTo(ENDPOINT)).andRespond(withStatus(HttpStatus.BAD_REQUEST)
+                    .contentType(MediaType.APPLICATION_JSON).body(body.toString()));
+        }
+        for (int i = 0; i < 3; i++) {
+            assertThatThrownBy(() -> service.verify(REQUEST))
+                    .isInstanceOf(PhotoVerificationTechnicalException.class)
+                    .hasMessage("AI 판정 요청과 응답의 ID가 일치하지 않습니다.");
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({"422,UNSUPPORTED_IMAGE", "422,IMAGE_FETCH_FAILED",
+            "500,INTERNAL_ERROR", "503,MODEL_UNAVAILABLE"})
+    void otherErrorsStillRequireBothIds(int status, String code) throws Exception {
+        for (String field : List.of("ai_task_id", "verification_id")) {
+            ObjectNode body = (ObjectNode) MAPPER.readTree(errorJson(code));
+            body.putNull(field);
+            server.expect(requestTo(ENDPOINT)).andRespond(withStatus(HttpStatus.valueOf(status))
+                    .contentType(MediaType.APPLICATION_JSON).body(body.toString()));
+        }
+        for (int i = 0; i < 2; i++) {
+            assertThatThrownBy(() -> service.verify(REQUEST))
+                    .isInstanceOf(PhotoVerificationTechnicalException.class)
+                    .hasMessage("AI 판정 요청과 응답의 ID가 일치하지 않습니다.");
+        }
+    }
+
     private PhotoVerificationService serviceFor(String serverUrl) {
         return new PhotoVerificationService(new PhotoVerificationClient(
                 restClient, MAPPER, VALIDATORS.getValidator(), serverUrl));

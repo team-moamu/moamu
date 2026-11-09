@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import com.moamu.domain.schedule.enums.Status;
 
 public record TodayChallengeResponse(
+  // 응답 DTO
   Long challengeId,
   String challengeTitle,
   LocalDate startDate,
@@ -13,5 +14,7 @@ public record TodayChallengeResponse(
   int dayNo,
   Status scheduleStatus,
   int attemptCount,
-  String resultReason
+  String resultReason,
+  Long goalTemplateId,
+  com.moamu.domain.challenge.enums.Status challengeStatus
 ) { }

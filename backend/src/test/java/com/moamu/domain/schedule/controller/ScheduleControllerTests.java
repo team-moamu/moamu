@@ -8,11 +8,15 @@ import com.moamu.global.exception.BusinessException;
 import com.moamu.global.exception.CommonErrorCode;
 import com.moamu.global.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.method.annotation.AuthenticationPrincipalArgumentResolver;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -29,8 +33,11 @@ class ScheduleControllerTests {
 
     @BeforeEach
     void setUp() {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(1L, null, List.of()));
         scheduleService = mock(ScheduleService.class);
         mockMvc = MockMvcBuilders.standaloneSetup(new ScheduleController(scheduleService))
+                .setCustomArgumentResolvers(new AuthenticationPrincipalArgumentResolver())
                 .setControllerAdvice(new GlobalExceptionHandler())
                 // standaloneSetup에도 Spring Boot 기본 날짜 형식(ISO 문자열)을 적용한다.
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(
@@ -38,6 +45,11 @@ class ScheduleControllerTests {
                                 .featuresToDisable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
                                 .build()))
                 .build();
+    }
+
+    @AfterEach
+    void clearAuthentication() {
+        SecurityContextHolder.clearContext();
     }
 
     @Test
@@ -50,30 +62,32 @@ class ScheduleControllerTests {
 
         mockMvc.perform(get("/api/schedule/detail").param("challengeId", "10"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(2))
-                .andExpect(jsonPath("$[0].challengeId").value(10))
-                .andExpect(jsonPath("$[0].challengeTitle").value("Daily walk"))
-                .andExpect(jsonPath("$[0].scheduleId").value(102))
-                .andExpect(jsonPath("$[0].dayNo").value(2))
-                .andExpect(jsonPath("$[0].scheduleDate").value("2026-11-04"))
-                .andExpect(jsonPath("$[0].scheduleStatus").value("UPCOMING"))
-                .andExpect(jsonPath("$[1].scheduleId").value(101))
-                .andExpect(jsonPath("$[1].scheduleStatus").value("OPEN"));
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[0].challengeId").value(10))
+                .andExpect(jsonPath("$.data[0].challengeTitle").value("Daily walk"))
+                .andExpect(jsonPath("$.data[0].scheduleId").value(102))
+                .andExpect(jsonPath("$.data[0].dayNo").value(2))
+                .andExpect(jsonPath("$.data[0].scheduleDate").value("2026-11-04"))
+                .andExpect(jsonPath("$.data[0].scheduleStatus").value("UPCOMING"))
+                .andExpect(jsonPath("$.data[1].scheduleId").value(101))
+                .andExpect(jsonPath("$.data[1].scheduleStatus").value("OPEN"));
 
         verify(scheduleService).getScheduleDetail(1L, 10L);
     }
 
     @Test
-    void getScheduleUsesTemporaryUserIdEvenWhenClientSuppliesUserId() throws Exception {
-        when(scheduleService.getScheduleDetail(1L, 10L)).thenReturn(List.of());
+    void getScheduleUsesAuthenticatedUserEvenWhenClientSuppliesUserId() throws Exception {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(2L, null, List.of()));
+        when(scheduleService.getScheduleDetail(2L, 10L)).thenReturn(List.of());
 
         mockMvc.perform(get("/api/schedule/detail")
                         .param("challengeId", "10").param("userId", "99"))
                 .andExpect(status().isOk())
-                .andExpect(content().json("[]"));
+                .andExpect(jsonPath("$.data").isEmpty());
 
-        // 회원 기능 연동 전까지 사용하는 임시 사용자 ID를 검증한다.
-        verify(scheduleService).getScheduleDetail(1L, 10L);
+        // 쿼리의 임의 사용자 ID 대신 인증된 사용자 ID를 사용한다.
+        verify(scheduleService).getScheduleDetail(2L, 10L);
         verifyNoMoreInteractions(scheduleService);
     }
 
@@ -83,7 +97,7 @@ class ScheduleControllerTests {
 
         mockMvc.perform(get("/api/schedule/detail").param("challengeId", "10"))
                 .andExpect(status().isOk())
-                .andExpect(content().json("[]"));
+                .andExpect(jsonPath("$.data").isEmpty());
 
         verify(scheduleService).getScheduleDetail(1L, 10L);
     }

@@ -40,15 +40,19 @@ class TodayChallengeServiceTests {
     }, nullValues = "NULL")
     void forwardsRequestedDateAndNormalizesSort(String sort, String expectedSort) {
         TodayChallengeResponse first = new TodayChallengeResponse(
-                100L, "Reading", DAY, DAY.plusDays(6),1L,  1, null, 0, null);
+                100L, "Reading", DAY, DAY.plusDays(6),1L,  1, null, 0, null, 1L, com.moamu.domain.challenge.enums.Status.IN_PROGRESS);
         TodayChallengeResponse second = new TodayChallengeResponse(
-                99L, "Exercise", DAY, DAY.plusDays(13),1L,  1, null, 0, null);
+                99L, "Exercise", DAY, DAY.plusDays(13),1L,  1, null, 0, null, 2L, com.moamu.domain.challenge.enums.Status.COMPLETED);
         when(challengeRepository.findTodayChallenges(USER_ID, DAY, expectedSort))
                 .thenReturn(List.of(first, second));
 
         List<TodayChallengeResponse> result = challengeService.getTodayChallenges(USER_ID, DAY, sort);
 
-        assertThat(result).containsExactly(first, second);
+        assertThat(result).extracting(TodayChallengeResponse::challengeId).containsExactly(100L, 99L);
+        assertThat(result).extracting(TodayChallengeResponse::goalTemplateId).containsExactly(1L, 2L);
+        assertThat(result).extracting(TodayChallengeResponse::challengeStatus).containsExactly(
+                com.moamu.domain.challenge.enums.Status.IN_PROGRESS,
+                com.moamu.domain.challenge.enums.Status.COMPLETED);
         verify(challengeRepository).findTodayChallenges(USER_ID, DAY, expectedSort);
         verifyNoMoreInteractions(challengeRepository);
     }
@@ -71,6 +75,7 @@ class TodayChallengeServiceTests {
             clocks.verify(() -> Clock.system(seoul));
         }
     }
+
 
     @Test
     void returnsEmptyListWhenNoChallengesExist() {

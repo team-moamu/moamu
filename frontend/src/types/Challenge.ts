@@ -1,5 +1,51 @@
 import type { ScheduleStatus } from "./schedule"
 
+// 도전 전체 완료 결과. 일일 인증 성공 응답과 구분
+export type ChallengeCompletionResponse = {
+  challengeId: number
+  challengeTitle: string
+  status: 'COMPLETED'
+  startDate: string
+  endDate: string
+  durationDays: number
+  artwork: { artworkId: number; title: string | null; imageUrl: string | null }
+  gridRows: number
+  gridCols: number
+  revealedPieceIndices: number[]
+  totalPieceCount: number
+  earnedPieceCount: number
+  missingPieceCount: number
+  allPiecesEarned: boolean
+}
+
+// 인증 성공 화면 조회 응답
+export type VerificationSuccessResponse = {
+  verificationId: number
+  status: 'SUCCESS'
+  challengeId: number
+  challengeTitle: string
+  scheduleId: number
+  dayNo: number
+  scheduleStatus: ScheduleStatus
+  artwork: { artworkId: number; title: string | null; imageUrl: string | null }
+  gridRows: number
+  gridCols: number
+  openedPieceIndex: number
+  revealedPieceIndices: number[]
+  earnedPieceCount: number
+  totalPieceCount: number
+  checks: (VerificationSubmitResponse['checks'][number] & { conditionId: number; description: string })[]
+}
+
+// 사진 업로드 및 AI 인증 결과
+export type VerificationSubmitResponse = {
+  verificationId: number
+  mediaId: number
+  aiTaskId: number
+  status: 'SUCCESS' | 'FAILED' | 'REVIEW_REQUIRED'
+  checks: { code: string; status: 'MET' | 'NOT_MET' | 'UNCERTAIN'; reason: string }[]
+}
+
 // 인증 제출 페이지 조회
 export type ChallengeVerificationResponse = {
   challengeId: number
@@ -13,6 +59,8 @@ export type ChallengeVerificationResponse = {
 
 // 오늘의 도전 목표 조회
 export type TodayChallengeResponse = {
+  challengeStatus: 'READY' | 'IN_PROGRESS' | 'SETTLING' | 'COMPLETED' | 'STOPPED'
+  goalTemplateId: number
   challengeId: number
   challengeTitle: string
   startDate: string

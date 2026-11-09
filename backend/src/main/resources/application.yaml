@@ -17,6 +17,10 @@ spring:
       
 # S3 설정
 app:
+  # 자동 마감 스케줄러를 제어하는 설정
+  schedule-closing:
+    enabled: ${SCHEDULE_CLOSING_ENABLED:true}
+    delay-ms: ${SCHEDULE_CLOSING_DELAY_MS:60000}
   ai:
     server-url: ${AI_SERVER_URL:http://localhost:8000}
     connect-timeout: ${AI_CONNECT_TIMEOUT:3s}

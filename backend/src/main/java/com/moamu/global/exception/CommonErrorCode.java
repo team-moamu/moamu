@@ -36,6 +36,13 @@ public enum CommonErrorCode implements ErrorCode {
         "요청한 리소스를 찾을 수 없습니다."
     ),
 
+    // 409 Conflict
+    CONCURRENT_MODIFICATION(
+        HttpStatus.CONFLICT,
+        "CONCURRENT_MODIFICATION",
+        "다른 요청이 처리 중입니다. 같은 멱등성 키로 다시 요청해주세요."
+    ),
+
     // 500 Internal Server Error
     INTERNAL_SERVER_ERROR(
         HttpStatus.INTERNAL_SERVER_ERROR,
