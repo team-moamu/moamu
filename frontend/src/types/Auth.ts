@@ -7,3 +7,13 @@ export interface LoginResponse {
   accessToken: string
   tokenType: string
 }
+
+export interface SignupRequest {
+  loginId: string
+  password: string
+  name: string
+}
+
+export interface SignupResponse {
+  userId: number
+}
