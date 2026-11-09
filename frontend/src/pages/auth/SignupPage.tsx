@@ -1,16 +1,23 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router'
 import { Button } from '../../components/atoms/button/Button'
 import { Text } from '../../components/atoms/typography/Text'
 import { LabeledInput } from '../../components/molecules/form/LabeledInput'
+import { signup, SignupError } from '../../api/AuthApi'
 
 export function SignupPage() {
+  const navigate = useNavigate()
+
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  function handleSignup() {
+  async function handleSignup() {
+    if (isSubmitting) return
+
     setErrorMessage('')
 
     if (!name.trim()) {
@@ -41,7 +48,32 @@ export function SignupPage() {
       return
     }
 
-    // 다음 단계에서 회원가입 API를 연결합니다.
+    setIsSubmitting(true)
+
+    try {
+      await signup({
+        name: name.trim(),
+        loginId: email,
+        password,
+      })
+
+      navigate('/login', {
+        replace: true,
+        state: { signupCompleted: true },
+      })
+    } catch (error) {
+      if (error instanceof SignupError) {
+        setErrorMessage(
+          error.code === 'DUPLICATE_LOGIN_ID'
+            ? '이미 가입된 이메일이에요. 다른 이메일을 사용해 주세요.'
+            : error.message,
+        )
+      } else {
+        setErrorMessage('잠시 후 다시 시도해 주세요.')
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -54,9 +86,10 @@ export function SignupPage() {
 
       <form
         className="flex flex-col gap-4"
+        aria-busy={isSubmitting}
         onSubmit={(event) => {
           event.preventDefault()
-          handleSignup()
+          void handleSignup()
         }}
       >
         <LabeledInput
@@ -70,6 +103,7 @@ export function SignupPage() {
           onChange={(event) => setName(event.target.value)}
           maxLength={100}
           className="min-h-[52px] rounded-xl px-4 text-base"
+          disabled={isSubmitting}
           required
         />
 
@@ -84,6 +118,7 @@ export function SignupPage() {
           onChange={(event) => setEmail(event.target.value)}
           maxLength={50}
           className="min-h-[52px] rounded-xl px-4 text-base"
+          disabled={isSubmitting}
           required
         />
 
@@ -101,6 +136,7 @@ export function SignupPage() {
             maxLength={20}
             aria-describedby="signup-password-hint"
             className="min-h-[52px] rounded-xl px-4 text-base"
+            disabled={isSubmitting}
             required
           />
 
@@ -127,6 +163,7 @@ export function SignupPage() {
           minLength={8}
           maxLength={20}
           className="min-h-[52px] rounded-xl px-4 text-base"
+          disabled={isSubmitting}
           required
         />
 
@@ -138,12 +175,13 @@ export function SignupPage() {
 
         <Button
           type="submit"
+          disabled={isSubmitting}
           className="
             button button--primary button--full
             mt-2 text-base font-normal
           "
         >
-          회원가입
+          {isSubmitting ? '가입 중…' : '회원가입'}
         </Button>
       </form>
     </section>

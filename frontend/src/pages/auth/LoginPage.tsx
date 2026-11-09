@@ -5,11 +5,14 @@ import { Text } from '../../components/atoms/typography/Text'
 import { LabeledInput } from '../../components/molecules/form/LabeledInput'
 import { SocialLoginButton } from '../../components/molecules/form/SocialLoginButton'
 import { login, LoginError } from '../../api/AuthApi'
-import { Link, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { saveAccessToken } from '../../auth/authStorage'
 
 export function LoginPage() {
   const navigate = useNavigate()
+
+  const location = useLocation()
+  const signupCompleted = location.state?.signupCompleted === true
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -64,6 +67,15 @@ export function LoginPage() {
           나만의 미술관으로
         </Text>
       </h1>
+
+      {signupCompleted && (
+        <p
+          role="status"
+          className="text-caption mb-4 text-[var(--color-primary)]"
+        >
+          회원가입이 완료됐어요. 가입한 정보로 로그인해 주세요.
+        </p>
+      )}
 
       <form
         className="flex flex-col gap-3"
