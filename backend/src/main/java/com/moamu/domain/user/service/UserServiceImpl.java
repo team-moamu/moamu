@@ -2,6 +2,8 @@ package com.moamu.domain.user.service;
 
 import lombok.RequiredArgsConstructor;
 
+import java.util.UUID;
+
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -36,8 +38,13 @@ public class UserServiceImpl implements UserService {
 
         String encodePassword = passwordEncoder.encode(request.getPassword());
 
-        User user = User.createLocal(email, encodePassword, request.getName());
+        // 가입 시 기본 닉네임을 생성하고, 이후 마이페이지에서 변경
+        String nickname = "뮤_" + UUID.randomUUID()
+                .toString()
+                .replace("-", "")
+                .substring(0, 12);
 
+        User user = User.createLocal(email, encodePassword, nickname);
         try {
             User savedUser = userRepository.saveAndFlush(user);
             return savedUser.getUserId();

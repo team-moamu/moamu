@@ -3,6 +3,7 @@ package com.moamu.domain.user.service;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -49,7 +50,6 @@ public class UserServiceImplTests {
 
                 when(request.getLoginId()).thenReturn("test@example.com");
                 when(request.getPassword()).thenReturn("test-password");
-                when(request.getName()).thenReturn("테스트회원");
 
                 when(userRepository.existsByLoginId("test@example.com")).thenReturn(false);
 
@@ -85,7 +85,6 @@ public class UserServiceImplTests {
 
                 when(request.getLoginId()).thenReturn("test@example.com");
                 when(request.getPassword()).thenReturn("test-password");
-                when(request.getName()).thenReturn("테스트회원");
 
                 when(userRepository.existsByLoginId("test@example.com"))
                                 .thenReturn(false);
@@ -141,7 +140,6 @@ public class UserServiceImplTests {
 
                 when(request.getLoginId()).thenReturn("Test@Example.COM");
                 when(request.getPassword()).thenReturn("test-password");
-                when(request.getName()).thenReturn("테스트회원");
 
                 when(userRepository.existsByLoginId("Test@Example.COM"))
                                 .thenReturn(false);
@@ -166,7 +164,7 @@ public class UserServiceImplTests {
                 User submittedUser = captor.getValue();
 
                 assertEquals("Test@Example.COM", submittedUser.getLoginId());
-                assertEquals("테스트회원", submittedUser.getName());
+                assertTrue(submittedUser.getName().matches("^뮤_[0-9a-f]{12}$"));
                 assertEquals("test-password-hash", submittedUser.getPassword());
 
                 verify(passwordEncoder).encode("test-password");
