@@ -84,7 +84,7 @@ export default function AppRoutes() {
         element={
           <MainLayout
             headerType="back"
-            title="회원가입"
+            title="이메일 회원가입"
             background="white"
           />
         }
