@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { signup, SignupError } from '../../api/AuthApi'
+import { signup, SignupError, checkEmailAvailability, } from '../../api/AuthApi'
 import { Heading } from '../../components/atoms/typography/Heading'
 import { Description } from '../../components/atoms/typography/Description'
 import { Button } from '../../components/atoms/button/Button'
@@ -17,6 +17,55 @@ export function EmailSignupPage() {
   const submittingRef = useRef(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
+  const [checkedEmail, setCheckedEmail] = useState<string | null>(null)
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false)
+  const emailCheckIdRef = useRef(0)
+
+  async function handleCheckEmail() {
+    if (isCheckingEmail || isSubmitting) return
+
+    setCheckedEmail(null)
+    setEmailError('')
+    setSubmitError('')
+
+    if (
+      email.length > 50 ||
+      /\s/.test(email) ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+    ) {
+      setEmailError('올바른 이메일을 50자 이내로 입력해 주세요.')
+      return
+    }
+
+    const requestId = ++emailCheckIdRef.current
+    const requestedEmail = email
+    setIsCheckingEmail(true)
+
+    try {
+      const result = await checkEmailAvailability(requestedEmail)
+
+      // 확인 도중 이메일이 변경됐다면 이전 결과는 사용하지 않습니다.
+      if (requestId !== emailCheckIdRef.current) return
+
+      if (result.available) {
+        setCheckedEmail(requestedEmail)
+      } else {
+        setEmailError('이미 가입된 이메일입니다.')
+      }
+    } catch (error) {
+      if (requestId !== emailCheckIdRef.current) return
+
+      setEmailError(
+        error instanceof SignupError
+          ? error.message
+          : '이메일 중복 확인에 실패했어요. 다시 시도해 주세요.',
+      )
+    } finally {
+      if (requestId === emailCheckIdRef.current) {
+        setIsCheckingEmail(false)
+      }
+    }
+  }
 
   async function handleNext() {
     if (submittingRef.current) return
@@ -46,6 +95,11 @@ export function EmailSignupPage() {
 
     if (emailMessage || passwordMessage) return
 
+    if (checkedEmail !== email) {
+      setEmailError('이메일 중복 확인을 해 주세요.')
+      return
+    }
+
     submittingRef.current = true
     setIsSubmitting(true)
 
@@ -70,7 +124,7 @@ export function EmailSignupPage() {
       setIsSubmitting(false)
     }
   }
-  
+
   // 이메일 인증번호 발송·검증은 아직 연결하지 않습니다.
   return (
     <section className="px-6 py-8">
@@ -89,12 +143,32 @@ export function EmailSignupPage() {
             onChange={(value) => {
               setEmail(value)
               setEmailError('')
+              setSubmitError('')
+              setCheckedEmail(null)
+
+              emailCheckIdRef.current += 1
+              setIsCheckingEmail(false)
             }}
             error={emailError || undefined}
             placeholder="moa@example.com"
             autoComplete="email"
             inputMode="email"
           />
+
+          <Button
+            disabled={!email || isCheckingEmail || isSubmitting}
+            onClick={() => void handleCheckEmail()}
+            className="button button--secondary w-full font-normal"
+          >
+            {isCheckingEmail ? '확인 중…' : '이메일 중복 확인'}
+          </Button>
+
+          {checkedEmail === email && (
+            <p role="status" className="text-caption text-[var(--color-primary)]">
+              사용 가능한 이메일입니다.
+            </p>
+          )}
+
           <Button disabled className="button button--secondary w-full font-normal">
             인증번호 보내기
           </Button>
