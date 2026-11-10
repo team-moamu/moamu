@@ -14,6 +14,7 @@ import com.moamu.domain.user.dto.UserLoginRequest;
 import com.moamu.domain.user.dto.UserSignupRequest;
 import com.moamu.domain.user.entity.User;
 import com.moamu.domain.user.exception.UserErrorCode;
+import com.moamu.domain.user.repository.UserRepository;
 import com.moamu.domain.user.service.UserService;
 import com.moamu.global.exception.BusinessException;
 import com.moamu.global.exception.GlobalExceptionHandler;
@@ -42,7 +43,8 @@ class UserControllerTests {
         UserController controller = new UserController(
                 userService,
                 jwtTokenProvider,
-                refreshTokenService);
+                refreshTokenService,
+                mock(UserRepository.class));
 
         // standalone 테스트에서는 @Value가 자동 주입되지 않습니다.
         ReflectionTestUtils.setField(
