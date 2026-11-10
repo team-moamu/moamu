@@ -23,9 +23,11 @@ interface HomeChallengeCardProps {
 
 export function HomeChallengeCard({ challenge, featured, isToday }: HomeChallengeCardProps) {
   const appearance = featured
-    ? 'row-span-2 min-h-[244px] bg-[var(--color-surface-soft)]'
+    ? 'bg-[var(--color-surface-soft)]'
     : 'bg-[#dfe8d3]'
-  const progressLabel = challenge.status === 'UPCOMING' ? '시작 예정' : '진행 중'
+  // 백엔드는 오늘 회차의 UPCOMING 상태도 인증을 허용한다.
+  const status = isToday && challenge.status === 'UPCOMING' ? 'OPEN' : challenge.status
+  const progressLabel = status === 'UPCOMING' ? '시작 예정' : '진행 중'
   const dayDescription = challenge.status === 'SUCCESS' ? '조각을 모았어요' : '차곡차곡 모으는 중'
 
   return (
@@ -43,7 +45,7 @@ export function HomeChallengeCard({ challenge, featured, isToday }: HomeChalleng
       </h3>
       <p className="m-0 mb-3 text-xs">{challenge.day}일 차 {dayDescription}</p>
       {featured && <ChallengeArtwork challenge={challenge} />}
-      <ChallengeAction challenge={challenge} isToday={isToday} />
+      <ChallengeAction challenge={challenge} isToday={isToday} status={status} />
     </article>
   )
 }
@@ -70,12 +72,16 @@ function ChallengeArtwork({ challenge }: { challenge: HomeChallenge }) {
   )
 }
 
-function ChallengeAction({ challenge, isToday }: { challenge: HomeChallenge; isToday: boolean }) {
-  const canVerify = isToday && ['OPEN', 'PROGRESSING', 'FAILED'].includes(challenge.status)
+function ChallengeAction({ challenge, isToday, status }: {
+  challenge: HomeChallenge
+  isToday: boolean
+  status: ScheduleStatus
+}) {
+  const canVerify = isToday && ['OPEN', 'PROGRESSING', 'FAILED'].includes(status)
   const destination = canVerify
     ? `/challenge/${challenge.id}/verification?scheduleId=${challenge.scheduleId}`
     : `/challenge/${challenge.id}`
-  const label = isToday ? statusLabels[challenge.status] : '기록 보기'
+  const label = isToday ? statusLabels[status] : '기록 보기'
   const actionClassName = `mt-auto flex min-h-[38px] items-center self-end pt-2
     text-sm text-[var(--color-text)] no-underline`
 
