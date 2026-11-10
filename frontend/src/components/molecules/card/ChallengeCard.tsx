@@ -15,7 +15,7 @@ type ChallengeCardProps = {
   attemptCount: number
   maxAttempts: number
   remainingTime: string
-  status: 'available' | 'retry' | 'success'
+  status: 'available' | 'retry' | 'success' | 'fail'
   onVerify: (challengeId: number, scheduleId: number) => void
   onClick?: () => void
 }
@@ -60,7 +60,7 @@ export function ChallengeCard({
 
           <SubText bold>
             Day {dayNo} / {durationDays} · 남은 시도{' '}
-            {maxAttempts - attemptCount}/{maxAttempts}
+            {Math.max(0, maxAttempts - attemptCount)}/{maxAttempts}
           </SubText>
 
           <SubText>
@@ -71,7 +71,8 @@ export function ChallengeCard({
           <Badge variant={status}>
             {status === 'available'
               ? '인증 가능'
-              : (status === 'success' ? '성공' :'재인증 가능')}
+              : status === 'success' ? '성공'
+                : status === 'fail' ? '실패' : '재인증 가능'}
           </Badge>
         </div>
       </div>
@@ -79,12 +80,13 @@ export function ChallengeCard({
       <div className="mt-4">
         <SuccessButton
           icon="camera"
+          disabled={status === 'success' || status === 'fail'}
           onClick={(e) => {
             e.stopPropagation()
             onVerify(challengeId, scheduleId)
           }}
         >
-          인증하기
+          인증 완료
         </SuccessButton>
       </div>
     </div>
