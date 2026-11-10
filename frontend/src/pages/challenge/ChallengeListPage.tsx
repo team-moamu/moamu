@@ -48,7 +48,10 @@ export function ChallengeListPage() {
           challengeTitle: challenge.challengeTitle,
           imageUrl: goalArtworkImages[challenge.goalTemplateId] ?? backgroundMu,
           dayNo: challenge.dayNo,
-          durationDays: 14,
+          durationDays: Math.round(
+            (Date.parse(`${challenge.endDate}T00:00:00Z`)
+              - Date.parse(`${challenge.startDate}T00:00:00Z`)) / 86_400_000,
+          ) + 1,
           attemptCount: challenge.attemptCount,
           maxAttempts: MAX_ATTEMPTS,
           remainingTime: getRemainingTime(),
