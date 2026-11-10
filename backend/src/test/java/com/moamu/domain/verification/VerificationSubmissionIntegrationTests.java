@@ -14,6 +14,9 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -73,6 +76,71 @@ class VerificationSubmissionIntegrationTests {
 
     private VerificationSubmitRequest request() {
         return new VerificationSubmitRequest(challengeId, scheduleId, mediaId, UUID.randomUUID().toString());
+    }
+
+    private void moveToLastDay() {
+        jdbc.update("UPDATE challenge SET status='IN_PROGRESS', start_date=DATE_SUB(start_date, INTERVAL 6 DAY), end_date=DATE_SUB(end_date, INTERVAL 6 DAY)");
+        jdbc.update("UPDATE schedule SET schedule_date=DATE_SUB(schedule_date, INTERVAL 6 DAY), status=CASE WHEN day_no=7 THEN 'OPEN' ELSE 'SUCCESS' END");
+        scheduleId = jdbc.queryForObject("SELECT schedule_id FROM schedule WHERE day_no=7", Long.class);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"true,SUCCESS,MET", "false,SUCCESS,MET", "true,FAILED,NOT_MET", "false,FAILED,NOT_MET"})
+    void lastRoundCompletesImmediatelyThroughBothSubmissionPaths(boolean legacy,
+            VerificationResult verdict, CheckStatus check) {
+        moveToLastDay();
+        respond(verdict, check);
+        int attempts = verdict == VerificationResult.SUCCESS ? 1 : 3;
+        Runnable replay = null;
+        for (int attempt = 1; attempt <= attempts; attempt++) {
+            if (legacy) {
+                var request = request();
+                service.submit(1L, request);
+                replay = () -> service.submit(1L, request);
+            } else {
+                var created = service.createVerification(1L, scheduleId, mediaId, UUID.randomUUID().toString());
+                service.verify(1L, created.aiTaskId());
+                replay = () -> service.verify(1L, created.aiTaskId());
+            }
+            assertThat(jdbc.queryForObject("SELECT status FROM challenge", String.class))
+                .isEqualTo(attempt == attempts ? "COMPLETED" : "IN_PROGRESS");
+        }
+        var completion = challengeService.getCompletion(1L, challengeId);
+        assertThat(completion.earnedPieceCount()).isEqualTo(verdict == VerificationResult.SUCCESS ? 7 : 6);
+        replay.run();
+        assertThat(challengeService.getCompletion(1L, challengeId)).isEqualTo(completion);
+        verify(ai, times(attempts)).verify(any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"IN_REVIEW", "PROGRESSING", "PENDING_SETTLEMENT"})
+    void lastSuccessWaitsForEarlierUnresolvedRound(String status) {
+        moveToLastDay();
+        jdbc.update("UPDATE schedule SET status=? WHERE day_no=1", status);
+        respond(VerificationResult.SUCCESS, CheckStatus.MET);
+        service.submit(1L, request());
+        assertThat(jdbc.queryForObject("SELECT status FROM challenge", String.class)).isEqualTo("IN_PROGRESS");
+        assertThatThrownBy(() -> challengeService.getCompletion(1L, challengeId)).isInstanceOf(BusinessException.class);
+    }
+
+    @Test
+    void lastRoundReviewAtThirdAttemptDoesNotComplete() {
+        moveToLastDay();
+        respond(VerificationResult.FAILED, CheckStatus.NOT_MET);
+        service.submit(1L, request());
+        service.submit(1L, request());
+        respond(VerificationResult.REVIEW_REQUIRED, CheckStatus.UNCERTAIN);
+        service.submit(1L, request());
+        assertThat(jdbc.queryForObject("SELECT status FROM challenge", String.class)).isEqualTo("IN_PROGRESS");
+    }
+
+    @Test
+    void lastSuccessClosesExpiredUnsubmittedRounds() {
+        moveToLastDay();
+        jdbc.update("UPDATE schedule SET status='OPEN' WHERE day_no=1");
+        respond(VerificationResult.SUCCESS, CheckStatus.MET);
+        service.submit(1L, request());
+        assertThat(challengeService.getCompletion(1L, challengeId).missingPieceCount()).isEqualTo(1);
     }
 
     @Test

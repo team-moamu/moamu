@@ -135,9 +135,10 @@ class ChallengeCompletionIntegrationTests {
     }
 
     @Test
-    void rejectsEvenCompletedFlagOnEndDate() {
-        jdbc.update("UPDATE challenge SET end_date=DATE_ADD(end_date, INTERVAL 1 DAY)");
-        assertNotCompleted();
+    void allowsCompletedChallengeOnEndDate() {
+        jdbc.update("UPDATE challenge SET start_date=DATE_ADD(start_date, INTERVAL 1 DAY), end_date=DATE_ADD(end_date, INTERVAL 1 DAY)");
+        jdbc.update("UPDATE schedule SET schedule_date=DATE_ADD(schedule_date, INTERVAL 1 DAY)");
+        assertThat(challengeService.getCompletion(1L, challengeId).status()).isEqualTo(Status.COMPLETED);
     }
 
     @ParameterizedTest
