@@ -15,7 +15,7 @@ type ChallengeCardProps = {
   attemptCount: number
   maxAttempts: number
   remainingTime: string
-  status: 'available' | 'retry'
+  status: 'available' | 'retry' | 'success'
   onVerify: (challengeId: number, scheduleId: number) => void
   onClick?: () => void
 }
@@ -71,7 +71,7 @@ export function ChallengeCard({
           <Badge variant={status}>
             {status === 'available'
               ? '인증 가능'
-              : '재인증 가능'}
+              : (status === 'success' ? '성공' :'재인증 가능')}
           </Badge>
         </div>
       </div>
