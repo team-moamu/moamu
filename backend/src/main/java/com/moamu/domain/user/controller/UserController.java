@@ -143,4 +143,29 @@ public class UserController {
                 .header(HttpHeaders.CACHE_CONTROL, "no-store")
                 .body(ApiResponse.success(new UserLoginResponse(accessToken)));
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(
+            @RequestHeader(name = "Origin", required = false) String origin,
+            @CookieValue(name = "moamu_refresh", required = false) String token) {
+
+        if (browserOrigin.isBlank() || !browserOrigin.equals(origin)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        refreshTokenService.revoke(token);
+
+        ResponseCookie expiredCookie = ResponseCookie
+                .from("moamu_refresh", "")
+                .httpOnly(true)
+                .secure(refreshCookieSecure)
+                .sameSite("Strict")
+                .path("/api/users")
+                .maxAge(0)
+                .build();
+
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, expiredCookie.toString())
+                .build();
+    }
 }

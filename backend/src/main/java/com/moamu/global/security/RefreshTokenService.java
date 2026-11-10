@@ -43,4 +43,10 @@ public class RefreshTokenService {
     }
     return refreshTokenStore.consume(token);
   }
+
+  public void revoke(String token) {
+    if (token != null && !token.isBlank()) {
+      refreshTokenStore.revoke(token);
+    }
+  }
 }
