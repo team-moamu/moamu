@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { useNavigate } from 'react-router'
+import { signup, SignupError } from '../../api/AuthApi'
 import { Heading } from '../../components/atoms/typography/Heading'
 import { Description } from '../../components/atoms/typography/Description'
 import { Button } from '../../components/atoms/button/Button'
@@ -11,16 +13,65 @@ export function EmailSignupPage() {
   const [password, setPassword] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
   const [passwordError, setPasswordError] = useState('')
-  const canContinue = password.length >= 8 && passwordConfirm.length >= 8
+  const navigate = useNavigate()
+  const submittingRef = useRef(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
 
-  function handleNext() {
-    if (!canContinue) return
-    setEmailError(email.trim() ? '' : '이메일을 입력해 주세요.')
-    setPasswordError(password !== passwordConfirm ? '비밀번호가 일치하지 않습니다.' : '')
-    // 다음 단계 이동은 이메일 인증 API 연동 후 연결합니다.
+  async function handleNext() {
+    if (submittingRef.current) return
+
+    setSubmitError('')
+
+    const emailMessage =
+      !email
+        ? '이메일을 입력해 주세요.'
+        : email.length > 50 ||
+          /\s/.test(email) ||
+          !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+          ? '올바른 이메일을 50자 이내로 입력해 주세요.'
+          : ''
+
+    const passwordMessage =
+      password.length < 8 ||
+        password.length > 20 ||
+        !/^(?=.*[A-Za-z])(?=.*[0-9])[\x21-\x7E]+$/.test(password)
+        ? '비밀번호는 영문과 숫자를 포함해 공백 없이 8~20자로 입력해 주세요.'
+        : password !== passwordConfirm
+          ? '비밀번호가 일치하지 않습니다.'
+          : ''
+
+    setEmailError(emailMessage)
+    setPasswordError(passwordMessage)
+
+    if (emailMessage || passwordMessage) return
+
+    submittingRef.current = true
+    setIsSubmitting(true)
+
+    try {
+      await signup({
+        loginId: email,
+        password,
+      })
+
+      navigate('/login', {
+        replace: true,
+        state: { signupCompleted: true },
+      })
+    } catch (error) {
+      setSubmitError(
+        error instanceof SignupError
+          ? error.message
+          : '회원가입하지 못했어요. 잠시 후 다시 시도해 주세요.',
+      )
+    } finally {
+      submittingRef.current = false
+      setIsSubmitting(false)
+    }
   }
-
-  // 실제 이메일 인증 API가 연결되기 전에는 발송·인증을 허용하지 않습니다. 다음 버튼은 입력값만 검사합니다.
+  
+  // 이메일 인증번호 발송·검증은 아직 연결하지 않습니다.
   return (
     <section className="px-6 py-8">
       <Heading>계정을 만들어 주세요.</Heading>
@@ -104,8 +155,18 @@ export function EmailSignupPage() {
           hint="비밀번호를 한 번 더 입력해 주세요."
         />
 
-        <Button disabled={!canContinue} onClick={handleNext} className="button button--primary w-full font-normal">
-          다음
+        {submitError && (
+          <p role="alert" className="text-caption text-[var(--color-error)]">
+            {submitError}
+          </p>
+        )}
+
+        <Button
+          disabled={isSubmitting}
+          onClick={() => void handleNext()}
+          className="button button--primary w-full font-normal"
+        >
+          {isSubmitting ? '가입 중…' : '회원가입'}
         </Button>
       </div>
     </section>
