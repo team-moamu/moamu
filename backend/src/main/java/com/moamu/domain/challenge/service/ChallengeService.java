@@ -72,7 +72,7 @@ public class ChallengeService {
 
         // 기간이 끝났더라도 정산 전인 도전은 조회로 완료 처리하지 않음
         if (challenge.getStatus() != Status.COMPLETED
-                || !challenge.getEndDate().isBefore(LocalDate.now(ZoneId.of("Asia/Seoul")))) {
+                || challenge.getEndDate().isAfter(LocalDate.now(ZoneId.of("Asia/Seoul")))) {
             throw new BusinessException(ChallengeErrorCode.CHALLENGE_NOT_COMPLETED);
         }
 
@@ -234,9 +234,33 @@ public class ChallengeService {
         scheduleRepository.saveAll(Schedules);
     }
 
-    // 종료일 당일까지 인증 허용. 한국 시간으로 다음 날이 된 이후에만 종료 처리
+    // 인증 저장 트랜잭션이 끝난 뒤 호출. 재전송 시에도 완료 처리를 재확인한다.
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public void completeAfterVerification(Long userId, Long verificationId) {
+        var verification = verificationRepository.findById(verificationId)
+            .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
+        var schedule = scheduleRepository.findById(verification.getScheduleId())
+            .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
+        Challenge challenge = challengeRepository.findOwnedForSettlement(userId, schedule.getChallengeId())
+            .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
+        // READY에서도 인증을 허용하므로 마지막 회차 확정 시 누락된 시작 상태를 복구한다.
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+        if (!challenge.getEndDate().isAfter(today) && schedule.getDayNo() == challenge.getDurationDays()
+                && (schedule.getStatus() == com.moamu.domain.schedule.enums.Status.SUCCESS
+                    || (schedule.getStatus() == com.moamu.domain.schedule.enums.Status.FAILED
+                        && schedule.getAttemptCount() >= 3))) {
+            challenge.startIfDue(today);
+        }
+        settle(userId, schedule.getChallengeId(), true);
+    }
+
+    // 명시적 정산은 종료일 다음 날부터 허용한다.
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public ChallengeSettlementResponse settle(Long userId, Long challengeId) {
+        return settle(userId, challengeId, false);
+    }
+
+    private ChallengeSettlementResponse settle(Long userId, Long challengeId, boolean afterVerification) {
         if (userId == null || userId <= 0) {
             throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
         }
@@ -248,7 +272,13 @@ public class ChallengeService {
         Challenge challenge = challengeRepository.findOwnedForSettlement(userId, challengeId)
             .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
 
-        if (!challenge.getEndDate().isBefore(LocalDate.now(ZoneId.of("Asia/Seoul")))) {
+        LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+        if (afterVerification && (challenge.getEndDate().isAfter(today)
+                || (challenge.getStatus() != Status.IN_PROGRESS && challenge.getStatus() != Status.SETTLING
+                    && challenge.getStatus() != Status.COMPLETED))) {
+            return null;
+        }
+        if (!afterVerification && !challenge.getEndDate().isBefore(today)) {
             throw new BusinessException(ChallengeErrorCode.CHALLENGE_NOT_ENDED);
         }
         if (challenge.getStatus() != Status.IN_PROGRESS && challenge.getStatus() != Status.SETTLING
@@ -259,6 +289,16 @@ public class ChallengeService {
         // 누락되거나 기간과 맞지 않는 회차로 도전이 완료되는 것을 방지
         List<Schedule> schedules = scheduleRepository.findSchedulesForSettlement(challengeId);
         validateSchedules(challenge, schedules);
+
+        // 마지막 회차 성공 또는 3회 소진 실패에만 당일 완료를 허용한다.
+        if (afterVerification) {
+            Schedule last = schedules.getLast();
+            if (last.getStatus() != com.moamu.domain.schedule.enums.Status.SUCCESS
+                    && !(last.getStatus() == com.moamu.domain.schedule.enums.Status.FAILED
+                        && last.getAttemptCount() >= 3)) {
+                return null;
+            }
+        }
 
         // 스케줄러 실행 전 호출돼도 동일한 정책으로 지난 미제출 회차 마감
         // 동일 트랜잭션에 참여하므로 이후 도전 확정이 실패하면 회차 변경도 롤백
@@ -289,7 +329,7 @@ public class ChallengeService {
             if (!allFinalized) {
                 throw new BusinessException(ChallengeErrorCode.CHALLENGE_SETTLEMENT_NOT_ALLOWED);
             }
-        } else {
+        } else if (allFinalized || !afterVerification) {
             challenge.settle(allFinalized);
         }
 

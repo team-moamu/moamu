@@ -22,6 +22,7 @@ import com.moamu.domain.verification.dto.VerificationSubmitRequest;
 import com.moamu.domain.verification.dto.VerificationSubmitResponse;
 import com.moamu.domain.schedule.repository.ScheduleRepository;
 import com.moamu.domain.challenge.repository.ChallengeRepository;
+import com.moamu.domain.challenge.service.ChallengeService;
 import com.moamu.domain.media.repository.MediaRepository;
 import com.moamu.domain.media.enums.MediaPurpose;
 import java.time.LocalDateTime;
@@ -31,6 +32,7 @@ import java.util.Set;
 
 @Service
 public class VerificationSubmissionService {
+    private final ChallengeService challengeService;
     private final VerificationSubmissionTransactionService transactionService;
     private final PhotoVerificationRequestRepository requestRepository;
     private final PhotoVerificationService photoVerificationService;
@@ -59,8 +61,10 @@ public class VerificationSubmissionService {
             ChallengeRepository challengeRepository,
             MediaRepository mediaRepository,
             VerificationSubmissionTransactionService transactionService,
-            PlatformTransactionManager transactionManager
+            PlatformTransactionManager transactionManager,
+            ChallengeService challengeService
     ) {
+        this.challengeService = challengeService;
         this.requestRepository = requestRepository;
         this.photoVerificationService = photoVerificationService;
         this.resultService = resultService;
@@ -83,15 +87,22 @@ public class VerificationSubmissionService {
             throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
         }
         var submission = transactionService.prepare(userId, request);
-        if (submission.completed() != null) return submission.completed();
+        if (submission.completed() != null) {
+            challengeService.completeAfterVerification(userId, submission.verificationId());
+            return submission.completed();
+        }
 
+        VerificationSubmitResponse response;
         try {
             var result = photoVerificationService.verify(submission.request());
-            return transactionService.complete(submission, result);
+            response = transactionService.complete(submission, result);
         } catch (RuntimeException exception) {
             transactionService.fail(submission);
             throw exception;
         }
+        // 완료 집계 오류가 이미 저장된 인증을 기술 오류로 덮어쓰지 않도록 분리한다.
+        challengeService.completeAfterVerification(userId, submission.verificationId());
+        return response;
     }
 
     // 인증 접수를 처리
@@ -195,8 +206,12 @@ public class VerificationSubmissionService {
         long verificationId = Long.parseLong(request.verificationId());
         // 응답 유실 후 같은 요청이 와도 AI를 다시 호출하지 않고 저장된 결과를 반환
         var completed = resultRepository.findCompleted(aiTaskId, verificationId);
-        if (completed.isPresent()) return completed.get();
+        if (completed.isPresent()) {
+            challengeService.completeAfterVerification(userId, verificationId);
+            return completed.get();
+        }
         executionService.start(aiTaskId, verificationId);
+        PhotoVerificationService.Result saved;
         try {
             if (request.conditions().isEmpty()) {
                 throw new PhotoVerificationTechnicalException(
@@ -204,7 +219,7 @@ public class VerificationSubmissionService {
             }
             // RUNNING 커밋 → AI 통신 → 결과 저장(SUCCEEDED)을 순서대로 실행
             var result = photoVerificationService.verify(request);
-            return resultService.save(request, result);
+            saved = resultService.save(request, result);
         } catch (RuntimeException failure) {
             try {
                 executionService.fail(aiTaskId, verificationId);
@@ -213,5 +228,7 @@ public class VerificationSubmissionService {
             }
             throw failure;
         }
+        challengeService.completeAfterVerification(userId, verificationId);
+        return saved;
     }
 }

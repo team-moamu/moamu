@@ -3,7 +3,7 @@ import { useLocation, useNavigate, useParams } from 'react-router'
 
 import sadMu from '../../assets/images/sad_mu.png'
 import { getVerificationSuccess } from '../../api/VerificationApi'
-import { getChallengeVerification } from '../../api/ChallengeApi'
+import { ChallengeCompletionError, getChallengeCompletion, getChallengeVerification } from '../../api/ChallengeApi'
 import { VerificationChecks } from '../../components/molecules/feedback/VerificationChecks'
 import { VerificationPuzzle } from '../../components/organisms/puzzle/VerificationPuzzle'
 import { BottomNavigation } from '../../components/layout/navigation/BottomNavigation'
@@ -36,14 +36,30 @@ export function VerificationResultPage({ accessToken }: VerificationResultPagePr
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [reloadCount, setReloadCount] = useState(0)
+  const [completionPending, setCompletionPending] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
+    async function openCompletionIfReady() {
+      try {
+        await getChallengeCompletion(Number(challengeId), controller.signal, accessToken)
+        if (!controller.signal.aborted) {
+          navigate(`/challenge/${challengeId}/completion`, { replace: true })
+        }
+      } catch (err) {
+        if (err instanceof ChallengeCompletionError && err.code === 'CHALLENGE_NOT_COMPLETED') {
+          if (!controller.signal.aborted) setCompletionPending(true)
+        } else {
+          throw err
+        }
+      }
+    }
     async function fetchResult() {
       setLoading(true)
       setError(null)
       setSuccessResult(null)
       setRemainingAttempts(null)
+      setCompletionPending(false)
       try {
         const id = Number(verificationId)
         if (!Number.isSafeInteger(id) || id <= 0) throw new Error('올바르지 않은 인증 결과입니다.')
@@ -52,6 +68,9 @@ export function VerificationResultPage({ accessToken }: VerificationResultPagePr
           const result = await getVerificationSuccess(id, controller.signal, accessToken)
           if (result.challengeId !== Number(challengeId)) throw new Error('도전 정보가 일치하지 않습니다.')
           if (!controller.signal.aborted) setSuccessResult(result)
+          if (result.dayNo === result.totalPieceCount) {
+            await openCompletionIfReady()
+          }
         } else if (submission) {
           // 실패 후 재인증 가능 여부는 최신 회차의 시도 횟수로 확인
           const challenge = await getChallengeVerification(
@@ -59,6 +78,9 @@ export function VerificationResultPage({ accessToken }: VerificationResultPagePr
           )
           if (!challenge) throw new Error('회차 정보를 찾을 수 없어요.')
           if (!controller.signal.aborted) setRemainingAttempts(Math.max(0, MAX_ATTEMPTS - challenge.attemptCount))
+          if (!isReview && challenge.dayNo === challenge.dayCount && challenge.attemptCount >= MAX_ATTEMPTS) {
+            await openCompletionIfReady()
+          }
         }
       } catch (err) {
         if (!controller.signal.aborted) setError(err instanceof Error ? err.message : '결과를 불러오지 못했어요.')
@@ -68,11 +90,15 @@ export function VerificationResultPage({ accessToken }: VerificationResultPagePr
     }
     fetchResult()
     return () => controller.abort()
-  }, [challengeId, verificationId, isSuccess, submission, accessToken, reloadCount])
+  }, [challengeId, verificationId, isSuccess, isReview, submission, accessToken, reloadCount, navigate])
 
   const retryVerification = () => {
     if (!submission || remainingAttempts === null || remainingAttempts <= 0 || isReview) return
     navigate(`/challenge/${challengeId}/verification?scheduleId=${submission.challenge.scheduleId}`, { replace: true })
+  }
+
+  if (loading) {
+    return <main className="flex min-h-dvh items-center justify-center bg-[var(--color-background)] px-6 text-center" role="status">인증 결과를 확인하고 있어요.</main>
   }
 
   return (
@@ -109,7 +135,12 @@ export function VerificationResultPage({ accessToken }: VerificationResultPagePr
           </>
         )}
 
-        {loading && <p className="mt-4 text-center text-[13px]" role="status">결과를 불러오는 중이에요.</p>}
+        {completionPending && (
+          <div className="mt-4 text-center text-[13px]" role="status">
+            <p>아직 확정되지 않은 인증이 있어요. 모든 결과가 확정되면 도전 완료를 확인할 수 있어요.</p>
+            <button className="cursor-pointer px-4 py-2.5 underline" type="button" onClick={() => setReloadCount(count => count + 1)}>완료 상태 다시 확인</button>
+          </div>
+        )}
         {error && (
           <div className="mt-4 text-center text-[13px]" role="alert">
             <p>{error}</p>
@@ -120,7 +151,7 @@ export function VerificationResultPage({ accessToken }: VerificationResultPagePr
         <div className="mt-auto grid gap-2.5 pt-10">
           {isSuccess ? (
             <>
-              <button className="min-h-12 w-full cursor-pointer rounded-[11px] bg-[var(--color-primary)] p-3 text-[14px] text-white disabled:cursor-not-allowed disabled:bg-[#d9d9d9] disabled:text-[#777]" type="button" onClick={() => navigate('/challenge/complete')}>내 미술관 보러가기</button>
+              <button className="min-h-12 w-full cursor-pointer rounded-[11px] bg-[var(--color-primary)] p-3 text-[14px] text-white disabled:cursor-not-allowed disabled:bg-[#d9d9d9] disabled:text-[#777]" type="button" onClick={() => navigate('/museum')}>내 미술관 보러가기</button>
               <button className="min-h-12 w-full cursor-pointer rounded-[11px] border border-[var(--color-border)] bg-white p-3 text-[14px]" type="button" onClick={() => navigate('/')}>홈으로 돌아가기</button>
             </>
           ) : (

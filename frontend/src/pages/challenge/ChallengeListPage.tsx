@@ -12,6 +12,8 @@ type Challenge = React.ComponentProps<
   typeof ChallengeCardList
 >['challenges'][number]
 
+const MAX_ATTEMPTS = 3
+
 export function ChallengeListPage() {
   const navigate = useNavigate()
 
@@ -46,11 +48,18 @@ export function ChallengeListPage() {
           challengeTitle: challenge.challengeTitle,
           imageUrl: goalArtworkImages[challenge.goalTemplateId] ?? backgroundMu,
           dayNo: challenge.dayNo,
-          durationDays: 14,
+          durationDays: Math.round(
+            (Date.parse(`${challenge.endDate}T00:00:00Z`)
+              - Date.parse(`${challenge.startDate}T00:00:00Z`)) / 86_400_000,
+          ) + 1,
           attemptCount: challenge.attemptCount,
-          maxAttempts: 3,
+          maxAttempts: MAX_ATTEMPTS,
           remainingTime: getRemainingTime(),
-          status: challenge.attemptCount > 0 ? 'retry' : 'available',
+          status: challenge.scheduleStatus === 'SUCCESS'
+            ? 'success'
+            : challenge.scheduleStatus === 'FAILED' || challenge.attemptCount >= MAX_ATTEMPTS
+              ? 'fail'
+              : challenge.attemptCount > 0 ? 'retry' : 'available',
         }))
 
         setChallenges(mappedChallenges)

@@ -100,7 +100,14 @@ public class Challenge extends BaseEntity {
     @Column(name = "is_exhibited")
     private char isExhibited = 'N';
 
-    // 기간 종료 후 회차 확정 여부에 따라 정산 대기 또는 완료 처리. 전시 여부는 변경하지 않음
+    // 시작 상태 전환이 누락된 기존 도전도 실제 시작일 이후에는 진행 상태로 복구한다.
+    public void startIfDue(LocalDate today) {
+        if (status == Status.READY && !startDate.isAfter(today)) {
+            status = Status.IN_PROGRESS;
+        }
+    }
+
+    // 마지막 회차 확정 또는 기간 종료 후 정산. 전시 여부는 변경하지 않음
     public void settle(boolean allSchedulesFinalized) {
         if (status != Status.IN_PROGRESS && status != Status.SETTLING) {
             throw new IllegalStateException("종료 처리할 수 없는 도전 상태입니다.");
