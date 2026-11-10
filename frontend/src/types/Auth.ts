@@ -16,3 +16,7 @@ export interface SignupRequest {
 export interface SignupResponse {
   userId: number
 }
+
+export interface EmailAvailabilityResponse {
+  available: boolean
+}
