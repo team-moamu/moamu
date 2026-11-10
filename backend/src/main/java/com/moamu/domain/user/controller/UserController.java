@@ -1,6 +1,9 @@
 package com.moamu.domain.user.controller;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,6 +21,7 @@ import com.moamu.domain.user.entity.User;
 import com.moamu.domain.user.service.UserService;
 import com.moamu.global.response.ApiResponse;
 import com.moamu.global.security.JwtTokenProvider;
+import com.moamu.global.security.RefreshTokenService;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
@@ -35,6 +39,11 @@ public class UserController {
 
     // 로그인 검증을 통과한 회원의 액세스 토큰 발급
     private final JwtTokenProvider jwtTokenProvider;
+
+    private final RefreshTokenService refreshTokenService;
+
+    @Value("${auth.refresh-cookie-secure:true}")
+    private boolean refreshCookieSecure;
 
     // 신규회원 등록, 생성된 Id 반환
     @PostMapping("/signup")
@@ -59,20 +68,30 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 
-    //이메일과 비밀번호로 로그인하고 액세스 토큰을 반환  
+    // 이메일과 비밀번호로 로그인하고 액세스 토큰을 반환
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<UserLoginResponse>> login(
             @Valid @RequestBody UserLoginRequest request) {
 
-        // 이메일, 비밀번호 및 회원 상태 검증
         User user = userService.login(request);
 
-        // 검증된 회원의 ID로 액세스 토큰 발급
         String accessToken = jwtTokenProvider.createAccessToken(user.getUserId());
 
-        // 회원 엔티티 대신 응답 전용 DTO로 토큰 전달
+        RefreshTokenService.IssuedRefreshToken refreshToken = refreshTokenService.issue(user.getUserId());
+
+        ResponseCookie cookie = ResponseCookie
+                .from("moamu_refresh", refreshToken.token())
+                .httpOnly(true)
+                .secure(refreshCookieSecure)
+                .sameSite("Strict")
+                .path("/api/users")
+                .maxAge(refreshToken.ttl())
+                .build();
+
         UserLoginResponse response = new UserLoginResponse(accessToken);
 
-        return ResponseEntity.ok(ApiResponse.success(response));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .body(ApiResponse.success(response));
     }
 }
