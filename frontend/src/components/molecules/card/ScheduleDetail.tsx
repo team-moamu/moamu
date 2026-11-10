@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Badge } from '../../atoms/badge/Badge'
 import { scheduleStatusMap } from '../../../utils/scheduleStatus'
 import type { ScheduleStatus } from '../../../types/schedule'
@@ -13,7 +14,15 @@ export function ScheduleDetail({
   scheduleDate,
   status,
 }: ScheduleDetailProps) {
-  const { label, variant } = scheduleStatusMap[status]
+  const [today] = useState(() => new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date()))
+  const date = scheduleDate.slice(0, 10)
+  const isExpired = date < today && (status === 'UPCOMING' || status === 'OPEN')
+  const displayStatus = date === today && status === 'UPCOMING' ? 'OPEN' : status
+  const { label, variant } = isExpired
+    ? { label: '실패', variant: 'fail' as const }
+    : scheduleStatusMap[displayStatus]
 
   const formattedDate = new Date(
     `${scheduleDate.slice(0, 10)}T00:00:00`
