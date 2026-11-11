@@ -7,6 +7,7 @@ import celebrationMu from '../../assets/images/complete_mu.png'
 import { ArtworkPuzzle } from '../../components/organisms/puzzle/ArtworkPuzzle'
 import { Icon } from '../../components/atoms/icon/Icon'
 import { BottomNavigation } from '../../components/layout/navigation/BottomNavigation'
+import { TitleHeader } from '../../components/layout/header/TitleHeader'
 import type { ChallengeCompletionResponse } from '../../types/Challenge'
 import './ChallengeCompletionPage.css'
 
@@ -101,9 +102,9 @@ export function ChallengeCompletionPage({ accessToken }: ChallengeCompletionPage
     <div className="relative min-h-dvh">
       <div className={phase === 'transition' ? 'animate-[completion-result-enter_600ms_ease_both] motion-reduce:animate-none' : undefined} hidden={phase === 'celebration'} inert={phase !== 'result'} aria-hidden={phase !== 'result'}>
         <div className="min-h-dvh bg-white pb-[calc(96px+env(safe-area-inset-bottom))] text-[var(--color-text)]">
-          <header className="bg-[var(--color-background)] px-6 pt-[max(40px,env(safe-area-inset-top))] pb-5 text-center">
-            <h1 className="[font-family:var(--font-description)] text-[26px] font-bold leading-[1.45] focus:outline-none" ref={resultHeading} tabIndex={-1}>도전 완료</h1>
-          </header>
+          <div className="bg-[var(--color-background)]">
+            <TitleHeader title="도전 완료" headingRef={resultHeading} />
+          </div>
           <main className="px-5 pt-6 pb-10 max-[350px]:px-4">
             <ArtworkPuzzle
               imageUrl={result.artwork.imageUrl}
@@ -113,7 +114,6 @@ export function ChallengeCompletionPage({ accessToken }: ChallengeCompletionPage
               totalPieceCount={result.totalPieceCount}
               revealedPieceIndices={result.revealedPieceIndices}
               allPiecesEarned={result.allPiecesEarned}
-              maskColor="black"
             />
             <section className="my-5 text-center" aria-label="도전 기록">
               <h2 className="[font-family:var(--font-description)] text-[19px] font-bold">{result.challengeTitle}</h2>
@@ -132,7 +132,7 @@ export function ChallengeCompletionPage({ accessToken }: ChallengeCompletionPage
             </dl>
             <p className="mt-6 rounded-[10px] bg-[var(--color-background)] p-4 text-center text-[13px] leading-[1.8]">
               {result.allPiecesEarned ? '모든 조각을 모아 작품 전체가 완성되었어요.'
-                : '공개된 조각은 쌓아온 기록이에요. 미획득 조각은 검정으로 남겨두었어요.'}
+                : '공개된 조각은 쌓아온 기록이에요. 미획득 조각은 어둡게 표시했어요.'}
             </p>
           </main>
           <BottomNavigation />

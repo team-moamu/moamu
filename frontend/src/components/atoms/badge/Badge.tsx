@@ -16,7 +16,7 @@ type BadgeProps = {
 export function Badge({ children, variant }: BadgeProps) {
   const variantStyle: Record<BadgeVariant, string> = {
     // 인증 가능
-    available: 'bg-green-100 text-green-700',
+    available: 'bg-blue-100 text-[#527A93]',
     // 재시도
     retry: 'bg-orange-100 text-orange-700',
     // 성공

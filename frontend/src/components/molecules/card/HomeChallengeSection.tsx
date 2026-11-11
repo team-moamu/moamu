@@ -1,4 +1,3 @@
-import { Link } from 'react-router'
 import type { HomeChallenge, HomeDataMode } from '../../../pages/home/homeData'
 import { HomeChallengeCard } from './HomeChallengeCard'
 
@@ -27,41 +26,23 @@ export function HomeChallengeSection({ challenges, mode, isToday }: HomeChalleng
             {mode === 'live' && challenges.length === 0 && (
               <p className="px-2 py-[26px] text-center text-sm">이 날짜에는 도전이 없어요.</p>
             )}
-            <div className="grid grid-cols-2 items-stretch gap-4 max-[350px]:gap-2.5">
+            <div className="columns-2 gap-4 max-[350px]:gap-2.5">
               {challenges.map((challenge, index) => (
-                <HomeChallengeCard
+                <div
                   key={challenge.id}
-                  challenge={challenge}
-                  featured={index === 0}
-                  isToday={isToday}
-                />
+                  className="mb-4 break-inside-avoid max-[350px]:mb-2.5"
+                >
+                  <HomeChallengeCard
+                    challenge={challenge}
+                    featured={index === 0}
+                    isToday={isToday}
+                  />
+                </div>
               ))}
-              <CreateChallengeLink />
             </div>
           </>
         )}
       </div>
     </section>
-  )
-}
-
-function CreateChallengeLink() {
-  return (
-    <Link
-      to="/challenge/create"
-      className="flex min-h-[84px] min-w-0 items-center justify-center gap-[7px]
-        rounded-[9px] border border-[var(--color-border)] px-[7px] py-3
-        font-[family-name:var(--font-description)] text-lg font-bold
-        text-[var(--color-text)] no-underline shadow-[0_0_4px_#49372526]
-        max-[350px]:gap-0.5 max-[350px]:text-[15px]"
-    >
-      <span
-        aria-hidden="true"
-        className="font-[family-name:var(--font-ui)] text-[42px] leading-none font-normal"
-      >
-        ＋
-      </span>
-      새 도전 만들기
-    </Link>
   )
 }
