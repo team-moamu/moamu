@@ -153,15 +153,18 @@ export function EmailSignupPage() {
             placeholder="moa@example.com"
             autoComplete="email"
             inputMode="email"
+            action={
+              <Button
+                type="button"
+                disabled={!email || isCheckingEmail || isSubmitting}
+                onClick={() => void handleCheckEmail()}
+                className="button button--secondary shrink-0 whitespace-nowrap font-normal"
+                style={{ minHeight: 'var(--button-height-primary)' }}
+              >
+                {isCheckingEmail ? '확인 중…' : '중복 확인'}
+              </Button>
+            }
           />
-
-          <Button
-            disabled={!email || isCheckingEmail || isSubmitting}
-            onClick={() => void handleCheckEmail()}
-            className="button button--secondary w-full font-normal"
-          >
-            {isCheckingEmail ? '확인 중…' : '이메일 중복 확인'}
-          </Button>
 
           {checkedEmail === email && (
             <p role="status" className="text-caption text-[var(--color-primary)]">
