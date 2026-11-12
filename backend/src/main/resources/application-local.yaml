@@ -25,3 +25,7 @@ management:
   health:
     redis:
       enabled: false
+
+auth:
+  refresh-cookie-secure: false
+  browser-origin: http://localhost:5173

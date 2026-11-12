@@ -4,6 +4,7 @@ import type {
   LoginResponse,
   SignupRequest,
   SignupResponse,
+  EmailAvailabilityResponse,
 } from '../types/Auth'
 
 export class LoginError extends Error {
@@ -114,6 +115,46 @@ export async function signup(
     throw new SignupError(
       'INVALID_RESPONSE',
       '회원가입 결과를 확인하지 못했어요. 로그인 화면에서 가입한 정보로 로그인을 시도해 주세요.',
+    )
+  }
+
+  return body.data
+}
+
+export async function checkEmailAvailability(
+  email: string,
+): Promise<EmailAvailabilityResponse> {
+  let response: Response
+
+  try {
+    response = await fetch(
+      `/api/users/email-availability?${new URLSearchParams({ email })}`,
+    )
+  } catch {
+    throw new SignupError(
+      'NETWORK_ERROR',
+      '서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.',
+    )
+  }
+
+  const body: ApiResponse<EmailAvailabilityResponse> | null =
+    await response.json().catch(() => null)
+
+  if (!response.ok || !body || !body.success) {
+    if (body?.success === false) {
+      throw new SignupError(body.error.code, body.error.message)
+    }
+
+    throw new SignupError(
+      'EMAIL_CHECK_FAILED',
+      '이메일 중복 확인에 실패했어요. 잠시 후 다시 시도해 주세요.',
+    )
+  }
+
+  if (typeof body.data?.available !== 'boolean') {
+    throw new SignupError(
+      'INVALID_RESPONSE',
+      '이메일 중복 확인 결과를 확인하지 못했어요.',
     )
   }
 
