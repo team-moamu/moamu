@@ -1,0 +1,25 @@
+/* Tailwind의 utilities가 공통 외형보다 우선하도록 레이어를 지정합니다. */
+@import './tokens.css' layer(base);
+@import './base.css' layer(base);
+@import './typography.css' layer(components);
+@import './components.css' layer(components);
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100%;
+  width: 100%;
+}
+
+body {
+  background-color: #f5f5f5;
+}
+
+#root {
+  width: 100%;
+  max-width: 430px;
+  min-height: 100dvh;
+  margin: 0 auto;
+  background-color: #fff8ed;
+}

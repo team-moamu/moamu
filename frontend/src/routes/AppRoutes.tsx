@@ -1,0 +1,109 @@
+
+import { Route, Routes } from 'react-router'
+import { MainLayout } from '../components/layout/MainLayout'
+import { ChallengeCreatePage } from '../pages/challenge/ChallengeCreatePage'
+import { ChallengeListPage } from '../pages/challenge/ChallengeListPage'
+import { ChallengeDetailPage } from '../pages/challenge/ChallengeDetailPage'
+import { VerificationPage } from '../pages/challenge/verificationPage'
+import { LoginPage } from '../pages/auth/LoginPage'
+import { SignupPage } from '../pages/signup/SignupPage'
+import { EmailSignupPage } from '../pages/signup/EmailSignupPage'
+import { VerificationResultPage } from '../pages/challenge/VerificationResultPage'
+import { HomePage } from '../pages/home/HomePage'
+import { ChallengeCompletionPage } from '../pages/challenge/ChallengeCompletionPage'
+
+function ChallengePage() {
+  return <h1>도전하기 화면</h1>
+}
+
+function GalleryPage() {
+  return <h1>미술관 화면</h1>
+}
+
+function CollectionPage() {
+  return <h1>보관함 화면</h1>
+}
+
+function MyPage() {
+  return <h1>마이페이지 화면</h1>
+}
+
+export default function AppRoutes() {
+  return (
+    <Routes>
+      {/* 도전 전체 완료: 축하 화면을 먼저 표시한 뒤 결과 화면으로 자동 전환 */}
+      <Route path="/challenge/:challengeId/completion" element={<ChallengeCompletionPage />} />
+      {/* 인증 결과는 자체 레이아웃 사용: 실패·검토 화면에만 하단 내비게이션 표시 */}
+      <Route path="/challenge/:challengeId/verification/result/:verificationId" element={<VerificationResultPage />} />
+      {/* 
+        - element에 showBottomNav 추가하면 네비게이션바가 생깁니다. 
+        - headerType: MainLayout.tsx에 있는 헤더 타입
+        - background='white' => 배경색
+      */}
+      {/* 기본 헤더 + 하단 내비게이션 */}
+      <Route element={<MainLayout showBottomNav />}>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/collection" element={<CollectionPage />} />
+        <Route path="/mypage" element={<MyPage />} />
+      </Route>
+
+      {/* 뒤로가기 헤더 */}
+      <Route element={<MainLayout headerType="back" title="도전 생성" />}>
+        <Route path="/challenge/create" element={<ChallengeCreatePage />} />
+      </Route>
+
+      <Route element={<MainLayout showBottomNav headerType="back" title="도전" />}>
+        <Route path="/challenge" element={<ChallengePage />} />
+      </Route>
+
+      {/* 제목 헤더 */}
+      <Route element={<MainLayout showBottomNav headerType="title" title="미술관" />} >
+        <Route path="/museum" element={<GalleryPage />} />
+        <Route path="/challenge/complete" element={<GalleryPage />} />
+      </Route>
+
+      <Route element={<MainLayout showBottomNav background='white' headerType="title" title="도전하기" />} >
+        <Route path="/challenge/list" element={<ChallengeListPage />} />
+      </Route>
+
+      <Route element={<MainLayout showBottomNav background="white" headerType="title" />}>
+        <Route path="/challenge/:challengeId" element={<ChallengeDetailPage />} />
+      </Route>
+
+      <Route element={<MainLayout showBottomNav background="white" headerType="title" title='오늘의 인증' />}>
+        <Route path="/challenge/:challengeId/verification" element={<VerificationPage />} />
+      </Route>
+
+      {/* 로그인 헤더 */}
+      <Route element={<MainLayout headerType="login" background="white" />}>
+        <Route path="/login" element={<LoginPage />} />
+      </Route>
+
+      {/* 회원가입 */}
+      <Route
+        element={
+          <MainLayout
+            headerType="back"
+            title="이메일 회원가입"
+            background="white"
+          />
+        }
+      >
+        <Route path="/signup" element={<SignupPage />} />
+      </Route>
+
+      {/* 이메일 회원가입 */}
+      <Route
+        element={
+          <MainLayout
+            headerType="back"
+            title="이메일 회원가입"
+            background="white"
+          />
+        }
+      >
+        <Route path="/signup/email" element={<EmailSignupPage />} />
+      </Route>
+    </Routes >
+  )
+}

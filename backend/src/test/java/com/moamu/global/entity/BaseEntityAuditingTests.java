@@ -24,7 +24,7 @@ class BaseEntityAuditingTests {
 
         assertThat(entity.getDelYn()).isEqualTo("N");
         assertThat(entity.getFrstRegDt()).isEqualTo(createdAt);
-        assertThat(entity.getUdtDt()).isNull();
+        assertThat(entity.getUpdDt()).isNull();
     }
 
     @Test
@@ -40,7 +40,7 @@ class BaseEntityAuditingTests {
         handler.markModified(entity);
 
         assertThat(entity.getFrstRegDt()).isEqualTo(createdAt);
-        assertThat(entity.getUdtDt()).isEqualTo(modifiedAt);
+        assertThat(entity.getUpdDt()).isEqualTo(modifiedAt);
     }
 
     private AuditingHandler auditingHandler() {

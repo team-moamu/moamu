@@ -34,9 +34,19 @@ local의 `REDIS_HOST`, `REDIS_PORT`는 선택 사항이며, 생략하면 `127.0.
 
 개인 `.env`의 DB 및 Redis 접속 값을 IDE의 환경 변수 설정이나 터미널을 통해 실행 프로세스에 전달한 뒤 `backend/`에서 실행합니다. Spring Boot는 `.env`를 자동으로 읽지 않습니다.
 
+### Windows (PowerShell)
+
 ```powershell
 .\gradlew.bat bootRun --args="--spring.profiles.active=local"
 ```
+
+### macOS (zsh / bash)
+
+```sh
+./gradlew bootRun --args="--spring.profiles.active=local"
+```
+
+macOS에서 실행 권한 오류가 발생하면 `chmod +x gradlew`를 먼저 실행합니다. 환경변수 로딩은 [루트 README의 운영체제별 안내](../README.md#4-현재-터미널에-환경변수-로딩)를 참고합니다.
 
 운영은 `SPRING_PROFILES_ACTIVE=prod`를 설정하거나 JAR 실행 시 `--spring.profiles.active=prod`를 전달합니다.
 
@@ -46,8 +56,16 @@ Swagger에는 현재 Spring Security 기본 인증이 적용됩니다.
 
 Docker 실행이 필요합니다. 팀 개발 DB와 같은 `mysql:8.4.11`을 사용하며, `TEST_MYSQL_IMAGE`로 변경할 수 있습니다.
 
+### Windows (PowerShell)
+
 ```powershell
 .\gradlew.bat test
+```
+
+### macOS (zsh / bash)
+
+```sh
+./gradlew test
 ```
 
 테스트는 `test` Profile과 MySQL Testcontainers를 사용합니다. DB 연결 정보는 컨테이너에서 공급합니다.
@@ -74,8 +92,96 @@ Flyway SQL은 `src/main/resources/db/migration/`에 추가합니다. 테이블 �
 
 로컬 Docker MySQL 연결은 준비되어 있으며, 도메인 테이블은 ERD 확정 후 구현합니다. 현재 도메인 테이블이 없어 baseline 설정은 추가하지 않았습니다. 도메인 엔티티를 추가할 때 해당 테이블의 마이그레이션 SQL도 함께 작성합니다.
 
+## AI 사진 판정 연동
+
+`PhotoVerificationService.verify(request)`는 사진의 S3 객체 키와 도전 인증 조건을 AI 서버의 `POST /internal/photo-verifications`로 전달하고, 조건별 판정을 종합해 최종 인증 결과를 반환합니다.
+
+현재 `/api/media`에서 사진 업로드·인증/AI 작업 생성·AI 호출·판정 결과 DB 저장까지 동기로 연결되어 있습니다. 자동 재시도·재시작 복구와 서버 간 인증은 후속 작업입니다.
+
+### 연동 설정
+
+`application.yaml` 기준 설정은 다음과 같습니다.
+
+| 환경변수 | 미설정 시 기본값 | 용도 |
+| --- | --- | --- |
+| `AI_SERVER_URL` | `http://localhost:8000` | AI 서버 기본 주소 |
+| `AI_CONNECT_TIMEOUT` | `3s` | 서버 연결 대기 제한 시간 |
+| `AI_READ_TIMEOUT` | `30s` | 서버 응답 대기 제한 시간 |
+
+`AI_SERVER_URL`에는 백엔드에서 접속 가능한 HTTP(S) 기본 주소를 설정합니다. `/internal/photo-verifications` 경로는 코드에서 붙입니다.
+환경변수로 지정한 값이 기본값보다 우선합니다. `.env.example`의 `AI_CONNECT_TIMEOUT=5s`를 실행 환경에 적용하면 연결 타임아웃은 `5s`가 됩니다.
+
+### 호출 및 결과 처리
+
+`PhotoVerificationRequest`에는 문자열 ID(`aiTaskId`, `verificationId`), S3 객체 키(`imageKey`), 조건 목록(`conditions`: `code`, `description`)을 전달합니다. AI 서버로는 `ai_task_id`, `verification_id`, `image_key`, `conditions` 필드의 JSON을 전송하며, 사진 파일 자체는 전송하지 않습니다.
+
+`PhotoVerificationClient`는 요청의 필수 값과 조건 코드 중복을 검사합니다. 응답은 HTTP `200`, `processing_status=SUCCEEDED`일 때만 판정에 사용하며, 필수 값·판정값·글자 수 제한, 요청과 응답의 ID 일치, 조건별 결과의 누락·중복·추가 여부를 검증합니다.
+
+검증이 완료되면 `PhotoVerificationService`가 다음 규칙으로 최종 결과를 결정합니다.
+
+| 조건별 판정 | 최종 인증 결과 |
+| --- | --- |
+| `NOT_MET`이 하나라도 있음 | `FAILED` |
+| `NOT_MET`이 없고 `UNCERTAIN`이 있음 | `REVIEW_REQUIRED` |
+| 모든 조건이 `MET` | `SUCCESS` |
+
+반환값 `Result`의 `status`에는 최종 인증 결과, `response`에는 검증된 AI 응답이 담깁니다. 통신 오류·타임아웃, AI 오류 응답, 요청·응답 검증 실패는 `PhotoVerificationTechnicalException`으로 전달하며, 이때 최종 인증 결과는 반환하지 않습니다.
+
+### 테스트
+
+`backend/`에서 아래 테스트만 실행하면 실제 AI 서버, DB, Docker 없이 요청·응답 검증, 판정 규칙, 오류·타임아웃 처리를 확인할 수 있습니다. `MockRestServiceServer`로 AI 응답을 모의하므로 실제 AI 서버와의 통신이나 사진 판정 품질은 검증하지 않습니다.
+
+Windows (PowerShell):
+
+```powershell
+.\gradlew.bat test --tests 'com.moamu.domain.verification.PhotoVerificationServiceTests'
+```
+
+macOS (zsh / bash):
+
+```sh
+./gradlew test --tests 'com.moamu.domain.verification.PhotoVerificationServiceTests'
+```
+
+
+### 인증 사진 제출 및 동기 AI 판정
+
+`POST /api/media` 요청 한 번으로 사진 검증·S3/media 저장 → verification/ai_task 생성 → AI 호출 → 조건별 판정·최종 인증 결과 저장을 수행합니다.
+
+- `multipart/form-data`: `image`(사진), `scheduleId`(기존 인증 회차 ID)
+- 헤더: `Idempotency-Key`(1~100자, 같은 제출 재전송 시 동일 값)
+- `Authorization: Bearer {access_token}` 헤더가 필요합니다. JWT 필터가 검증한 활성 회원 ID를 사용하며, 본문이나 헤더의 임의 userId는 사용하지 않습니다.
+- 완료 후 `200 OK`: `data.verificationId`, `mediaId`, `aiTaskId`, `status`, `checks` 반환. `status`는 `SUCCESS` / `FAILED` / `REVIEW_REQUIRED`입니다.
+- 작업 상태: 등록 시 `PENDING` → AI 호출 직전 `RUNNING` → 판정 DB 저장 커밋 시 `SUCCEEDED`. 정상적인 부적합 판정도 작업 자체는 `SUCCEEDED`입니다.
+- 동일 키·회차·사진의 완료 요청은 저장된 결과를 반환하며 S3/AI를 다시 호출하지 않습니다. 처리 중 재전송은 `409`입니다.
+- AI 기술 오류는 `502 AI_TECHNICAL_ERROR`, 작업은 `FAILED_FINAL`, 인증은 `TECH_ERROR`로 기록하고 횟수를 복구합니다. 같은 키는 오류 결과를 유지하며 새 제출에는 새 키를 사용합니다. 자동 재시도·워커는 없습니다.
+- 인증 접수 실패 시 새 media/S3 사진 정리를 시도합니다. AI 호출 이후 오류에는 복구 근거인 사진과 인증 기록을 보존합니다.
+- 정상 판정은 결과 저장과 같은 트랜잭션에서 회차에 반영합니다: SUCCESS → SUCCESS, REVIEW_REQUIRED → IN_REVIEW, FAILED → 3회 미만 OPEN / 3회 이상 FAILED. 성공·실패 확정 시 decided_at을 기록하며 검토 중에는 확정하지 않습니다.
+- 회차 갱신은 @Version 검사를 유지하며, 중복 완료 응답이나 이전 시도의 늦은 결과가 회차를 덮어쓰지 않습니다.
+- 퍼즐 반영과 서버 강제 종료로 남은 RUNNING 작업 복구는 별도 후속 작업입니다.
+
+### 지난 미제출 회차 자동 마감
+
+- `local`·`prod` 프로필에서 서버 시작 후 1분 뒤부터, 이전 실행 완료 후 1분 간격으로 실행합니다.
+  한국 시간으로 `scheduleDate < 오늘`인 `UPCOMING`·`OPEN` 회차를 `FAILED`로 확정합니다.
+- 대상 도전은 삭제되지 않은 `IN_PROGRESS`·`SETTLING`입니다. `READY`·`STOPPED`·`COMPLETED`는 제외합니다.
+  `READY → IN_PROGRESS` 전환은 별도 도전 시작 처리에서 수행해야 합니다.
+- 오늘·미래 회차, 이미 확정된 회차, 분석·검토 중·정산 대기 회차는 변경하지 않습니다.
+- 최신 인증이 `SUBMITTED`·`ANALYZING`·`REVIEW_REQUIRED`·`TECH_ERROR`·`SUCCESS`이면 자동 실패 처리에서 제외합니다.
+  과거 기술 오류 이후 최신 시도가 `FAILED`로 확정된 경우에는 기한 경과 마감이 가능합니다.
+- 마감 사유와 `decidedAt`을 저장하며 시도 횟수·조각 위치·전시 여부는 변경하지 않습니다.
+  도전과 회차 잠금, `@Version` 검사로 반복·동시 실행 시 중복 반영을 막습니다.
+- 도전 종료 전에는 지난 회차만 마감합니다. 종료 후에는 기존 도전 종료 로직도 실행해
+  미확정 결과가 없으면 `COMPLETED`, 남아 있으면 `SETTLING`으로 처리합니다.
+- 서버 중단 중 누락된 회차도 재시작 후 재조회합니다. 대상은 ID 기준 100개씩 읽고,
+  한 도전이 실패하면 로그를 남기고 나머지는 계속 처리하며 다음 실행에서 재시도합니다.
+- `SCHEDULE_CLOSING_ENABLED=false`로 자동 실행을 끌 수 있습니다.
+  `SCHEDULE_CLOSING_DELAY_MS`로 간격을 조정하며 기본값은 `60000`입니다.
+  자동 실행을 꺼도 `POST /api/challenges/{challengeId}/settlement` 호출 시 같은 마감 처리를 수행합니다.
+- 테스트 프로필에서는 타이머가 실행되지 않으며 테스트에서 작업을 직접 호출합니다.
+
 ## 미정 사항
 
-- JWT·AI 연동 설정
+- JWT·AI 서버 간 인증 방식
 - Redis 개발 환경 및 인증 설정
 - `LocalDateTime` 감사 시각의 시간대 기준

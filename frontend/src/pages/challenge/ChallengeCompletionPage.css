@@ -1,0 +1,27 @@
+/*
+ * 작품 완성 화면의 애니메이션 정의입니다. 레이아웃·색상·크기 등은 Tailwind로 관리합니다.
+ * ChallengeCompletionPage.tsx의 animate-[...] 클래스에서 아래 키프레임을 사용합니다.
+ */
+
+/* 컨페티 낙하: 화면 위에서 아래로 이동하며 진입·퇴장 시 자연스럽게 나타나고 사라집니다.
+ * --drift: 입자별 좌우 이동 거리, --piece-opacity: 입자별 투명도.
+ * 낙하 속도와 시작 시점은 TSX의 animationDuration·animationDelay로 다르게 지정합니다.
+ */
+@keyframes completion-confetti-fall {
+  0% { transform: translate3d(0, -20px, 0); opacity: 0; }
+  2% { opacity: var(--piece-opacity); }
+  98% { opacity: var(--piece-opacity); }
+  100% { transform: translate3d(var(--drift), calc(100dvh + 40px), 0); opacity: 0; }
+}
+/* 컨페티 흔들림: 낙하하는 색종이 안쪽 요소에 적용해 좌우 흔들림과 입체 회전을 더합니다.
+ * --sway: 흔들림 폭, --tilt: 시작 각도, --turn: 추가 회전 각도.
+ * 낙하와 별도 주기로 반복해 모든 입자가 같은 모양으로 움직이지 않도록 합니다.
+ */
+@keyframes completion-confetti-flutter {
+  from { transform: translateX(calc(var(--sway) * -1)) rotate(var(--tilt)) rotateY(0deg); }
+  to { transform: translateX(var(--sway)) rotate(calc(var(--tilt) + var(--turn))) rotateY(130deg); }
+}
+/* 화면 전환: 축하 화면이 사라지는 동안 완료 결과 화면을 서서히 표시합니다.
+ * 컨페티 효과가 아니며, TSX의 animate-[completion-result-enter_600ms_ease_both]에서 사용합니다.
+ */
+@keyframes completion-result-enter { from { opacity: 0; } to { opacity: 1; } }

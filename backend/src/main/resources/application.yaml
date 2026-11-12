@@ -9,9 +9,37 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  # 이미지 파일 업로드 크기 제한 (공통)
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 11MB
+      
+# S3 설정
+app:
+  # 자동 마감 스케줄러를 제어하는 설정
+  schedule-closing:
+    enabled: ${SCHEDULE_CLOSING_ENABLED:true}
+    delay-ms: ${SCHEDULE_CLOSING_DELAY_MS:60000}
+  ai:
+    server-url: ${AI_SERVER_URL:http://localhost:8000}
+    connect-timeout: ${AI_CONNECT_TIMEOUT:3s}
+    read-timeout: ${AI_READ_TIMEOUT:30s}
+  storage:
+    s3:
+      bucket: ${S3_BUCKET}
+      region: ${AWS_REGION}
+      artwork-prefix: ${S3_ARTWORK_PREFIX}
+      profile-prefix: ${S3_PROFILE_PREFIX}
+      verification-prefix: ${S3_VERIFICATION_PREFIX}
 
 springdoc:
   api-docs:
     enabled: false
   swagger-ui:
     enabled: false
+
+# 로그인 인증에 사용할 JWT 서명 키와 액세스 토큰 유효 기간
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiration: 1800000

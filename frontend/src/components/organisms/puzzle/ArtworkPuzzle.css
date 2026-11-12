@@ -1,0 +1,12 @@
+﻿.artwork-piece-highlight {
+  animation: artwork-piece-reveal 900ms ease-out;
+}
+
+@keyframes artwork-piece-reveal {
+  from { opacity: .35; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .artwork-piece-highlight { animation: none; }
+}

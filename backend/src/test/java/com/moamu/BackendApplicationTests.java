@@ -14,14 +14,23 @@ import org.testcontainers.utility.DockerImageName;
 @SpringBootTest
 @ActiveProfiles("test")
 @Import(BackendApplicationTests.ContainerConfiguration.class)
-class BackendApplicationTests {
+public class BackendApplicationTests {
 
     @Test
     void contextLoads() {
     }
 
+    // 도전 도메인 테스트에서도 가져올 수 있도록 설정 클래스와 바깥 클래스를 공개합니다.
     @TestConfiguration(proxyBeanMethods = false)
-    static class ContainerConfiguration {
+    public static class ContainerConfiguration {
+
+        // DB 통합 테스트에서는 외부 저장소를 호출하지 않도록 가짜 저장소를 등록합니다.
+        // 업로드 동작과 파일 검증은 S3StorageServiceTests/MediaUploadErrorTests에서 확인합니다.
+        @Bean
+        com.moamu.domain.media.service.StorageService storageService() {
+            return org.mockito.Mockito.mock(com.moamu.domain.media.service.StorageService.class);
+        }
+
 
         @Bean
         @ServiceConnection

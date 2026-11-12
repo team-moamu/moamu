@@ -9,6 +9,12 @@ spring:
     url: "jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:moamu}?connectionTimeZone=UTC&forceConnectionTimeZoneToSession=true"
     username: ${DB_USER:moamu}
     password: ${DB_PASSWORD}
+  data:
+    redis:
+      host: ${REDIS_HOST:127.0.0.1}
+      port: ${REDIS_PORT:6379}
+      connect-timeout: 3s
+      timeout: 3s
   jpa:
     # 테이블은 백엔드가 버전 관리하는 마이그레이션으로 생성합니다.
     # 엔티티가 있는데 테이블이 없다면 validate는 실패하는 것이 정상입니다.

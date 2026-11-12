@@ -80,7 +80,7 @@ Redis·JJWT 의존성이 포함되어 있어도 실제 연결과 JWT 인증 구�
 
 ## 팀원 로컬 환경 세팅
 
-아래 명령은 **Windows PowerShell** 기준입니다. 순서대로 실행합니다.
+사용하는 운영체제에 맞춰 **Windows (PowerShell)** 또는 **macOS (zsh / bash)** 명령을 순서대로 실행합니다.
 
 ### 1. 필수 프로그램
 
@@ -91,7 +91,17 @@ Redis·JJWT 의존성이 포함되어 있어도 실제 연결과 JWT 인증 구�
 
 Gradle과 MySQL은 별도 설치하지 않습니다. Gradle은 Wrapper, MySQL은 Docker를 사용합니다.
 
+#### Windows (PowerShell)
+
 ```powershell
+java -version
+git --version
+docker version
+```
+
+#### macOS (zsh / bash)
+
+```sh
 java -version
 git --version
 docker version
@@ -103,19 +113,39 @@ Java 버전이 21인지, Docker의 Client와 Server 정보가 모두 표시되�
 
 GitHub 저장소 화면의 **Code → HTTPS** 주소를 복사해 아래 자리표시자를 바꿉니다.
 
+#### Windows (PowerShell)
+
 ```powershell
 git clone <GitHub에서 복사한 저장소 주소> moamu
 cd moamu/backend
 .\gradlew.bat --version
 ```
 
+#### macOS (zsh / bash)
+
+```sh
+git clone <GitHub에서 복사한 저장소 주소> moamu
+cd moamu/backend
+chmod +x gradlew
+./gradlew --version
+```
+
 이후 명령은 모두 `backend/`에서 실행합니다. 최초 Gradle·의존성 다운로드에는 인터넷 연결이 필요합니다.
 
 ### 3. 개인 환경변수 파일 생성
 
+#### Windows (PowerShell)
+
 ```powershell
 Copy-Item .env.example .env
 notepad .env
+```
+
+#### macOS (zsh / bash)
+
+```sh
+cp .env.example .env
+open -e .env
 ```
 
 이미 `.env`가 있다면 복사하지 말고 기존 파일을 수정합니다. 아래 비밀번호 자리표시자를 **본인이 정한 로컬 개발용 비밀번호**로 바꿉니다.
@@ -135,7 +165,9 @@ TEST_MYSQL_IMAGE=mysql:8.4.11
 
 ### 4. 현재 터미널에 환경변수 로딩
 
-아래 코드는 주석과 빈 값을 건너뛰고 현재 PowerShell 세션에 값을 등록합니다. `.env` 값은 따옴표 없이 작성합니다. 이 로더는 단순 `KEY=VALUE` 형식용이며 변수 치환과 여러 줄 값은 지원하지 않습니다.
+사용하는 운영체제에 맞는 코드를 `backend/`에서 실행합니다. 아래 코드는 주석과 빈 값을 건너뛰고 현재 터미널 세션에 값을 등록합니다. `.env` 값은 따옴표 없이 작성합니다. 이 로더는 단순 `KEY=VALUE` 형식용이며 변수 치환과 여러 줄 값은 지원하지 않습니다.
+
+#### Windows (PowerShell)
 
 ```powershell
 Get-Content .env -Encoding UTF8 | ForEach-Object {
@@ -152,7 +184,27 @@ Get-Content .env -Encoding UTF8 | ForEach-Object {
 Remove-Item Env:REDIS_HOST, Env:REDIS_PORT -ErrorAction SilentlyContinue
 ```
 
-환경변수는 현재 터미널과 여기서 실행한 프로그램에만 적용됩니다. 새 터미널을 열거나 `.env`를 수정하면 다시 로딩합니다. Redis가 준비된 뒤에는 위 `Remove-Item`을 생략하고 실제 접속 정보를 등록합니다. 빈 Redis 값을 주입하면 기본값이 적용되지 않을 수 있습니다.
+#### macOS (zsh / bash)
+
+```sh
+while IFS= read -r line || [ -n "$line" ]; do
+    case "$line" in
+        *=*) ;;
+        *) continue ;;
+    esac
+    key=$(printf '%s' "${line%%=*}" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+    value=$(printf '%s' "${line#*=}" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+    case "$key" in
+        ''|[0-9]*|*[!a-zA-Z0-9_]*) continue ;;
+    esac
+    [ -n "$value" ] && export "$key=$value"
+done < .env
+
+# Redis 준비 전에는 두 변수를 실행 프로세스에 전달하지 않습니다.
+unset REDIS_HOST REDIS_PORT
+```
+
+환경변수는 현재 터미널과 여기서 실행한 프로그램에만 적용됩니다. 새 터미널을 열거나 `.env`를 수정하면 다시 로딩합니다. Redis가 준비된 뒤에는 위 `Remove-Item` 또는 `unset`을 생략하고 실제 접속 정보를 등록합니다. 빈 Redis 값을 주입하면 기본값이 적용되지 않을 수 있습니다.
 
 ### 5. 개인 Docker MySQL 준비
 
@@ -162,8 +214,16 @@ Remove-Item Env:REDIS_HOST, Env:REDIS_PORT -ErrorAction SilentlyContinue
 
 환경변수를 로딩한 터미널에서 실행합니다.
 
+#### Windows (PowerShell)
+
 ```powershell
 .\gradlew.bat bootRun --args="--spring.profiles.active=local"
+```
+
+#### macOS (zsh / bash)
+
+```sh
+./gradlew bootRun --args="--spring.profiles.active=local"
 ```
 
 `Started BackendApplication` 로그가 나타나면 시작된 것입니다. 기본 포트는 8080이며 `Ctrl+C`로 종료합니다.
@@ -175,13 +235,35 @@ Remove-Item Env:REDIS_HOST, Env:REDIS_PORT -ErrorAction SilentlyContinue
 
 IDE에서 직접 실행한다면 Java 21을 선택하고, 실행 구성에 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `SPRING_PROFILES_ACTIVE=local`을 등록합니다. Redis 변수는 준비 전까지 생략합니다. IDE의 `.env` 로딩 기능을 사용한다면 빈 Redis 값이 주입되지 않도록 확인합니다.
 
+#### VS Code에서 실행
+
+저장소 루트 `moamu/`를 VS Code로 열고 권장 확장인 **Extension Pack for Java**를 설치합니다. Java 실행 환경은 각자의 PC에서 JDK 21로 설정합니다.
+
+1. `backend/.env.example`을 `backend/.env`로 복사하고 본인 MySQL의 포트·계정·비밀번호를 입력합니다. 이미 파일이 있다면 기존 파일을 수정합니다.
+2. Redis가 준비되지 않았다면 `.env`의 `REDIS_HOST`, `REDIS_PORT` 항목은 삭제하거나 `#`으로 주석 처리합니다. 빈 값으로 전달하지 않습니다.
+3. Docker MySQL을 실행한 뒤 **실행 및 디버그**에서 **MOAMU Backend (local)**을 선택하고 `F5`를 누릅니다. 디버깅 없이 실행하려면 `Ctrl+F5`를 누릅니다.
+
+공유된 `.vscode/launch.json`이 `local` 프로필을 지정하고 `backend/.env`를 읽어 서버에 전달하므로 PowerShell 환경변수 로딩은 필요하지 않습니다. 이 설정은 VS Code 실행 구성에만 적용되며, 터미널에서 `bootRun`을 직접 실행할 때는 위 환경변수 로딩 과정이 필요합니다. 서버 시작 시 Flyway가 연결한 DB에 미적용 마이그레이션을 적용합니다.
+
+Git에는 `.vscode/launch.json`, `.vscode/extensions.json`, `.env.example`을 공유합니다. 개인 `.env`와 JDK 설치 경로 등 개인 VS Code 설정은 공유하지 않습니다.
+
 ### 7. 빌드와 테스트
+
+#### Windows (PowerShell)
 
 ```powershell
 .\gradlew.bat clean build
 ```
 
+#### macOS (zsh / bash)
+
+```sh
+./gradlew clean build
+```
+
 Docker가 실행 중이어야 합니다. 테스트는 `test` 프로필과 MySQL Testcontainers로 별도 임시 DB를 만들며, 개인 개발 DB 접속 정보를 사용하지 않습니다. 처음 실행하면 MySQL 이미지 다운로드로 시간이 걸릴 수 있습니다.
+
+#### Windows (PowerShell)
 
 ```powershell
 # 테스트만 실행
@@ -191,9 +273,19 @@ Docker가 실행 중이어야 합니다. 테스트는 `test` 프로필과 MySQL 
 .\gradlew.bat build -x test
 ```
 
+#### macOS (zsh / bash)
+
+```sh
+# 테스트만 실행
+./gradlew test
+
+# Docker 없이 컴파일·패키징만 확인 (테스트 검증 제외)
+./gradlew build -x test
+```
+
 테스트 보고서: `backend/build/reports/tests/test/index.html`
 
-macOS/Linux에서는 `.\gradlew.bat` 대신 `./gradlew`를 사용합니다. 실행 권한이 없다면 `chmod +x gradlew`를 실행합니다. 환경변수는 IDE 실행 구성 또는 각 셸의 `export`로 등록합니다. 위 PowerShell 환경변수 로더는 해당 셸에서 사용할 수 없습니다.
+macOS에서 실행 권한 오류가 발생하면 `backend/`에서 `chmod +x gradlew`를 실행합니다. 환경변수는 IDE 실행 구성 또는 4절의 운영체제별 로더로 등록합니다.
 
 ## 자주 발생하는 문제
 

@@ -1,0 +1,15 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "MOAMU Backend (local)",
+            "request": "launch",
+            "mainClass": "com.moamu.BackendApplication",
+            "cwd": "${workspaceFolder}/backend",
+            "args": "--spring.profiles.active=local",
+            "envFile": "${workspaceFolder}/backend/.env",
+            "console": "integratedTerminal"
+        }
+    ]
+}
