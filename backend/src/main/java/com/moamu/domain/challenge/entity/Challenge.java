@@ -10,6 +10,7 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Entity
 @Table(name = "challenge")
@@ -97,6 +98,7 @@ public class Challenge extends BaseEntity {
     private int gridCols;
 
     // 미술관 전시 여부(Y/N)
+    @Setter
     @Column(name = "is_exhibited")
     private char isExhibited = 'N';
 
