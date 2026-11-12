@@ -62,6 +62,7 @@ class CollectionApiTests {
     private Challenge challenge(long id, int duration, char exhibited) {
         Challenge challenge = mock(Challenge.class);
         when(challenge.getChallengeId()).thenReturn(id);
+        when(challenge.getChallengeTitle()).thenReturn("Practice guitar " + id);
         when(challenge.getStatus()).thenReturn(com.moamu.domain.challenge.enums.Status.COMPLETED);
         when(challenge.getDurationDays()).thenReturn(duration);
         when(challenge.getIsExhibited()).thenReturn(exhibited);
@@ -95,6 +96,7 @@ class CollectionApiTests {
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data.length()").value(1))
             .andExpect(jsonPath("$.data[0].challengeId").value(10))
+            .andExpect(jsonPath("$.data[0].challengeTitle").value("Practice guitar 10"))
             .andExpect(jsonPath("$.data[0].challengeStatus").value("COMPLETED"))
             .andExpect(jsonPath("$.data[0].isExhibited").value(true))
             .andExpect(jsonPath("$.data[0].progress.durationDays").value(7))
@@ -203,9 +205,11 @@ class CollectionApiTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.length()").value(2))
             .andExpect(jsonPath("$.data[0].challengeId").value(20))
+            .andExpect(jsonPath("$.data[0].challengeTitle").value("Practice guitar 20"))
             .andExpect(jsonPath("$.data[0].progress.successDays").value(1))
             .andExpect(jsonPath("$.data[0].puzzle.revealedPieceIndices").value(contains(5)))
             .andExpect(jsonPath("$.data[1].challengeId").value(10))
+            .andExpect(jsonPath("$.data[1].challengeTitle").value("Practice guitar 10"))
             .andExpect(jsonPath("$.data[1].progress.successDays").value(2))
             .andExpect(jsonPath("$.data[1].puzzle.revealedPieceIndices").value(contains(0, 3)));
     }

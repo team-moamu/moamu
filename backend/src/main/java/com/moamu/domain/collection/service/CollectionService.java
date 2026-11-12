@@ -86,6 +86,7 @@ public class CollectionService {
             // 4. 객체들 응답에 담기
             responses.add(new CollectionResponse(
                 challenge.getChallengeId(),
+                challenge.getChallengeTitle(),
                 challenge.getStatus(),
                 challenge.getIsExhibited() == 'Y',
                 progressResponse,

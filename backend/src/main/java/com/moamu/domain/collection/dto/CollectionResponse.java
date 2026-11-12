@@ -7,6 +7,7 @@ import java.util.List;
 // 보관함의 완료된 도전 한 건에 대한 응답 DTO
 public record CollectionResponse(
     Long challengeId,
+    String challengeTitle,
     Status challengeStatus,
     boolean isExhibited,
     Progress progress,
