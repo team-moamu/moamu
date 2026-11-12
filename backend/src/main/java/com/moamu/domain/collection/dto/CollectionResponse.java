@@ -8,13 +8,18 @@ import java.util.List;
 public record CollectionResponse(
     Long challengeId,
     Status challengeStatus,
-    int durationDays,
-    int successDays,
-    int progressPercent,
     boolean isExhibited,
+    Progress progress,
     Artworks artwork,
     Puzzle puzzle
 ){
+    // 도전 기간 및 성공 현황
+    public record Progress(
+        int durationDays,
+        int successDays,
+        int progressPercent
+    ){}
+
     // 작품 정보
     public record Artworks(
         Long artworkId,
