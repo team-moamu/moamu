@@ -13,6 +13,7 @@ import com.moamu.domain.user.entity.User;
 import com.moamu.domain.user.enums.UserStatus;
 import com.moamu.domain.user.repository.UserRepository;
 import com.moamu.domain.verification.repository.VerificationSuccessRepository;
+import com.moamu.domain.verification.service.ArtworkImageUrlService;
 import com.moamu.global.config.SecurityConfig;
 import com.moamu.global.exception.BusinessException;
 import com.moamu.global.exception.CommonErrorCode;
@@ -53,6 +54,7 @@ class CollectionApiTests {
     @MockitoBean VerificationSuccessRepository verifications;
     @MockitoBean ArtworkRepository artworks;
     @MockitoBean MediaRepository media;
+    @MockitoBean ArtworkImageUrlService artworkImageUrls;
     @MockitoBean JwtTokenProvider tokens;
     @MockitoBean UserRepository users;
 
@@ -95,6 +97,7 @@ class CollectionApiTests {
         Media image = mock(Media.class);
         when(image.getImageKey()).thenReturn("artworks/test.png");
         when(media.findById(60L)).thenReturn(Optional.of(image));
+        when(artworkImageUrls.resolve("artworks/test.png")).thenReturn("https://example.com/artwork.png");
 
         mvc.perform(get("/api/collections").header("Authorization", "Bearer owner-token"))
             .andExpect(status().isOk())
@@ -110,7 +113,8 @@ class CollectionApiTests {
             .andExpect(jsonPath("$.data[0].progress.progressPercent").value(43))
             .andExpect(jsonPath("$.data[0].artwork.artworkId").value(30))
             .andExpect(jsonPath("$.data[0].artwork.artworkTitle").value("Painting"))
-            .andExpect(jsonPath("$.data[0].artwork.imageKey").value("artworks/test.png"))
+            .andExpect(jsonPath("$.data[0].artwork.imageKey").doesNotHaveJsonPath())
+            .andExpect(jsonPath("$.data[0].artwork.imageUrl").value("https://example.com/artwork.png"))
             .andExpect(jsonPath("$.data[0].puzzle.gridRows").value(3))
             .andExpect(jsonPath("$.data[0].puzzle.gridCols").value(3))
             .andExpect(jsonPath("$.data[0].puzzle.revealedPieceIndices").value(contains(0, 2, 6)))
@@ -264,7 +268,7 @@ class CollectionApiTests {
         mvc.perform(get("/api/collections").header("Authorization", "Bearer owner-token"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data[0].artwork.artworkId").value(30))
-            .andExpect(jsonPath("$.data[0].artwork.imageKey").doesNotExist());
+            .andExpect(jsonPath("$.data[0].artwork.imageUrl").doesNotExist());
         if (mediaId == null) {
             verifyNoInteractions(media);
         }
