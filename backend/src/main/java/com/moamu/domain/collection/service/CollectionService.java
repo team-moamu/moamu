@@ -3,7 +3,9 @@ package com.moamu.domain.collection.service;
 import com.moamu.domain.artwork.entity.Artwork;
 import com.moamu.domain.artwork.repository.ArtworkRepository;
 import com.moamu.domain.challenge.entity.Challenge;
+import com.moamu.domain.challenge.exception.ChallengeErrorCode;
 import com.moamu.domain.collection.dto.CollectionResponse;
+import com.moamu.domain.collection.dto.CollectionExhibitionResponse;
 import com.moamu.domain.collection.repository.CollectionRepository;
 import com.moamu.domain.media.entity.Media;
 import com.moamu.domain.media.repository.MediaRepository;
@@ -28,6 +30,28 @@ public class CollectionService {
     private final VerificationSuccessRepository verificationSuccessRepository;
     private final ArtworkRepository artworkRepository;
     private final MediaRepository mediaRepository;
+
+    // 소유권과 완료 여부를 확인하고 전시 상태를 Y로 변경
+    @Transactional
+    public CollectionExhibitionResponse exhibit(Long userId, Long challengeId) {
+        if (userId == null || userId <= 0) {
+            throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
+        }
+        if (challengeId == null || challengeId <= 0) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
+        }
+
+        Challenge challenge = collectionRepository.findOwnedForExhibition(userId, challengeId)
+            .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
+        if (challenge.getStatus() != com.moamu.domain.challenge.enums.Status.COMPLETED) {
+            throw new BusinessException(ChallengeErrorCode.CHALLENGE_NOT_COMPLETED);
+        }
+        challenge.setIsExhibited('Y');
+
+        return new CollectionExhibitionResponse(
+            challenge.getChallengeId(), challenge.getIsExhibited() == 'Y'
+        );
+    }
 
     public List<CollectionResponse> getCollections(Long userId) {
         if (userId == null || userId <= 0) {
