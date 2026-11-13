@@ -30,9 +30,23 @@ public interface CollectionRepository extends JpaRepository<Challenge, Long> {
         WHERE c.userId = :userId
             AND c.status = com.moamu.domain.challenge.enums.Status.COMPLETED
             AND c.delYn = 'N'
-        ORDER BY c.endDate DESC, c.challengeId DESC
+            AND (:exhibitionStatus IS NULL OR c.isExhibited = :exhibitionStatus)
+        ORDER BY
+            CASE WHEN :sort = 'name' THEN c.challengeTitle END ASC,
+            CASE WHEN :sort = 'latest' THEN c.endDate END DESC,
+            CASE WHEN :sort = 'successRate' THEN
+                CASE WHEN c.durationDays > 0 THEN
+                    (SELECT COUNT(s) * 1.0 FROM Schedule s
+                     WHERE s.challengeId = c.challengeId
+                         AND s.status = com.moamu.domain.schedule.enums.Status.SUCCESS)
+                    / c.durationDays
+                ELSE 0.0 END
+            END DESC,
+            c.challengeId DESC
         """)
     List<Challenge> findOwned(
-        @Param("userId") Long userId
+        @Param("userId") Long userId,
+        @Param("exhibitionStatus") Character exhibitionStatus,
+        @Param("sort") String sort
     );
 }

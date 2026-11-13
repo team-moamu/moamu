@@ -53,12 +53,21 @@ public class CollectionService {
         );
     }
 
-    public List<CollectionResponse> getCollections(Long userId) {
+    public List<CollectionResponse> getCollections(Long userId, Boolean exhibited, String sort) {
         if (userId == null || userId <= 0) {
             throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
         }
 
-        List<Challenge> challenges = collectionRepository.findOwned(userId);
+        // 정렬 기본값(latest)은 최신순, name 이름순, successRate 성공률순
+        if (!"latest".equals(sort) && !"name".equals(sort) && !"successRate".equals(sort)) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
+        }
+
+        // 필터 생략 시 전체
+        // true는 전시 중(Y)
+        // false는 미전시(N) 조회
+        Character exhibitionStatus = exhibited == null ? null : (exhibited ? 'Y' : 'N');
+        List<Challenge> challenges = collectionRepository.findOwned(userId, exhibitionStatus, sort);
         List<CollectionResponse> responses = new ArrayList<>();
 
         for (Challenge challenge : challenges) {
