@@ -2,6 +2,7 @@ package com.moamu.domain.collection.dto;
 
 import com.moamu.domain.challenge.enums.Status;
 
+import java.time.LocalDate;
 import java.util.List;
 
 // 보관함의 완료된 도전 한 건에 대한 응답 DTO
@@ -9,6 +10,7 @@ public record CollectionResponse(
     Long challengeId,
     String challengeTitle,
     Status challengeStatus,
+    LocalDate endDate,
     boolean isExhibited,
     Progress progress,
     Artworks artwork,

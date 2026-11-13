@@ -69,6 +69,7 @@ class CollectionApiTests {
         when(challenge.getChallengeTitle()).thenReturn("Practice guitar " + id);
         when(challenge.getStatus()).thenReturn(com.moamu.domain.challenge.enums.Status.COMPLETED);
         when(challenge.getDurationDays()).thenReturn(duration);
+        when(challenge.getEndDate()).thenReturn(LocalDate.of(2026, 11, 10));
         when(challenge.getIsExhibited()).thenReturn(exhibited);
         when(challenge.getArtworkId()).thenReturn(30L);
         when(challenge.getGridRows()).thenReturn(3);
@@ -102,6 +103,7 @@ class CollectionApiTests {
             .andExpect(jsonPath("$.data[0].challengeId").value(10))
             .andExpect(jsonPath("$.data[0].challengeTitle").value("Practice guitar 10"))
             .andExpect(jsonPath("$.data[0].challengeStatus").value("COMPLETED"))
+            .andExpect(jsonPath("$.data[0].endDate").value("2026-11-10"))
             .andExpect(jsonPath("$.data[0].isExhibited").value(true))
             .andExpect(jsonPath("$.data[0].progress.durationDays").value(7))
             .andExpect(jsonPath("$.data[0].progress.successDays").value(3))
