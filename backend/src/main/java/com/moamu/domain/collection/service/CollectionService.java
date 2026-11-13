@@ -112,6 +112,7 @@ public class CollectionService {
                 challenge.getChallengeId(),
                 challenge.getChallengeTitle(),
                 challenge.getStatus(),
+                challenge.getEndDate(),
                 challenge.getIsExhibited() == 'Y',
                 progressResponse,
                 artworkResponse,
