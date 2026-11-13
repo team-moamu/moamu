@@ -13,7 +13,7 @@ import com.moamu.domain.verification.dto.VerificationSubmitRequest;
 import com.moamu.domain.verification.dto.VerificationSubmitResponse;
 import com.moamu.domain.verification.service.VerificationSubmissionService;
 
-import com.moamu.domain.verification.VerificationService;
+import com.moamu.domain.verification.service.VerificationService;
 import com.moamu.domain.verification.dto.ChallengeVerificationResponseDto;
 import com.moamu.global.response.ApiResponse;
 

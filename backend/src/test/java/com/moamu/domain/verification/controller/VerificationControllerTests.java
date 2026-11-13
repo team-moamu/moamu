@@ -1,6 +1,6 @@
 package com.moamu.domain.verification.controller;
 
-import com.moamu.domain.verification.VerificationService;
+import com.moamu.domain.verification.service.VerificationService;
 import com.moamu.domain.verification.dto.ChallengeVerificationResponseDto;
 import com.moamu.global.exception.BusinessException;
 import com.moamu.global.exception.CommonErrorCode;
