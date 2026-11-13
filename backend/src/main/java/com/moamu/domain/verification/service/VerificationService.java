@@ -1,4 +1,4 @@
-package com.moamu.domain.verification;
+package com.moamu.domain.verification.service;
 
 import java.util.List;
 

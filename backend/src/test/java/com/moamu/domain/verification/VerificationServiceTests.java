@@ -2,6 +2,7 @@ package com.moamu.domain.verification;
 
 import com.moamu.domain.schedule.repository.ScheduleRepository;
 import com.moamu.domain.verification.dto.ChallengeVerificationResponseDto;
+import com.moamu.domain.verification.service.VerificationService;
 import com.moamu.global.exception.BusinessException;
 import com.moamu.global.exception.CommonErrorCode;
 import java.util.List;
