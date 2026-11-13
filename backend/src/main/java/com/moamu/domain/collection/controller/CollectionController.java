@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -31,10 +32,12 @@ public class CollectionController {
 
     @GetMapping
     public ApiResponse<List<CollectionResponse>> getCollections(
-        @AuthenticationPrincipal Long userId){
+        @AuthenticationPrincipal Long userId,
+        @RequestParam(value = "exhibited", required = false) Boolean exhibited
+    ){
         // 사용자의 완료된 도전 목록 조회
         List<CollectionResponse> responses =
-            collectionService.getCollections(userId);
+            collectionService.getCollections(userId, exhibited);
 
         return ApiResponse.success(responses);
     }

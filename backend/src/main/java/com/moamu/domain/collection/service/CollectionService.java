@@ -53,12 +53,16 @@ public class CollectionService {
         );
     }
 
-    public List<CollectionResponse> getCollections(Long userId) {
+    public List<CollectionResponse> getCollections(Long userId, Boolean exhibited) {
         if (userId == null || userId <= 0) {
             throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
         }
 
-        List<Challenge> challenges = collectionRepository.findOwned(userId);
+        // 필터 생략 시 전체
+        // true는 전시 중(Y)
+        // false는 미전시(N) 조회
+        Character exhibitionStatus = exhibited == null ? null : (exhibited ? 'Y' : 'N');
+        List<Challenge> challenges = collectionRepository.findOwned(userId, exhibitionStatus);
         List<CollectionResponse> responses = new ArrayList<>();
 
         for (Challenge challenge : challenges) {
