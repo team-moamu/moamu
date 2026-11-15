@@ -1,8 +1,31 @@
+import { useEffect, useRef, useState } from 'react'
 import backgroundMu from '../../assets/images/background_mu.png'
 import leaf from '../../assets/icons/leaf.svg'
+import { GallerySectionHeader } from '../../components/molecules/gallery/GallerySectionHeader'
+import { CollectionSortMenu } from '../../components/molecules/select/CollectionSortMenu'
+import type { CollectionSort } from '../../types/Collection'
 
 export function GalleryPage() {
+  const [sort, setSort] = useState<CollectionSort>('latest')
+  const [sortOpen, setSortOpen] = useState(false)
+  const headerRef = useRef<HTMLDivElement>(null)
+
+  function closeSort() {
+    setSortOpen(false)
+    headerRef.current?.querySelector<HTMLButtonElement>('[aria-controls="gallery-sort"]')?.focus()
+  }
+
+  useEffect(() => {
+    if (!sortOpen) return
+    function handlePointer(event: PointerEvent) {
+      if (!headerRef.current?.contains(event.target as Node)) setSortOpen(false)
+    }
+    document.addEventListener('pointerdown', handlePointer)
+    return () => document.removeEventListener('pointerdown', handlePointer)
+  }, [sortOpen])
+
   return (
+    <>
     <section aria-label="내 미술관" className="relative">
       <img src={backgroundMu} alt="" className="block w-full" />
 
@@ -25,5 +48,33 @@ export function GalleryPage() {
         </p>
       </div>
     </section>
+      <section className="px-6 py-5">
+        <div
+          ref={headerRef}
+          className="relative"
+          onKeyDown={(event) => {
+            if (event.key === 'Escape' && sortOpen) closeSort()
+          }}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) setSortOpen(false)
+          }}
+        >
+          <GallerySectionHeader moreButtonProps={{
+            onClick: () => setSortOpen((open) => !open),
+            'aria-label': '전시된 작품 정렬 선택',
+            'aria-expanded': sortOpen,
+            'aria-controls': 'gallery-sort',
+          }} />
+          {sortOpen && (
+            <div className="absolute top-full right-[52px] z-20 mt-1 w-[116px]">
+              <CollectionSortMenu id="gallery-sort" value={sort} onChange={(value) => {
+                setSort(value)
+                closeSort()
+              }} />
+            </div>
+          )}
+        </div>
+      </section>
+    </>
   )
 }

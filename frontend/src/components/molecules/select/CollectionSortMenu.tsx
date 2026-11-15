@@ -9,11 +9,12 @@ const options: { value: CollectionSort; label: string; icon: IconName }[] = [
 ]
 
 interface CollectionSortMenuProps {
+  id?: string
   value: CollectionSort
   onChange: (value: CollectionSort) => void
 }
 
-export function CollectionSortMenu({ value, onChange }: CollectionSortMenuProps) {
+export function CollectionSortMenu({ value, onChange, id = 'collection-sort' }: CollectionSortMenuProps) {
   const selectedIndex = options.findIndex((option) => option.value === value)
   const orderedOptions = [
     ...options.slice(selectedIndex),
@@ -27,7 +28,7 @@ export function CollectionSortMenu({ value, onChange }: CollectionSortMenuProps)
   return (
     <div
       ref={containerRef}
-      id="collection-sort"
+      id={id}
       role="group"
       aria-label="작품 정렬"
       className="absolute top-0 right-0 z-20 w-[116px] rounded-[18px] bg-[#F2E6D2] px-4 py-3 text-[#4A382A]"
