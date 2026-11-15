@@ -27,7 +27,7 @@ public record CollectionResponse(
     public record Artworks(
         Long artworkId,
         String artworkTitle,
-        String imageKey
+        String imageUrl
     ){}
 
     // 퍼즐 상태 정보
