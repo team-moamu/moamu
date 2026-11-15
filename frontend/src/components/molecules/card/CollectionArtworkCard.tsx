@@ -19,6 +19,9 @@ interface CollectionArtworkCardProps {
   }
   isExhibited: boolean
   onMoreClick?: () => void
+  moreExpanded?: boolean
+  moreControls?: string
+  moreDisabled?: boolean
 }
 
 export function CollectionArtworkCard({
@@ -27,6 +30,9 @@ export function CollectionArtworkCard({
   progress,
   isExhibited,
   onMoreClick,
+  moreExpanded,
+  moreControls,
+  moreDisabled,
 }: CollectionArtworkCardProps) {
   return (
     <article className="flex items-center gap-3 border-b border-[#F2E6D2] px-2 py-3">
@@ -45,6 +51,9 @@ export function CollectionArtworkCard({
           type="button"
           aria-label={`${challengeTitle} 더보기`}
           onClick={onMoreClick}
+          aria-expanded={moreExpanded}
+          aria-controls={moreControls}
+          disabled={moreDisabled}
           className="flex h-8 w-6 cursor-pointer items-center justify-center rounded text-[#8A7762] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#4F7652]"
         >
           <Icon name="moreVertical" size={20} />
