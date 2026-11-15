@@ -9,10 +9,10 @@ import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 public record GoalAnalysisRequest(
-    @NotBlank @JsonDeserialize(using = GoalStringDeserializer.class) String goal
-) {
+        @NotBlank @Size(max = 500) @JsonDeserialize(using = GoalStringDeserializer.class) String goal) {
 
     // 숫자나 boolean을 목표 문자열로 자동 변환하지 않는다.
     public static class GoalStringDeserializer extends JsonDeserializer<String> {

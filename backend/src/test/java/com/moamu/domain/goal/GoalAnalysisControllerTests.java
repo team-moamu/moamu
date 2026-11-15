@@ -3,6 +3,8 @@ package com.moamu.domain.goal;
 import com.moamu.domain.goal.controller.GoalAnalysisController;
 import com.moamu.domain.goal.dto.GoalAnalysisRequest;
 import com.moamu.domain.goal.dto.GoalAnalysisResponse;
+import com.moamu.domain.goal.dto.GoalEvaluationResponse;
+import com.moamu.domain.goal.dto.GoalEvaluationResponse.Status;
 import com.moamu.global.exception.BusinessException;
 
 import com.moamu.domain.goal.service.GoalAnalysisService;
@@ -70,6 +72,31 @@ class GoalAnalysisControllerTests {
         mvc.perform(post("/api/goals/analyze").contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void returnsOriginalAndNormalizedGoalSeparately() throws Exception {
+        var evaluation = new GoalEvaluationResponse(
+                Status.VERIFIABLE,
+                "Daily vocabulary study", null, List.of("Study notes must be visible"),
+                "Photograph your notes", "Check visible study notes", List.of());
+        when(service.analyze(7L, new GoalAnalysisRequest("Study 20 words after work")))
+                .thenReturn(GoalAnalysisResponse.verifiable("analysis-id", "Study 20 words after work", evaluation));
+
+        mvc.perform(post("/api/goals/analyze").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"goal\":\"Study 20 words after work\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.goal").value("Study 20 words after work"))
+                .andExpect(jsonPath("$.data.normalizedGoal").value("Daily vocabulary study"));
+    }
+
+    @Test
+    void oversizedGoalReturns400BeforeAnalysis() throws Exception {
+        mvc.perform(post("/api/goals/analyze").contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"goal\":\"" + "a".repeat(501) + "\"}"))
+                .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
         verifyNoInteractions(service);
     }

@@ -40,7 +40,7 @@ class GoalAnalysisServiceTests {
     void storesOwnerOriginalGoalAndExistingCategoryOrNewPath(boolean existingCategory) {
         String goal = "  영어 단어 20개 외우기  ";
         var path = new CategoryPath("학습", "외국어", "어휘 학습");
-        var evaluation = new GoalEvaluationResponse(Status.VERIFIABLE, path,
+        var evaluation = new GoalEvaluationResponse(Status.VERIFIABLE, "Daily vocabulary study", path,
                 List.of("학습 흔적이 보여야 해요."), "단어장을 촬영해 주세요.", "어휘 학습 흔적을 확인합니다.", List.of());
         when(evaluationClient.evaluate(new GoalEvaluationRequest(goal, null))).thenReturn(evaluation);
         when(categoryRepository.findActiveMinorId(path.major(), path.middle(), path.minor()))
@@ -58,6 +58,8 @@ class GoalAnalysisServiceTests {
         assertThat(snapshot.getValue().conditions()).isEqualTo(evaluation.conditions());
         assertThat(response.analysisId()).isEqualTo("analysis-id");
         assertThat(response.goal()).isEqualTo(goal);
+        assertThat(response.normalizedGoal()).isEqualTo(evaluation.normalizedGoal());
+        assertThat(snapshot.getValue().normalizedGoal()).isEqualTo(evaluation.normalizedGoal());
         assertThat(response.alternatives()).isNull();
     }
 
@@ -65,7 +67,7 @@ class GoalAnalysisServiceTests {
     void notVerifiableDoesNotQueryCategoriesOrStoreAnalysis() {
         var alternatives = List.of("감사 일기 쓰기", "고마운 순간 기록하기", "감사 편지 쓰기");
         when(evaluationClient.evaluate(any())).thenReturn(new GoalEvaluationResponse(
-                Status.NOT_VERIFIABLE, null, List.of(), null, null, alternatives));
+                Status.NOT_VERIFIABLE, null, null, List.of(), null, null, alternatives));
 
         var result = service.analyze(7L, new GoalAnalysisRequest("긍정적으로 생각하기"));
 

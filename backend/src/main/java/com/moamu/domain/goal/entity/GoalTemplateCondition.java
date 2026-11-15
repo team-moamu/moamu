@@ -12,10 +12,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-@Entity 
-@Table (name = "goal_template_condition")
-@Getter 
-@NoArgsConstructor (access = AccessLevel.PROTECTED)
+@Entity
+@Table(name = "goal_template_condition")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class GoalTemplateCondition extends BaseEntity {
 
     // 도전 인증 조건 ID
@@ -32,4 +32,12 @@ public class GoalTemplateCondition extends BaseEntity {
 
     @Column(name = "description", nullable = false, length = 300)
     private String description;
+
+    public static GoalTemplateCondition create(Long goalTemplateId, String code, String description) {
+        GoalTemplateCondition condition = new GoalTemplateCondition();
+        condition.goalTemplateId = goalTemplateId;
+        condition.code = code;
+        condition.description = description;
+        return condition;
+    }
 }

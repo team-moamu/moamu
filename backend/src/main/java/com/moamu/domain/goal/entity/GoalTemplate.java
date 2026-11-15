@@ -48,4 +48,16 @@ public class GoalTemplate extends BaseEntity {
     // 목표 목록 표시 순서
     @Column(name = "sort_order")
     private int sortOrder;
+
+    // 확정한 자유목표를 기본 목표 목록에 공개
+    public static GoalTemplate create(Long cateId, String goal, String photoGuide, String verificationScope) {
+        GoalTemplate template = new GoalTemplate();
+        template.cateId = cateId;
+        template.goalName = goal;
+        template.description = goal;
+        template.photoGuide = photoGuide;
+        template.verificationScope = verificationScope;
+        template.status = Status.ACTIVE;
+        return template;
+    }
 }

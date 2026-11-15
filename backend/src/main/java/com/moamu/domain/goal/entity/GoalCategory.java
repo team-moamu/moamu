@@ -44,4 +44,14 @@ public class GoalCategory extends BaseEntity {
     // 분석 장애 대체 경로용 기본 조건
     @Column(name = "default_conditions", columnDefinition = "TEXT")
     private String defaultConditions;
+
+    // AI가 제안한 분류를 사용자 확정 시 생성
+    public static GoalCategory create(Long parentCateId, String cateName, String cateCode) {
+        GoalCategory category = new GoalCategory();
+        category.parentCateId = parentCateId;
+        category.cateName = cateName;
+        category.cateCode = cateCode;
+        category.cateSource = "AI_GENERATED";
+        return category;
+    }
 }

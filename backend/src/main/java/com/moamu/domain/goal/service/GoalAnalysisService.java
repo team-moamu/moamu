@@ -31,7 +31,7 @@ public class GoalAnalysisService {
         if (userId == null || userId <= 0) {
             throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
         }
-        if (request == null || request.goal() == null || request.goal().isBlank()) {
+        if (request == null || request.goal() == null || request.goal().isBlank() || request.goal().length() > 500) {
             throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
         }
 
@@ -58,6 +58,7 @@ public class GoalAnalysisService {
         GoalAnalysisSnapshot snapshot = new GoalAnalysisSnapshot(
             userId,
             request.goal(),
+            result.normalizedGoal(),
             categoryId,
             result.proposedCategoryPath(),
             result.conditions(),

@@ -10,13 +10,13 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public record GoalEvaluationResponse(
-    @NotNull Status status,
-    @Valid CategoryPath proposedCategoryPath,
-    @NotNull List<@NotBlank @Size(max = 300) String> conditions,
-    @Size(max = 500) String photoGuide,
-    @Size(max = 1000) String verificationScope,
-    @NotNull List<@NotBlank String> alternatives
-) {
+        @NotNull Status status,
+        @Size(max = 100) String normalizedGoal,
+        @Valid CategoryPath proposedCategoryPath,
+        @NotNull List<@NotBlank @Size(max = 300) String> conditions,
+        @Size(max = 500) String photoGuide,
+        @Size(max = 1000) String verificationScope,
+        @NotNull List<@NotBlank String> alternatives) {
 
     public enum Status {
         VERIFIABLE,

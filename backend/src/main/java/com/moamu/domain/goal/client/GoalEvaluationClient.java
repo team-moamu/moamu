@@ -90,7 +90,7 @@ public class GoalEvaluationClient {
     // 인증 가능 여부에 따른 인증 정보와 대안 목표 검증
     private void validateResult(GoalEvaluationRequest request, GoalEvaluationResponse response) {
         if (response.status() == GoalEvaluationResponse.Status.NOT_VERIFIABLE) {
-            if (response.proposedCategoryPath() != null || !response.conditions().isEmpty()
+            if (response.normalizedGoal() != null || response.proposedCategoryPath() != null || !response.conditions().isEmpty()
                     || response.photoGuide() != null || response.verificationScope() != null
                     || response.alternatives().size() != 3) {
                 throw new BusinessException(GoalAnalysisErrorCode.AI_TECHNICAL_ERROR);
@@ -99,7 +99,8 @@ public class GoalEvaluationClient {
         }
 
         boolean needsCategoryPath = request.categoryPath() == null;
-        if (needsCategoryPath != (response.proposedCategoryPath() != null)
+        if (response.normalizedGoal() == null || response.normalizedGoal().isBlank()
+                || needsCategoryPath != (response.proposedCategoryPath() != null)
                 || response.conditions().isEmpty() || !response.alternatives().isEmpty()
                 || response.photoGuide() == null || response.photoGuide().isBlank()
                 || response.verificationScope() == null || response.verificationScope().isBlank()) {

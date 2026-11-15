@@ -1,6 +1,7 @@
 package com.moamu.domain.goal;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.moamu.domain.goal.client.GoalEvaluationClient;
 import com.moamu.domain.goal.dto.GoalEvaluationRequest;
 import com.moamu.domain.goal.dto.GoalEvaluationRequest.CategoryPath;
@@ -35,6 +36,7 @@ class GoalEvaluationClientTests {
     private static final String SUCCESS_JSON = """
             {
               "status": "VERIFIABLE",
+              "normalizedGoal": "Daily journal",
               "proposedCategoryPath": {"major": "생활", "middle": "기록", "minor": "일기 쓰기"},
               "conditions": ["일기를 쓴 흔적이 보여야 해요."],
               "photoGuide": "작성한 일기를 촬영해 주세요.",
@@ -102,7 +104,7 @@ class GoalEvaluationClientTests {
     void returnsNotVerifiableAsNormalResult() {
         server.expect(requestTo(ENDPOINT)).andRespond(withSuccess("""
                 {
-                  "status": "NOT_VERIFIABLE", "proposedCategoryPath": null,
+                  "status": "NOT_VERIFIABLE", "normalizedGoal": null, "proposedCategoryPath": null,
                   "conditions": [], "photoGuide": null, "verificationScope": null,
                   "alternatives": ["감사 일기 쓰기", "고마운 순간 기록하기", "감사 편지 쓰기"]
                 }
@@ -132,6 +134,28 @@ class GoalEvaluationClientTests {
     void rejectsVerifiableResponseWithoutRequiredGuide() {
         server.expect(requestTo(ENDPOINT)).andRespond(withSuccess(
                 SUCCESS_JSON.replace("작성한 일기를 촬영해 주세요.", " "), MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> client.evaluate(REQUEST))
+                .isInstanceOf(BusinessException.class);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"missing", "null", "blank", "long", "category"})
+    void rejectsInvalidNormalizedGoalAndOversizedCategory(String invalidField) throws Exception {
+        String response = switch (invalidField) {
+            case "missing" -> SUCCESS_JSON.replace("\"normalizedGoal\": \"Daily journal\",", "");
+            case "null" -> SUCCESS_JSON.replace("\"Daily journal\"", "null");
+            case "blank" -> SUCCESS_JSON.replace("Daily journal", " ");
+            case "long" -> SUCCESS_JSON.replace("Daily journal", "a".repeat(101));
+            default -> SUCCESS_JSON;
+        };
+        if (invalidField.equals("category")) {
+            var tree = new ObjectMapper().readTree(response);
+            ((ObjectNode) tree.get("proposedCategoryPath"))
+                .put("minor", "a".repeat(51));
+            response = tree.toString();
+        }
+        server.expect(requestTo(ENDPOINT)).andRespond(withSuccess(response, MediaType.APPLICATION_JSON));
 
         assertThatThrownBy(() -> client.evaluate(REQUEST))
                 .isInstanceOf(BusinessException.class);
