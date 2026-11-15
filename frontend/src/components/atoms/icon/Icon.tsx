@@ -12,6 +12,8 @@ export const iconMap = {
   collection: 'icon-[lucide--archive]',
   mypage: 'icon-[lucide--user-round]',
   back: 'icon-[lucide--arrow-left]',
+  chevronRight: 'icon-[lucide--chevron-right]',
+
   search: 'icon-[lucide--search]',
   more: 'icon-[lucide--ellipsis]',
   calendar: 'icon-[lucide--calendar]',
@@ -26,6 +28,7 @@ export const iconMap = {
   algorithm: 'icon-[lucide--pencil]',
   supplement: 'icon-[lucide--pill]',
   nametag: 'icon-[lucide--contact]',
+  plus: 'icon-[lucide--plus]',
 
   camera: 'icon-[lucide--camera]',
   clock: 'icon-[lucide--clock]',

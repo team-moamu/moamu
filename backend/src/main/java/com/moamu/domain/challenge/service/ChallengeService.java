@@ -5,12 +5,23 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.springframework.stereotype.Service;
+import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.TransientDataAccessException;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.moamu.domain.artwork.repository.ArtworkRepository;
 import com.moamu.domain.artwork.entity.Artwork;
 import com.moamu.domain.challenge.dto.ChallengeCreateRequest;
+import com.moamu.domain.challenge.dto.CustomChallengeCreateRequest;
+import com.moamu.domain.challenge.dto.CustomChallengeCreateResponse;
 import com.moamu.domain.challenge.dto.ChallengeCompletionResponse;
 import com.moamu.domain.challenge.dto.ChallengeSettlementResponse;
 import com.moamu.domain.challenge.enums.Status;
@@ -21,6 +32,12 @@ import com.moamu.domain.challenge.entity.ChallengeCondition;
 import com.moamu.domain.challenge.repository.ChallengeConditionRepository;
 import com.moamu.domain.challenge.repository.ChallengeRepository;
 import com.moamu.domain.goal.entity.GoalTemplate;
+import com.moamu.domain.goal.entity.GoalCategory;
+import com.moamu.domain.goal.dto.GoalAnalysisSnapshot;
+import com.moamu.domain.goal.dto.GoalConfirmationSnapshot;
+import com.moamu.domain.goal.dto.GoalEvaluationRequest.CategoryPath;
+import com.moamu.domain.goal.repository.GoalAnalysisStore;
+import com.moamu.domain.goal.repository.GoalCategoryRepository;
 import com.moamu.domain.goal.entity.GoalTemplateArtwork;
 import com.moamu.domain.goal.entity.GoalTemplateCondition;
 import com.moamu.domain.goal.repository.GoalTemplateArtworkRepository;
@@ -38,11 +55,13 @@ import com.moamu.global.exception.CommonErrorCode;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.annotation.Isolation;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
-@Service 
-@RequiredArgsConstructor 
+@Slf4j
+@Service
+@RequiredArgsConstructor
 public class ChallengeService {
-    
+
     private final ScheduleRepository scheduleRepository;
     private final ChallengeRepository challengeRepository;
     // private final UserRepository userRepository;
@@ -55,6 +74,9 @@ public class ChallengeService {
     private final MediaRepository mediaRepository;
     private final ArtworkImageUrlService artworkImageUrlService;
     private final ScheduleService scheduleService;
+    private final GoalAnalysisStore goalAnalysisStore;
+    private final GoalCategoryRepository goalCategoryRepository;
+    private final PlatformTransactionManager transactionManager;
 
     // 최종 공개 상태와 집계를 동일한 시점으로 조회하며 인증·회차·전시 상태는 변경하지 않음
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
@@ -68,7 +90,7 @@ public class ChallengeService {
         }
 
         Challenge challenge = challengeRepository.findOwned(userId, challengeId)
-            .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
 
         // 기간이 끝났더라도 정산 전인 도전은 조회로 완료 처리하지 않음
         if (challenge.getStatus() != Status.COMPLETED
@@ -83,7 +105,8 @@ public class ChallengeService {
         for (Schedule schedule : schedules) {
             switch (schedule.getStatus()) {
                 case SUCCESS -> revealedPieceIndices.add(schedule.getPieceIndex());
-                case FAILED -> { }
+                case FAILED -> {
+                }
                 default -> throw new BusinessException(ChallengeErrorCode.CHALLENGE_NOT_COMPLETED);
             }
             if (schedule.getPieceIndex() < 0 || schedule.getPieceIndex() >= schedules.size()) {
@@ -95,10 +118,9 @@ public class ChallengeService {
             throw new BusinessException(ChallengeErrorCode.INVALID_CHALLENGE_SCHEDULES);
         }
         long pendingVerificationCount = verificationRepository.countPendingLatestVerifications(
-            challengeId,
-            List.of(VerificationStatus.SUBMITTED, VerificationStatus.ANALYZING,
-                VerificationStatus.REVIEW_REQUIRED, VerificationStatus.TECH_ERROR)
-        );
+                challengeId,
+                List.of(VerificationStatus.SUBMITTED, VerificationStatus.ANALYZING,
+                        VerificationStatus.REVIEW_REQUIRED, VerificationStatus.TECH_ERROR));
         if (pendingVerificationCount > 0) {
             throw new BusinessException(ChallengeErrorCode.CHALLENGE_NOT_COMPLETED);
         }
@@ -106,32 +128,31 @@ public class ChallengeService {
 
         // 도전 생성 당시 연결된 작품과 기존 S3 서명 URL 생성 기능 재사용
         Artwork artwork = artworkRepository.findByArtworkIdAndDelYn(challenge.getArtworkId(), "N")
-            .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
-        String imageKey = artwork.getMediaId() == null ? null : mediaRepository.findById(artwork.getMediaId())
-            .map(media -> media.getImageKey()).orElse(null);
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
+        String imageKey = artwork.getMediaId() == null ? null
+                : mediaRepository.findById(artwork.getMediaId())
+                        .map(media -> media.getImageKey()).orElse(null);
         ChallengeCompletionResponse.Artwork artworkResponse = new ChallengeCompletionResponse.Artwork(
-            artwork.getArtworkId(), artwork.getArtworkTitle(), artworkImageUrlService.resolve(imageKey)
-        );
+                artwork.getArtworkId(), artwork.getArtworkTitle(), artworkImageUrlService.resolve(imageKey));
 
         // 미획득 수는 전체 회차 수에서 성공 조각 수를 빼서 계산
         int totalPieceCount = schedules.size();
         int earnedPieceCount = revealedPieceIndices.size();
         return new ChallengeCompletionResponse(
-            challengeId,
-            challenge.getChallengeTitle(),
-            challenge.getStatus(),
-            challenge.getStartDate(),
-            challenge.getEndDate(),
-            challenge.getDurationDays(),
-            artworkResponse,
-            challenge.getGridRows(),
-            challenge.getGridCols(),
-            revealedPieceIndices,
-            totalPieceCount,
-            earnedPieceCount,
-            totalPieceCount - earnedPieceCount,
-            earnedPieceCount == totalPieceCount
-        );
+                challengeId,
+                challenge.getChallengeTitle(),
+                challenge.getStatus(),
+                challenge.getStartDate(),
+                challenge.getEndDate(),
+                challenge.getDurationDays(),
+                artworkResponse,
+                challenge.getGridRows(),
+                challenge.getGridCols(),
+                revealedPieceIndices,
+                totalPieceCount,
+                earnedPieceCount,
+                totalPieceCount - earnedPieceCount,
+                earnedPieceCount == totalPieceCount);
     }
 
     @Transactional
@@ -139,16 +160,14 @@ public class ChallengeService {
 
         // 사용자 조회 -> 회원 기능 완료되면 적용
         // User user = userRepository.findById(userId)
-        //     .orElseThrow(() ->
-        //         new IllegalArgumentException("존재하지 않는 회원입니다.")
+        // .orElseThrow(() ->
+        // new IllegalArgumentException("존재하지 않는 회원입니다.")
         // );
 
         // 목표 템플릿 조회
         GoalTemplate goalTemplate = goalTemplateRepository
-            .findByGoalTemplateIdAndDelYn(request.goalTemplateId(), "N")
-            .orElseThrow(() ->
-                new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND)
-        );
+                .findByGoalTemplateIdAndDelYn(request.goalTemplateId(), "N")
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
 
         // 도전 기간 검증 (7, 14, 30일)
         int durationDays = request.durationDays();
@@ -160,95 +179,86 @@ public class ChallengeService {
 
         // 선택한 목표에 연결된 작품 조회
         GoalTemplateArtwork goalTemplateArtwork = goalTemplateArtworkRepository
-            .findByGoalTemplateIdAndDelYn(request.goalTemplateId(), "N")
-            .orElseThrow(() ->
-                new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND)
-            );
+                .findByGoalTemplateIdAndDelYn(request.goalTemplateId(), "N")
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
 
         // 연결된 작품 ID 가져오기
         Long artworkId = goalTemplateArtwork.getArtworkId();
 
         // 작품 존재 여부 확인
         artworkRepository.findByArtworkIdAndDelYn(artworkId, "N")
-            .orElseThrow(() ->
-                new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND)
-            );
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
 
         // 퍼즐 그리드
         int[] gridSize = calculateGridSize(durationDays);
-        
+
         // Challenge 엔티티 생성
         Challenge challenge = Challenge.create(
-            userId,
-            goalTemplate.getCateId(),
-            goalTemplate.getGoalTemplateId(),
-            artworkId,
-            goalTemplate.getGoalName(),
-            goalTemplate.getDescription(),
-            null,   // 1차 mvp 사용자 입력 도전 제외
-            goalTemplate.getPhotoGuide(),
-            durationDays,
-            startDate,
-            endDate,
-            goalTemplate.getVerificationScope(),
-            gridSize[0],
-            gridSize[1]
-        );
+                userId,
+                goalTemplate.getCateId(),
+                goalTemplate.getGoalTemplateId(),
+                artworkId,
+                goalTemplate.getGoalName(),
+                goalTemplate.getDescription(),
+                null, // 1차 mvp 사용자 입력 도전 제외
+                goalTemplate.getPhotoGuide(),
+                durationDays,
+                startDate,
+                endDate,
+                goalTemplate.getVerificationScope(),
+                gridSize[0],
+                gridSize[1]);
 
         // Challenge 저장
         challengeRepository.save(challenge);
-        
-        // 목표 템플릿 인증 조건 조회
-        List<GoalTemplateCondition> conditions = goalTemplateConditionRepository.findByGoalTemplateIdAndDelYn(request.goalTemplateId(), "N");
 
+        // 목표 템플릿 인증 조건 조회
+        List<GoalTemplateCondition> conditions = goalTemplateConditionRepository
+                .findByGoalTemplateIdAndDelYn(request.goalTemplateId(), "N");
 
         List<ChallengeCondition> challengeConditions = conditions.stream()
-            .map(condition -> ChallengeCondition.create(
-                challenge.getChallengeId(),
-                condition.getCode(),
-                condition.getDescription()
-            ))
-            .toList();
+                .map(condition -> ChallengeCondition.create(
+                        challenge.getChallengeId(),
+                        condition.getCode(),
+                        condition.getDescription()))
+                .toList();
         challengeConditionRepository.saveAll(challengeConditions);
 
+        // 도전 기간에 맞춰 Schedule 생성 및 저장
+        createSchedules(challenge.getChallengeId(), startDate, durationDays);
+    }
 
-        // 도전 기간에 맞춰 Schedule 생성
-        List<Schedule> Schedules = new ArrayList<>();
-
-        for (int i = 0; i < durationDays; i++) {
-            LocalDate scheduleDate = startDate.plusDays(i);
-
-            Schedule schedule = Schedule.create(
-                challenge.getChallengeId(),
-                i + 1,
-                scheduleDate,
-                scheduleDate.atStartOfDay(),
-                scheduleDate.plusDays(1).atStartOfDay(),
-                i
-            );
-
-            Schedules.add(schedule);
+    // 도전 기간에 맞춰 회차 생성
+    private void createSchedules(Long challengeId, LocalDate startDate, int durationDays) {
+        List<Schedule> schedules = new ArrayList<>();
+        for (int index = 0; index < durationDays; index++) {
+            LocalDate scheduleDate = startDate.plusDays(index);
+            schedules.add(Schedule.create(
+                    challengeId,
+                    index + 1,
+                    scheduleDate,
+                    scheduleDate.atStartOfDay(),
+                    scheduleDate.plusDays(1).atStartOfDay(),
+                    index));
         }
-
-        // Schedule 저장
-        scheduleRepository.saveAll(Schedules);
+        scheduleRepository.saveAll(schedules);
     }
 
     // 인증 저장 트랜잭션이 끝난 뒤 호출. 재전송 시에도 완료 처리를 재확인한다.
     @Transactional(isolation = Isolation.READ_COMMITTED)
     public void completeAfterVerification(Long userId, Long verificationId) {
         var verification = verificationRepository.findById(verificationId)
-            .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
         var schedule = scheduleRepository.findById(verification.getScheduleId())
-            .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
         Challenge challenge = challengeRepository.findOwnedForSettlement(userId, schedule.getChallengeId())
-            .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
         // READY에서도 인증을 허용하므로 마지막 회차 확정 시 누락된 시작 상태를 복구한다.
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
         if (!challenge.getEndDate().isAfter(today) && schedule.getDayNo() == challenge.getDurationDays()
                 && (schedule.getStatus() == com.moamu.domain.schedule.enums.Status.SUCCESS
-                    || (schedule.getStatus() == com.moamu.domain.schedule.enums.Status.FAILED
-                        && schedule.getAttemptCount() >= 3))) {
+                        || (schedule.getStatus() == com.moamu.domain.schedule.enums.Status.FAILED
+                                && schedule.getAttemptCount() >= 3))) {
             challenge.startIfDue(today);
         }
         settle(userId, schedule.getChallengeId(), true);
@@ -270,12 +280,12 @@ public class ChallengeService {
 
         // 소유권 및 삭제 여부 확인 후 도전 잠금
         Challenge challenge = challengeRepository.findOwnedForSettlement(userId, challengeId)
-            .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
+                .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
 
         LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
         if (afterVerification && (challenge.getEndDate().isAfter(today)
                 || (challenge.getStatus() != Status.IN_PROGRESS && challenge.getStatus() != Status.SETTLING
-                    && challenge.getStatus() != Status.COMPLETED))) {
+                        && challenge.getStatus() != Status.COMPLETED))) {
             return null;
         }
         if (!afterVerification && !challenge.getEndDate().isBefore(today)) {
@@ -295,7 +305,7 @@ public class ChallengeService {
             Schedule last = schedules.getLast();
             if (last.getStatus() != com.moamu.domain.schedule.enums.Status.SUCCESS
                     && !(last.getStatus() == com.moamu.domain.schedule.enums.Status.FAILED
-                        && last.getAttemptCount() >= 3)) {
+                            && last.getAttemptCount() >= 3)) {
                 return null;
             }
         }
@@ -311,17 +321,17 @@ public class ChallengeService {
             switch (schedule.getStatus()) {
                 case SUCCESS -> successCount++;
                 case FAILED -> failedCount++;
-                default -> { }
+                default -> {
+                }
             }
         }
         int pendingCount = schedules.size() - successCount - failedCount;
 
         // 기술 오류 재처리 정책은 미정이므로 최신 TECH_ERROR도 완료 대기 대상으로 유지
         long pendingVerificationCount = verificationRepository.countPendingLatestVerifications(
-            challengeId,
-            List.of(VerificationStatus.SUBMITTED, VerificationStatus.ANALYZING,
-                VerificationStatus.REVIEW_REQUIRED, VerificationStatus.TECH_ERROR)
-        );
+                challengeId,
+                List.of(VerificationStatus.SUBMITTED, VerificationStatus.ANALYZING,
+                        VerificationStatus.REVIEW_REQUIRED, VerificationStatus.TECH_ERROR));
         boolean allFinalized = pendingCount == 0 && pendingVerificationCount == 0;
 
         // 이미 완료된 도전은 그대로 반환. 잘못된 확정 상태를 되돌리거나 덮어쓰지 않음
@@ -334,23 +344,23 @@ public class ChallengeService {
         }
 
         return new ChallengeSettlementResponse(
-            challengeId,
-            challenge.getStatus(),
-            challenge.getEndDate(),
-            challenge.getDurationDays(),
-            schedules.size(),
-            successCount,
-            failedCount,
-            pendingCount,
-            pendingVerificationCount,
-            allFinalized
-        );
+                challengeId,
+                challenge.getStatus(),
+                challenge.getEndDate(),
+                challenge.getDurationDays(),
+                schedules.size(),
+                successCount,
+                failedCount,
+                pendingCount,
+                pendingVerificationCount,
+                allFinalized);
     }
 
     // 종료 처리 전 도전 기간과 회차의 개수·날짜·순번 검증
     private void validateSchedules(Challenge challenge, List<Schedule> schedules) {
         if (schedules.size() != challenge.getDurationDays()
-                || !challenge.getStartDate().plusDays(challenge.getDurationDays() - 1L).equals(challenge.getEndDate())) {
+                || !challenge.getStartDate().plusDays(challenge.getDurationDays() - 1L)
+                        .equals(challenge.getEndDate())) {
             throw new BusinessException(ChallengeErrorCode.INVALID_CHALLENGE_SCHEDULES);
         }
         for (int index = 0; index < schedules.size(); index++) {
@@ -364,9 +374,9 @@ public class ChallengeService {
 
     // 도전 기간 검증 메서드
     private void validateDurationDays(int durationDays) {
-        if (durationDays != 7 && durationDays != 14 &&  durationDays != 30) {
-        // if (durationDays < 1) {
-            throw new BusinessException (CommonErrorCode.INVALID_REQUEST);
+        if (durationDays != 7 && durationDays != 14 && durationDays != 30) {
+            // if (durationDays < 1) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
         }
     }
 
@@ -375,15 +385,15 @@ public class ChallengeService {
         int cols = (int) Math.ceil(Math.sqrt(durationDays));
         int rows = (int) Math.ceil((double) durationDays / cols);
 
-        return new int[]{rows, cols};
+        return new int[] { rows, cols };
     }
 
     // 오늘의 도전 조회
     public List<TodayChallengeResponse> getTodayChallenges(Long userId, LocalDate day, String sort) {
         // 사용자 조회 -> 회원 기능 완료되면 적용
         // User user = userRepository.findById(userId)
-        //     .orElseThrow(() ->
-        //         new IllegalArgumentException("존재하지 않는 회원입니다.")
+        // .orElseThrow(() ->
+        // new IllegalArgumentException("존재하지 않는 회원입니다.")
         // );
 
         // 파라미터로 받는 날짜 없으면 오늘 날짜로 처리
@@ -394,5 +404,237 @@ public class ChallengeService {
         String sortType = "name".equals(sort) ? "name" : "latest";
 
         return challengeRepository.findTodayChallenges(userId, targetDate, sortType);
+    }
+
+    // 자유목표 도전 확정
+    public CustomChallengeCreateResponse createCustomChallenge(Long userId, CustomChallengeCreateRequest request) {
+        if (userId == null || userId <= 0) {
+            throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
+        }
+        if (request == null || request.analysisId() == null || request.durationDays() == null
+                || request.startDate() == null) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
+        }
+        validateDurationDays(request.durationDays());
+
+        String analysisId;
+        try {
+            analysisId = UUID.fromString(request.analysisId()).toString();
+            if (!analysisId.equalsIgnoreCase(request.analysisId())) {
+                throw new IllegalArgumentException("Invalid analysis ID");
+            }
+        } catch (IllegalArgumentException exception) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
+        }
+
+        // 이미 확정한 요청인지 확인
+        Optional<CustomChallengeCreateResponse> confirmed = findConfirmation(analysisId, userId, request, false);
+        if (confirmed.isPresent()) {
+            return confirmed.get();
+        }
+
+        GoalAnalysisSnapshot snapshot = goalAnalysisStore.findByAnalysisId(analysisId)
+                .orElseThrow(() -> new BusinessException(ChallengeErrorCode.ANALYSIS_NOT_FOUND));
+        if (!userId.equals(snapshot.userId())) {
+            throw new BusinessException(CommonErrorCode.FORBIDDEN);
+        }
+
+        if (snapshot.normalizedGoal() == null || snapshot.normalizedGoal().isBlank()) {
+            throw new BusinessException(ChallengeErrorCode.ANALYSIS_STALE);
+        }
+
+        Optional<String> lockToken = goalAnalysisStore.acquireConfirmation(analysisId);
+        if (lockToken.isEmpty()) {
+            // 그사이 완료된 요청인지 다시 확인
+            return findConfirmation(analysisId, userId, request, false)
+                    .orElseThrow(() -> new BusinessException(ChallengeErrorCode.ANALYSIS_CONFIRMATION_IN_PROGRESS));
+        }
+
+        try {
+            TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+            transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            // 같은 분류의 동시 생성 방지
+            transaction.setIsolationLevel(TransactionDefinition.ISOLATION_SERIALIZABLE);
+
+            // 분류 등록이 충돌하면 최대 3회 재시도
+            for (int attempt = 0; attempt < 4; attempt++) {
+                try {
+                    return transaction.execute(status -> confirmCustomChallenge(
+                            userId, analysisId, lockToken.get(), request, snapshot));
+                } catch (DataIntegrityViolationException | TransientDataAccessException exception) {
+                    Optional<CustomChallengeCreateResponse> completed = findConfirmation(analysisId, userId, request,
+                            false);
+                    if (completed.isPresent()) {
+                        return completed.get();
+                    }
+                    if (attempt == 3) {
+                        throw exception;
+                    }
+                }
+            }
+            throw new IllegalStateException("자유목표 도전을 확정하지 못했습니다.");
+        } finally {
+            try {
+                goalAnalysisStore.releaseConfirmation(analysisId, lockToken.get());
+            } catch (DataAccessException exception) {
+                // 해제에 실패한 잠금은 만료될 때까지 유지
+                log.warn("Failed to release goal confirmation lock for {}", analysisId, exception);
+            }
+        }
+    }
+
+    // Redis에 기록된 도전이 실제로 저장됐는지 확인
+    private Optional<CustomChallengeCreateResponse> findConfirmation(
+            String analysisId, Long userId, CustomChallengeCreateRequest request, boolean lock) {
+        Optional<GoalConfirmationSnapshot> result = goalAnalysisStore.findConfirmation(analysisId);
+        if (result.isEmpty()) {
+            return Optional.empty();
+        }
+        GoalConfirmationSnapshot confirmation = result.get();
+        if (!userId.equals(confirmation.userId())) {
+            throw new BusinessException(CommonErrorCode.FORBIDDEN);
+        }
+        Optional<Challenge> challenge = lock
+                ? challengeRepository.findForConfirmation(confirmation.challengeId())
+                : challengeRepository.findById(confirmation.challengeId());
+        return challenge.map(existing -> confirmedResponse(existing, userId, request));
+    }
+
+    // 소유자와 요청 내용 확인 후 기존 도전 ID 반환
+    private CustomChallengeCreateResponse confirmedResponse(
+            Challenge challenge, Long userId, CustomChallengeCreateRequest request) {
+        if (!userId.equals(challenge.getUserId())) {
+            throw new BusinessException(CommonErrorCode.FORBIDDEN);
+        }
+        if (challenge.getDurationDays() != request.durationDays()
+                || !challenge.getStartDate().equals(request.startDate())) {
+            throw new BusinessException(ChallengeErrorCode.ANALYSIS_ALREADY_CONFIRMED);
+        }
+        return new CustomChallengeCreateResponse(challenge.getChallengeId());
+    }
+
+    // 자유목표 도전 생성
+    private CustomChallengeCreateResponse confirmCustomChallenge(
+            Long userId, String analysisId, String lockToken, CustomChallengeCreateRequest request,
+            GoalAnalysisSnapshot snapshot) {
+        Optional<CustomChallengeCreateResponse> confirmed = findConfirmation(analysisId, userId, request, true);
+        if (confirmed.isPresent()) {
+            return confirmed.get();
+        }
+
+        CategoryPath path = snapshot.categoryPath();
+        // 분석 때 사용한 분류가 아직 유효한지 확인
+        if (snapshot.categoryId() != null) {
+            Long activeId = goalCategoryRepository.findActiveMinorId(
+                    path.major().strip(), path.middle().strip(), path.minor().strip())
+                    .orElseThrow(() -> new BusinessException(ChallengeErrorCode.ANALYSIS_STALE));
+            if (!activeId.equals(snapshot.categoryId())) {
+                throw new BusinessException(ChallengeErrorCode.ANALYSIS_STALE);
+            }
+        }
+
+        GoalCategory major = resolveCategory(null, path.major(), snapshot.categoryId() != null);
+        GoalCategory middle = resolveCategory(major.getCateId(), path.middle(), snapshot.categoryId() != null);
+        GoalCategory minor = resolveCategory(middle.getCateId(), path.minor(), snapshot.categoryId() != null);
+        if (snapshot.categoryId() != null && !snapshot.categoryId().equals(minor.getCateId())) {
+            throw new BusinessException(ChallengeErrorCode.ANALYSIS_STALE);
+        }
+        GoalTemplate template = resolveCustomTemplate(minor.getCateId(), snapshot);
+
+        // 준비된 명화 중 무작위 배정
+        List<Artwork> artworks = artworkRepository.findReadyArtworks();
+        if (artworks.isEmpty()) {
+            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR);
+        }
+        Artwork artwork = artworks.get(ThreadLocalRandom.current().nextInt(artworks.size()));
+        // 기본 목표로도 선택할 수 있도록 작품 연결
+        if (goalTemplateArtworkRepository.findByGoalTemplateIdAndDelYn(template.getGoalTemplateId(), "N").isEmpty()) {
+            goalTemplateArtworkRepository
+                    .save(GoalTemplateArtwork.create(template.getGoalTemplateId(), artwork.getArtworkId()));
+        }
+
+        int[] gridSize = calculateGridSize(request.durationDays());
+        Challenge challenge = Challenge.create(
+                userId,
+                minor.getCateId(),
+                template.getGoalTemplateId(),
+                artwork.getArtworkId(),
+                snapshot.normalizedGoal(),
+                snapshot.normalizedGoal(),
+                snapshot.goal(),
+                snapshot.photoGuide(),
+                request.durationDays(),
+                request.startDate(),
+                request.startDate().plusDays(request.durationDays() - 1),
+                snapshot.verificationScope(),
+                gridSize[0],
+                gridSize[1]);
+        challengeRepository.save(challenge);
+
+        List<ChallengeCondition> conditions = new ArrayList<>();
+        for (int index = 0; index < snapshot.conditions().size(); index++) {
+            conditions.add(ChallengeCondition.create(
+                    challenge.getChallengeId(), "C" + (index + 1), snapshot.conditions().get(index)));
+        }
+        challengeConditionRepository.saveAll(conditions);
+        createSchedules(challenge.getChallengeId(), request.startDate(), request.durationDays());
+
+        // Redis 저장 실패 시 도전 생성도 롤백
+        challengeRepository.flush();
+        goalAnalysisStore.saveConfirmation(
+                analysisId, lockToken, new GoalConfirmationSnapshot(userId, challenge.getChallengeId()));
+        return new CustomChallengeCreateResponse(challenge.getChallengeId());
+    }
+
+    // 기존 분류 재사용, 삭제된 분류 복구
+    private GoalCategory resolveCategory(Long parentId, String name, boolean requireActive) {
+        Optional<GoalCategory> existing = goalCategoryRepository.findForConfirmation(parentId, name.strip());
+        if (existing.isPresent()) {
+            GoalCategory category = existing.get();
+            if (requireActive && !"N".equals(category.getDelYn())) {
+                throw new BusinessException(ChallengeErrorCode.ANALYSIS_STALE);
+            }
+            if (!"N".equals(category.getDelYn())) {
+                goalCategoryRepository.restore(category.getCateId());
+                return goalCategoryRepository.findById(category.getCateId())
+                        .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
+            }
+            return category;
+        }
+        if (requireActive) {
+            throw new BusinessException(ChallengeErrorCode.ANALYSIS_STALE);
+        }
+        return goalCategoryRepository.saveAndFlush(GoalCategory.create(
+                parentId, name.strip(), "AI_" + UUID.randomUUID().toString().replace("-", "")));
+    }
+
+    // 목표와 인증 정보가 같으면 기존 템플릿 재사용
+    private GoalTemplate resolveCustomTemplate(Long categoryId, GoalAnalysisSnapshot snapshot) {
+        List<GoalTemplate> templates = goalTemplateRepository.findReusableTemplates(
+                categoryId, snapshot.normalizedGoal(), snapshot.photoGuide(), snapshot.verificationScope());
+        for (GoalTemplate template : templates) {
+            List<GoalTemplateCondition> conditions = goalTemplateConditionRepository
+                    .findByGoalTemplateIdAndDelYn(template.getGoalTemplateId(), "N");
+            boolean matches = conditions.size() == snapshot.conditions().size();
+            for (int index = 0; matches && index < snapshot.conditions().size(); index++) {
+                String code = "C" + (index + 1);
+                String description = snapshot.conditions().get(index);
+                matches = conditions.stream().anyMatch(condition -> code.equals(condition.getCode())
+                        && description.equals(condition.getDescription()));
+            }
+            if (matches) {
+                return template;
+            }
+        }
+
+        GoalTemplate template = goalTemplateRepository.save(GoalTemplate.create(
+                categoryId, snapshot.normalizedGoal(), snapshot.photoGuide(), snapshot.verificationScope()));
+        List<GoalTemplateCondition> conditions = new ArrayList<>();
+        for (int index = 0; index < snapshot.conditions().size(); index++) {
+            conditions.add(GoalTemplateCondition.create(
+                    template.getGoalTemplateId(), "C" + (index + 1), snapshot.conditions().get(index)));
+        }
+        goalTemplateConditionRepository.saveAll(conditions);
+        return template;
     }
 }

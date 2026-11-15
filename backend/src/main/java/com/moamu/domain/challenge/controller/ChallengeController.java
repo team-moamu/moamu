@@ -4,6 +4,8 @@ import com.moamu.domain.challenge.dto.ChallengeCreateRequest;
 import com.moamu.domain.challenge.dto.ChallengeCompletionResponse;
 import com.moamu.domain.challenge.dto.ChallengeSettlementResponse;
 import com.moamu.domain.challenge.dto.TodayChallengeResponse;
+import com.moamu.domain.challenge.dto.CustomChallengeCreateRequest;
+import com.moamu.domain.challenge.dto.CustomChallengeCreateResponse;
 import com.moamu.domain.challenge.service.ChallengeService;
 import com.moamu.global.response.ApiResponse;
 
@@ -62,4 +64,12 @@ public class ChallengeController {
         return ApiResponse.success(challenges);
     }
     
+    // 분석 결과를 사용해 자유목표 도전 확정
+    @PostMapping("/custom")
+    public ApiResponse<CustomChallengeCreateResponse> createCustomChallenge(
+        @AuthenticationPrincipal Long userId,
+        @Valid @RequestBody CustomChallengeCreateRequest request
+    ) {
+        return ApiResponse.success(challengeService.createCustomChallenge(userId, request));
+    }
 }

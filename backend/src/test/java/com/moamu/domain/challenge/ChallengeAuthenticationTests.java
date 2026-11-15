@@ -2,6 +2,9 @@ package com.moamu.domain.challenge;
 
 import com.moamu.domain.challenge.controller.ChallengeController;
 import com.moamu.domain.challenge.service.ChallengeService;
+import com.moamu.domain.challenge.dto.CustomChallengeCreateResponse;
+import com.moamu.domain.challenge.exception.ChallengeErrorCode;
+import com.moamu.global.exception.BusinessException;
 import com.moamu.domain.schedule.controller.ScheduleController;
 import com.moamu.domain.schedule.service.ScheduleService;
 import com.moamu.domain.user.entity.User;
@@ -10,6 +13,8 @@ import com.moamu.domain.user.repository.UserRepository;
 import com.moamu.global.config.SecurityConfig;
 import com.moamu.global.security.JwtTokenProvider;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -30,6 +35,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest({ChallengeController.class, ScheduleController.class})
 @Import(SecurityConfig.class)
 class ChallengeAuthenticationTests {
+
+    private static final String CUSTOM_REQUEST = """
+        {"analysisId":"cc2e57ae-0f1b-49cf-9b2f-4c22f45f992b","durationDays":7,"startDate":"2026-11-16"}
+        """;
     @Autowired MockMvc mockMvc;
     @MockitoBean ChallengeService challengeService;
     @MockitoBean ScheduleService scheduleService;
@@ -90,7 +99,54 @@ class ChallengeAuthenticationTests {
     }
 
     @Test
+    void customChallengeUsesAuthenticatedOwnerAndReturnsChallengeId() throws Exception {
+        authenticateSecondUser();
+        when(challengeService.createCustomChallenge(eq(2L), any())).thenReturn(new CustomChallengeCreateResponse(100L));
+
+        mockMvc.perform(post("/api/challenges/custom")
+                .header("Authorization", "Bearer user-two-token")
+                .contentType(MediaType.APPLICATION_JSON).content(CUSTOM_REQUEST))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.challengeId").value(100));
+
+        verify(challengeService).createCustomChallenge(eq(2L), any());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "{}",
+        "{\"analysisId\":\"bad-id\",\"durationDays\":7,\"startDate\":\"2026-11-16\"}",
+        "{\"analysisId\":\"cc2e57ae-0f1b-49cf-9b2f-4c22f45f992b\",\"startDate\":\"2026-11-16\"}",
+        "{\"analysisId\":\"cc2e57ae-0f1b-49cf-9b2f-4c22f45f992b\",\"durationDays\":7,\"startDate\":\"not-a-date\"}"
+    })
+    void invalidCustomRequestReturns400(String body) throws Exception {
+        authenticateSecondUser();
+        mockMvc.perform(post("/api/challenges/custom")
+                .header("Authorization", "Bearer user-two-token")
+                .contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+        verifyNoInteractions(challengeService);
+    }
+
+    @Test
+    void expiredCustomAnalysisReturnsSpecified404() throws Exception {
+        authenticateSecondUser();
+        when(challengeService.createCustomChallenge(eq(2L), any()))
+            .thenThrow(new BusinessException(ChallengeErrorCode.ANALYSIS_NOT_FOUND));
+
+        mockMvc.perform(post("/api/challenges/custom")
+                .header("Authorization", "Bearer user-two-token")
+                .contentType(MediaType.APPLICATION_JSON).content(CUSTOM_REQUEST))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.error.code").value("ANALYSIS_NOT_FOUND"));
+    }
+
+    @Test
     void missingTokenRejectsRequestsBeforeCallingServices() throws Exception {
+        mockMvc.perform(post("/api/challenges/custom").contentType(MediaType.APPLICATION_JSON).content(CUSTOM_REQUEST))
+            .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/challenges/today"))
             .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/schedule/detail").param("challengeId", "10"))

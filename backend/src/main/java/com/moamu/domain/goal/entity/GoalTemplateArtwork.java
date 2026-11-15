@@ -17,14 +17,14 @@ import lombok.NoArgsConstructor;
  * 목표 템플릿과 작품을 매핑해주는 Entity
  */
 
-@Entity 
+@Entity
 @Table(name = "goal_template_artwork")
-@Getter 
-@NoArgsConstructor 
+@Getter
+@NoArgsConstructor
 public class GoalTemplateArtwork extends BaseEntity {
 
     // 목표 템플릿 - 작품 매핑 ID
-    @Id 
+    @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "goal_template_artwork_id")
     private Long goalTemplateArtworkId;
@@ -37,4 +37,10 @@ public class GoalTemplateArtwork extends BaseEntity {
     @Column(name = "artwork_id", nullable = false)
     private Long artworkId;
 
+    public static GoalTemplateArtwork create(Long goalTemplateId, Long artworkId) {
+        GoalTemplateArtwork mapping = new GoalTemplateArtwork();
+        mapping.goalTemplateId = goalTemplateId;
+        mapping.artworkId = artworkId;
+        return mapping;
+    }
 }
