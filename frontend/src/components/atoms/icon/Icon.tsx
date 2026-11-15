@@ -30,6 +30,7 @@ export const iconMap = {
   camera: 'icon-[lucide--camera]',
   clock: 'icon-[lucide--clock]',
   check: 'icon-[lucide--circle-check]',
+  alert: 'icon-[lucide--circle-alert]',
   palette: 'icon-[lucide--palette]',
 } as const
 
