@@ -1,15 +1,6 @@
-import { useLocation, useNavigate, useSearchParams } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import { SuccessButton } from '../../components/atoms/button/successButton'
 import { GoalVerificationUnavailable, type UnverifiableGoal } from '../../components/organisms/challenge/GoalVerificationUnavailable'
-
-const previewVerification: UnverifiableGoal = {
-  goal: '긍정적으로 생각하기',
-  suggestions: [
-    '매일 감사 일기 3줄 쓰기',
-    '아침에 스트레칭하기',
-    '자기 전 책 10쪽 읽기',
-  ],
-}
 
 function isUnverifiableGoal(value: unknown): value is UnverifiableGoal {
   if (!value || typeof value !== 'object') return false
@@ -22,14 +13,16 @@ function isUnverifiableGoal(value: unknown): value is UnverifiableGoal {
 export function GoalVerificationUnavailablePage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const [searchParams] = useSearchParams()
-  const verification: unknown = searchParams.get('preview') === 'true'
-    ? previewVerification
-    : location.state?.verification
+  const verification: unknown = location.state?.verification
 
   const handleSelectGoal = (goal: string) => {
     navigate('/challenge/create', {
-      state: { customGoal: goal, editCustomGoal: true },
+      state: {
+        customGoal: goal,
+        editCustomGoal: true,
+        startDate: location.state?.startDate,
+        durationDays: location.state?.durationDays,
+      },
     })
   }
 

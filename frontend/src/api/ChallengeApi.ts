@@ -135,3 +135,36 @@ export async function createChallenge(
     )
   }
 }
+
+export class CustomChallengeCreateError extends Error {
+  readonly code: string | undefined
+
+  constructor(message: string, code?: string) {
+    super(message)
+    this.name = 'CustomChallengeCreateError'
+    this.code = code
+  }
+}
+
+export async function createCustomChallenge(request: {
+  analysisId: string
+  startDate: string
+  durationDays: number
+}): Promise<{ challengeId: number }> {
+  const response = await authenticatedFetch('/api/challenges/custom', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  })
+  const body: ApiResponse<{ challengeId: number }> | null = await response.json().catch(() => null)
+  if (!response.ok || !body || !body.success) {
+    const code = body?.success === false ? body.error.code : undefined
+    throw new CustomChallengeCreateError(
+      body?.success === false ? body.error.message : '도전을 생성하지 못했어요. 다시 시도해 주세요.', code,
+    )
+  }
+  if (!Number.isSafeInteger(body.data?.challengeId) || body.data.challengeId <= 0) {
+    throw new Error('생성된 도전 정보를 확인하지 못했어요.')
+  }
+  return body.data
+}

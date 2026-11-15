@@ -7,6 +7,8 @@ export type GoalVerification = {
   goal: string
   conditions: string[]
   photoGuide: string
+  normalizedGoal?: string
+  verificationScope?: string
 }
 
 interface GoalVerificationConditionsProps {
@@ -40,6 +42,9 @@ export function GoalVerificationConditions({
         </section>
 
         <section aria-labelledby={`${id}-conditions`}>
+          {verification.normalizedGoal && (
+            <p className="text-body mb-4 break-words">실천할 목표: {verification.normalizedGoal}</p>
+          )}
           <h2 id={`${id}-conditions`} className="mb-4"><Text>인증 필수 조건</Text></h2>
           <ul className="text-body m-0 list-disc space-y-1 rounded-[var(--radius-md)] bg-[#FFF8ED] py-3 pr-4 pl-9 break-words">
             {verification.conditions.map((condition, index) => (
@@ -59,6 +64,12 @@ export function GoalVerificationConditions({
         </section>
       </div>
 
+      {verification.verificationScope && (
+        <section aria-labelledby={`${id}-scope`} className="mt-6">
+          <h2 id={`${id}-scope`} className="mb-4"><Text>인증 범위</Text></h2>
+          <p className="text-body m-0 whitespace-pre-line break-words">{verification.verificationScope}</p>
+        </section>
+      )}
       <div className="mt-auto pt-12">
         <p className="text-body mb-3 text-center">
           다른 목표를 입력하고 싶나요?{' '}
@@ -70,7 +81,7 @@ export function GoalVerificationConditions({
             다시 입력하기
           </button>
         </p>
-        <SuccessButton onClick={onAccept}>수락하고 도전 시작</SuccessButton>
+        <SuccessButton onClick={onAccept}>수락하고 도전 설정하기</SuccessButton>
       </div>
     </div>
   )

@@ -11,13 +11,15 @@ interface CustomGoalModalProps {
   value: string
   onClose: () => void
   onConfirm: (goal: string) => void
+  isAnalyzing?: boolean
+  error?: string
 }
 
-export function CustomGoalModal({ value, onClose, onConfirm }: CustomGoalModalProps) {
+export function CustomGoalModal({ value, onClose, onConfirm, isAnalyzing = false, error }: CustomGoalModalProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const id = useId()
   const [goal, setGoal] = useState(value)
-  const canConfirm = goal.trim().length >= 5 && goal.length <= 20
+  const canConfirm = goal.trim().length > 0 && goal.length <= 500 && !isAnalyzing
 
   useEffect(() => {
     const dialog = dialogRef.current
@@ -34,9 +36,12 @@ export function CustomGoalModal({ value, onClose, onConfirm }: CustomGoalModalPr
   return (
     <dialog
       ref={dialogRef}
-      onCancel={onClose}
+      onCancel={(event) => {
+        if (isAnalyzing) event.preventDefault()
+        else onClose()
+      }}
       onClick={(event) => {
-        if (event.target !== event.currentTarget) return
+        if (isAnalyzing || event.target !== event.currentTarget) return
         const bounds = event.currentTarget.getBoundingClientRect()
         const isOutside = event.clientX < bounds.left || event.clientX > bounds.right
           || event.clientY < bounds.top || event.clientY > bounds.bottom
@@ -61,34 +66,38 @@ export function CustomGoalModal({ value, onClose, onConfirm }: CustomGoalModalPr
           if (canConfirm) onConfirm(goal.trim())
         }}
       >
-        <FormLabel htmlFor={`${id}-goal`} className="mb-2 block">목표 도전</FormLabel>
-        <TextInput
-          multiline
-          id={`${id}-goal`}
-          value={goal}
-          onChange={setGoal}
-          maxLength={20}
-          placeholder="매일 퇴근 후 기타 30분씩 치기"
-          describedBy={`${id}-hint ${id}-count`}
-        />
-        <div className="mt-1.5 flex justify-between text-sm">
-          <span id={`${id}-hint`}><SubText>5~20자로 적어 주세요</SubText></span>
-          <span id={`${id}-count`}><SubText>{goal.length} / 20</SubText></span>
-        </div>
-        <Description className="mt-2 flex items-center gap-2 rounded-md bg-[#FFF8ED] px-3 py-4">
-          <span aria-hidden="true" className="icon-[lucide--circle-alert] inline-block size-5 shrink-0" />
-          입력한 목표 문장은 인증 조건을 만들기 위해 AI로 전달돼요.
-        </Description>
+        <fieldset disabled={isAnalyzing} className="m-0 min-w-0 border-0 p-0">
+          <FormLabel htmlFor={`${id}-goal`} className="mb-2 block">목표 도전</FormLabel>
+          <TextInput
+            multiline
+            id={`${id}-goal`}
+            value={goal}
+            onChange={setGoal}
+            maxLength={500}
+            placeholder="매일 퇴근 후 기타 30분씩 치기"
+            describedBy={`${id}-hint ${id}-count`}
+          />
+          <div className="mt-1.5 flex justify-between text-sm">
+            <span id={`${id}-hint`}><SubText>1~500자로 적어 주세요</SubText></span>
+            <span id={`${id}-count`}><SubText>{goal.length} / 500</SubText></span>
+          </div>
+          <Description className="mt-2 flex items-center gap-2 rounded-md bg-[#FFF8ED] px-3 py-4">
+            <span aria-hidden="true" className="icon-[lucide--circle-alert] inline-block size-5 shrink-0" />
+            입력한 목표 문장은 인증 조건을 만들기 위해 AI로 전달돼요.
+          </Description>
 
-        <div className="mt-14 grid grid-cols-2 gap-4">
-          <CancelButton onClick={onClose} />
-          <SuccessButton
-            type="submit"
-            disabled={!canConfirm}
-          >
-            확인
-          </SuccessButton>
-        </div>
+          {error && <p role="alert" className="mt-3 text-sm text-[var(--color-error)]">{error}</p>}
+          {isAnalyzing && <p role="status" className="mt-3 text-sm">목표의 사진 인증 조건을 분석하고 있어요.</p>}
+          <div className="mt-14 grid grid-cols-2 gap-4">
+            <CancelButton onClick={onClose} disabled={isAnalyzing} />
+            <SuccessButton
+              type="submit"
+              disabled={!canConfirm}
+            >
+              {isAnalyzing ? '분석 중...' : 'AI 분석하기'}
+            </SuccessButton>
+          </div>
+        </fieldset>
       </form>
     </dialog>
   )

@@ -1,6 +1,7 @@
 import { useLocation, useNavigate, useSearchParams } from 'react-router'
 import { SuccessButton } from '../../components/atoms/button/successButton'
 import { GoalVerificationConditions, type GoalVerification } from '../../components/organisms/challenge/GoalVerificationConditions'
+import { isVerifiableGoalAnalysis } from '../../types/GoalAnalysis'
 
 const previewVerification: GoalVerification = {
   goal: '하루 한번 산책하기',
@@ -32,6 +33,8 @@ export function GoalVerificationConditionsPage() {
     navigate('/challenge/create', {
       replace: true,
       state: {
+        startDate: location.state?.startDate,
+        durationDays: location.state?.durationDays,
         customGoal: isGoalVerification(verification) ? verification.goal : '',
         editCustomGoal: true,
       },
@@ -46,7 +49,12 @@ export function GoalVerificationConditionsPage() {
           onRetry={handleRetry}
           onAccept={() => navigate('/challenge/create', {
             replace: true,
-            state: { customGoal: verification.goal, acceptedVerification: verification },
+            state: {
+              startDate: location.state?.startDate,
+              durationDays: location.state?.durationDays,
+              customGoal: verification.goal,
+              acceptedVerification: isVerifiableGoalAnalysis(verification) ? verification : null,
+            },
           })}
         />
       ) : (
