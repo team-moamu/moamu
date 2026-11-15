@@ -30,6 +30,23 @@ class GalleryRepositoryTests {
     @Autowired GalleryRepository repository;
 
     @Test
+    void hidingPreservesChallengeAndEnforcesOwnershipAndDeletionFilter() {
+        Challenge exhibited = challenge("Exhibited", 7, 5, 'Y', 1L, 1);
+        Long id = exhibited.getChallengeId();
+        flush();
+        assertThat(repository.findOwnedForExhibition(2L, id)).isEmpty();
+        repository.findOwnedForExhibition(1L, id).orElseThrow().setIsExhibited('N');
+        flush();
+        assertThat(repository.findExhibited(1L, "latest")).isEmpty();
+        assertThat(repository.findOwnedForExhibition(1L, id)).isPresent();
+        assertThat(repository.findById(id).orElseThrow().getIsExhibited()).isEqualTo('N');
+        em.createQuery("UPDATE Challenge c SET c.delYn = 'Y' WHERE c.challengeId = :id")
+            .setParameter("id", id).executeUpdate();
+        em.clear();
+        assertThat(repository.findOwnedForExhibition(1L, id)).isEmpty();
+    }
+
+    @Test
     void returnsOnlyCompletedExhibitedChallengesOwnedByUser() {
         Challenge exhibited = challenge("Exhibited", 7, 5, 'Y', 1L, 1);
         challenge("Not exhibited", 7, 7, 'N', 1L, 2);

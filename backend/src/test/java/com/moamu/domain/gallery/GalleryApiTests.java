@@ -21,6 +21,8 @@ import com.moamu.global.security.JwtTokenProvider;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,6 +41,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.Matchers.contains;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 // 실제 보안 필터·컨트롤러·서비스를 연결하고 DB 조회와 JWT 해석만 대역으로 격리한다.
@@ -221,6 +224,96 @@ class GalleryApiTests {
             .isInstanceOfSatisfying(BusinessException.class,
                 error -> assertThat(error.getErrorCode()).isEqualTo(CommonErrorCode.UNAUTHORIZED));
 
+        verifyNoInteractions(galleries, verifications, artworks, media);
+    }
+    private Challenge exhibitionChallenge(com.moamu.domain.challenge.enums.Status status) {
+        Challenge challenge = Challenge.create(1L, 1L, 1L, 30L, "Practice guitar", "Practice", null,
+            "Photo", 7, LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 7), "Photo", 3, 3);
+        challenge.setIsExhibited('Y');
+        ReflectionTestUtils.setField(challenge, "challengeId", 10L);
+        ReflectionTestUtils.setField(challenge, "status", status);
+        when(galleries.findOwnedForExhibition(1L, 10L)).thenReturn(Optional.of(challenge));
+        return challenge;
+    }
+
+    @Test
+    void hidesCompletedChallengeAndRepeatedRequestRemainsSuccessful() throws Exception {
+        authenticate();
+        Challenge challenge = exhibitionChallenge(com.moamu.domain.challenge.enums.Status.COMPLETED);
+        assertThat(challenge.getIsExhibited()).isEqualTo('Y');
+
+        for (int attempt = 0; attempt < 2; attempt++) {
+            mvc.perform(patch("/api/galleries/10/exhibition")
+                    .header("Authorization", "Bearer owner-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.challengeId").value(10))
+                .andExpect(jsonPath("$.data.isExhibited").value(false));
+        }
+
+        assertThat(challenge.getIsExhibited()).isEqualTo('N');
+        assertThat(challenge.getStatus()).isEqualTo(com.moamu.domain.challenge.enums.Status.COMPLETED);
+        verifyNoInteractions(verifications, artworks, media);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = com.moamu.domain.challenge.enums.Status.class,
+        names = "COMPLETED", mode = EnumSource.Mode.EXCLUDE)
+    void refusesEveryNonCompletedStatus(com.moamu.domain.challenge.enums.Status challengeStatus) throws Exception {
+        authenticate();
+        Challenge challenge = exhibitionChallenge(challengeStatus);
+        mvc.perform(patch("/api/galleries/10/exhibition")
+                .header("Authorization", "Bearer owner-token"))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.error.code").value("CHALLENGE_NOT_COMPLETED"));
+        assertThat(challenge.getIsExhibited()).isEqualTo('Y');
+        assertThat(challenge.getStatus()).isEqualTo(challengeStatus);
+    }
+
+    @Test
+    void absentOwnedChallengeReturnsNotFoundAndCannotBeOverriddenByUserIdParameter() throws Exception {
+        authenticate();
+        when(galleries.findOwnedForExhibition(1L, 10L)).thenReturn(Optional.empty());
+        mvc.perform(patch("/api/galleries/10/exhibition").param("userId", "99")
+                .header("Authorization", "Bearer owner-token"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.error.code").value("RESOURCE_NOT_FOUND"));
+        verify(galleries).findOwnedForExhibition(1L, 10L);
+        verifyNoMoreInteractions(galleries);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"0", "-1", "invalid"})
+    void invalidChallengeIdIsRejectedBeforeQuery(String challengeId) throws Exception {
+        authenticate();
+        mvc.perform(patch("/api/galleries/{challengeId}/exhibition", challengeId)
+                .header("Authorization", "Bearer owner-token"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+        verifyNoInteractions(galleries, verifications, artworks, media);
+    }
+
+    @Test
+    void exhibitionRequiresAuthentication() throws Exception {
+        mvc.perform(patch("/api/galleries/10/exhibition"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.error.code").value("AUTHENTICATION_REQUIRED"));
+        when(tokens.getUserId("invalid")).thenThrow(new IllegalArgumentException("Invalid token"));
+        mvc.perform(patch("/api/galleries/10/exhibition")
+                .header("Authorization", "Bearer invalid"))
+            .andExpect(status().isUnauthorized())
+            .andExpect(jsonPath("$.error.code").value("INVALID_TOKEN"));
+        verifyNoInteractions(galleries, verifications, artworks, media);
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(longs = {0, -1})
+    void exhibitionServiceRejectsInvalidUserBeforeQuery(Long userId) {
+        assertThatThrownBy(() -> service.hideExhibition(userId, 10L))
+            .isInstanceOfSatisfying(BusinessException.class,
+                error -> assertThat(error.getErrorCode()).isEqualTo(CommonErrorCode.UNAUTHORIZED));
         verifyNoInteractions(galleries, verifications, artworks, media);
     }
 }
