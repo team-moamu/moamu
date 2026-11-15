@@ -1,6 +1,5 @@
 import { useLocation, useNavigate, useSearchParams } from 'react-router'
 import { SuccessButton } from '../../components/atoms/button/successButton'
-import { BackHeader } from '../../components/layout/header/BackHeader'
 import { GoalVerificationConditions, type GoalVerification } from '../../components/organisms/challenge/GoalVerificationConditions'
 
 const previewVerification: GoalVerification = {
@@ -40,25 +39,22 @@ export function GoalVerificationConditionsPage() {
   }
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-[430px] flex-col">
-      <BackHeader title="인증 조건 확인" />
-      <main className="flex flex-1 flex-col bg-white">
-        {isGoalVerification(verification) ? (
-          <GoalVerificationConditions
-            verification={verification}
-            onRetry={handleRetry}
-            onAccept={() => navigate('/challenge/create', {
-              replace: true,
-              state: { customGoal: verification.goal, acceptedVerification: verification },
-            })}
-          />
-        ) : (
-          <div className="flex flex-1 flex-col gap-6 px-5 py-6">
-            <p role="status" className="text-body">인증 조건을 확인하려면 목표를 입력하고 AI 판정을 받아 주세요.</p>
-            <SuccessButton onClick={handleRetry}>목표 입력하기</SuccessButton>
-          </div>
-        )}
-      </main>
+    <div className="flex flex-1 flex-col">
+      {isGoalVerification(verification) ? (
+        <GoalVerificationConditions
+          verification={verification}
+          onRetry={handleRetry}
+          onAccept={() => navigate('/challenge/create', {
+            replace: true,
+            state: { customGoal: verification.goal, acceptedVerification: verification },
+          })}
+        />
+      ) : (
+        <div className="flex flex-1 flex-col gap-6 px-5 py-6">
+          <p role="status" className="text-body">인증 조건을 확인하려면 목표를 입력하고 AI 판정을 받아 주세요.</p>
+          <SuccessButton onClick={handleRetry}>목표 입력하기</SuccessButton>
+        </div>
+      )}
     </div>
   )
 }

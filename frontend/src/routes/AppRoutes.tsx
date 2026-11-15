@@ -12,6 +12,7 @@ import { VerificationResultPage } from '../pages/challenge/VerificationResultPag
 import { HomePage } from '../pages/home/HomePage'
 import { ChallengeCompletionPage } from '../pages/challenge/ChallengeCompletionPage'
 import { GoalVerificationConditionsPage } from '../pages/challenge/GoalVerificationConditionsPage'
+import { GoalVerificationUnavailablePage } from '../pages/challenge/GoalVerificationUnavailablePage'
 
 function ChallengePage() {
   return <h1>도전하기 화면</h1>
@@ -32,11 +33,6 @@ function MyPage() {
 export default function AppRoutes() {
   return (
     <Routes>
-      <Route path="/challenge/create/conditions" element={<GoalVerificationConditionsPage />} />
-      {/* 도전 전체 완료: 축하 화면을 먼저 표시한 뒤 결과 화면으로 자동 전환 */}
-      <Route path="/challenge/:challengeId/completion" element={<ChallengeCompletionPage />} />
-      {/* 인증 결과는 자체 레이아웃 사용: 실패·검토 화면에만 하단 내비게이션 표시 */}
-      <Route path="/challenge/:challengeId/verification/result/:verificationId" element={<VerificationResultPage />} />
       {/* 
         - element에 showBottomNav 추가하면 네비게이션바가 생깁니다. 
         - headerType: MainLayout.tsx에 있는 헤더 타입
@@ -52,6 +48,11 @@ export default function AppRoutes() {
       {/* 뒤로가기 헤더 */}
       <Route element={<MainLayout headerType="back" title="도전 생성" />}>
         <Route path="/challenge/create" element={<ChallengeCreatePage />} />
+      </Route>
+
+      <Route element={<MainLayout headerType="back" title="인증 조건 확인" background="white" />}>
+        <Route path="/challenge/create/conditions" element={<GoalVerificationConditionsPage />} />
+        <Route path="/challenge/create/conditions/unverifiable" element={<GoalVerificationUnavailablePage />} />
       </Route>
 
       <Route element={<MainLayout showBottomNav headerType="back" title="도전" />}>
@@ -106,6 +107,11 @@ export default function AppRoutes() {
       >
         <Route path="/signup/email" element={<EmailSignupPage />} />
       </Route>
+      {/* 자체 레이아웃: 화면 상태에 따라 헤더와 하단 내비게이션 구성 */}
+      {/* 도전 전체 완료: 축하 화면을 먼저 표시한 뒤 결과 화면으로 자동 전환 */}
+      <Route path="/challenge/:challengeId/completion" element={<ChallengeCompletionPage />} />
+      {/* 인증 결과: 실패·검토 화면에만 하단 내비게이션 표시 */}
+      <Route path="/challenge/:challengeId/verification/result/:verificationId" element={<VerificationResultPage />} />
     </Routes >
   )
 }
