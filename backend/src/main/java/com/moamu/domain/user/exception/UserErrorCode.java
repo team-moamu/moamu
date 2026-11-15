@@ -47,7 +47,12 @@ public enum UserErrorCode implements ErrorCode {
   VERIFICATION_ATTEMPTS_EXCEEDED(
       HttpStatus.TOO_MANY_REQUESTS,
       "VERIFICATION_ATTEMPTS_EXCEEDED",
-      "입력 횟수를 초과했어요. 인증번호를 다시 요청해 주세요.");
+      "입력 횟수를 초과했어요. 인증번호를 다시 요청해 주세요."),
+
+  INVALID_EMAIL_VERIFICATION_TOKEN(
+      HttpStatus.BAD_REQUEST,
+      "INVALID_EMAIL_VERIFICATION_TOKEN",
+      "이메일 인증이 만료되었거나 가입 이메일과 일치하지 않아요. 다시 인증해 주세요.");
 
   private final HttpStatus httpStatus;
   private final String code;

@@ -8,24 +8,22 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
-@NoArgsConstructor 
+@NoArgsConstructor
 public class UserSignupRequest {
 
-  @NotBlank (message = "이메일을 입력해주세요.")
-  @Email(message = "올바른 이메일 형식으로 입력해주세요.")
-  @Size (max = 50, message = "아이디는 50자 이하여야 합니다.")
-  @Pattern(
-        regexp = "^\\S+$",
-        message = "이메일에는 공백을 포함할 수 없습니다."
-  )
-  private String loginId;
+      @NotBlank(message = "이메일을 입력해주세요.")
+      @Email(message = "올바른 이메일 형식으로 입력해주세요.")
+      @Size(max = 50, message = "아이디는 50자 이하여야 합니다.")
+      @Pattern(regexp = "^\\S+$", message = "이메일에는 공백을 포함할 수 없습니다.")
+      private String loginId;
 
-  @NotBlank(message = "비밀번호를 입력해주세요.")
-  @Size(min = 8, max = 20, message = "비밀번호는 8~20자여야 합니다.")
-  @Pattern(
-        regexp = "^(?=.*[A-Za-z])(?=.*[0-9])[\\x21-\\x7E]+$",
-        message = "비밀번호는 영문과 숫자를 포함하고, 공백 없이 입력해주세요."
-  )
-  private String password;
+      @NotBlank(message = "비밀번호를 입력해주세요.")
+      @Size(min = 8, max = 20, message = "비밀번호는 8~20자여야 합니다.")
+      @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*[0-9])[\\x21-\\x7E]+$", message = "비밀번호는 영문과 숫자를 포함하고, 공백 없이 입력해주세요.")
+      private String password;
+
+      @NotBlank(message = "이메일 인증을 완료해 주세요.")
+      @Pattern(regexp = "[A-Za-z0-9_-]{43}", message = "이메일 인증 토큰 형식이 올바르지 않습니다.")
+      private String verificationToken;
 
 }
