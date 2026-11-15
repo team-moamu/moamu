@@ -5,6 +5,7 @@ import type { CollectionSort } from '../../types/Collection'
 import type { GalleryResponse } from '../../types/Gallery'
 import { getGalleries } from '../../api/GalleryApi'
 import { GalleryArtworkCard } from '../../components/molecules/card/GalleryArtworkCard'
+import { ConfirmDialog } from '../../components/molecules/modal/ConfirmDialog'
 
 export function GalleryPage() {
   const [sort, setSort] = useState<CollectionSort>('latest')
@@ -14,6 +15,7 @@ export function GalleryPage() {
   const [retry, setRetry] = useState(0)
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const [hideDialogOpen, setHideDialogOpen] = useState(false)
 
   function toggleSelectionMode() {
     setSelectionMode((value) => !value)
@@ -64,6 +66,7 @@ export function GalleryPage() {
           onToggleSelection={toggleSelectionMode}
           selectionDisabled={loading || !!error || artworks.length === 0}
           hideDisabled={selectedIds.size === 0}
+          onHide={() => setHideDialogOpen(true)}
         />
         <div className="mt-4" aria-busy={loading}>
           {loading ? (
@@ -93,6 +96,14 @@ export function GalleryPage() {
           )}
         </div>
       </section>
+      {hideDialogOpen && (
+        <ConfirmDialog
+          title="미술관에서 이미지를 숨길까요?"
+          description={<>이미지는 삭제되지 않으며, 미술관에서만 표시되지 않습니다.<br />숨겨진 이미지는 <strong>보관함</strong>에서 확인할 수 있습니다.</>}
+          confirmLabel="숨기기"
+          onCancel={() => setHideDialogOpen(false)}
+        />
+      )}
     </>
   )
 }
