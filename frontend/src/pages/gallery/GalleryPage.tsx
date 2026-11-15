@@ -7,6 +7,7 @@ import { getGalleries, hideGalleryArtwork } from '../../api/GalleryApi'
 import { GalleryArtworkCard } from '../../components/molecules/card/GalleryArtworkCard'
 import { ConfirmDialog } from '../../components/molecules/modal/ConfirmDialog'
 import { ErrorDialog } from '../../components/molecules/modal/ErrorDialog'
+import { CollectionEmptyState } from '../../components/molecules/feedback/CollectionEmptyState'
 
 export function GalleryPage() {
   const [sort, setSort] = useState<CollectionSort>('latest')
@@ -20,6 +21,15 @@ export function GalleryPage() {
   const [hiding, setHiding] = useState(false)
   const [hideError, setHideError] = useState(false)
   const hideInFlight = useRef(false)
+
+  function reloadGallery() {
+    setLoading(true)
+    setError(null)
+    setSelectedIds(new Set())
+    setSelectionMode(false)
+    setSort('latest')
+    setRetry((value) => value + 1)
+  }
 
   async function confirmHide() {
     if (hideInFlight.current || selectedIds.size === 0) return
@@ -110,16 +120,9 @@ export function GalleryPage() {
           {loading ? (
             <p role="status" className="py-6 text-center text-sm">작품을 불러오는 중이에요.</p>
           ) : error ? (
-            <div role="alert" className="py-6 text-center text-sm">
-              <p>{error}</p>
-              <button type="button" onClick={() => {
-                setLoading(true)
-                setError(null)
-                setRetry((value) => value + 1)
-              }} className="mt-2 cursor-pointer underline">다시 시도</button>
-            </div>
+            <CollectionEmptyState variant="error" onRetry={reloadGallery} />
           ) : artworks.length === 0 ? (
-            <p role="status" className="py-6 text-center text-sm">아직 전시된 작품이 없어요.</p>
+            <CollectionEmptyState variant="empty" onRetry={reloadGallery} />
           ) : (
             <div className="grid grid-cols-2 gap-x-4 gap-y-5">
               {artworks.map((artwork) => (

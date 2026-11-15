@@ -8,6 +8,18 @@ interface CollectionQuery {
   keyword?: string
 }
 
+export async function exhibitCollection(challengeId: number): Promise<{ challengeId: number; isExhibited: boolean }> {
+  const response = await authenticatedFetch(`/api/collections/${challengeId}/exhibition`, { method: 'PATCH' })
+  const body: ApiResponse<{ challengeId: number; isExhibited: boolean }> | null = await response.json().catch(() => null)
+  if (!response.ok || !body?.success) {
+    throw new Error(body?.success === false ? body.error.message : '작품을 전시하지 못했어요. 잠시 후 다시 시도해 주세요.')
+  }
+  if (body.data?.challengeId !== challengeId || body.data.isExhibited !== true) {
+    throw new Error('작품의 전시 상태를 확인하지 못했어요. 잠시 후 다시 시도해 주세요.')
+  }
+  return body.data
+}
+
 export async function getCollections(
   { exhibited, sort = 'latest', keyword }: CollectionQuery = {},
   signal?: AbortSignal,
