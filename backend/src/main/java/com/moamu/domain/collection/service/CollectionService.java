@@ -55,7 +55,12 @@ public class CollectionService {
         );
     }
 
-    public List<CollectionResponse> getCollections(Long userId, Boolean exhibited, String sort) {
+    public List<CollectionResponse> getCollections(
+        Long userId,
+        Boolean exhibited,
+        String keyword,
+        String sort
+    ) {
         if (userId == null || userId <= 0) {
             throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
         }
@@ -69,7 +74,15 @@ public class CollectionService {
         // true는 전시 중(Y)
         // false는 미전시(N) 조회
         Character exhibitionStatus = exhibited == null ? null : (exhibited ? 'Y' : 'N');
-        List<Challenge> challenges = collectionRepository.findOwned(userId, exhibitionStatus, sort);
+        String normalizedKeyword = keyword == null || keyword.isBlank()
+            ? null
+            : keyword.trim();
+        List<Challenge> challenges = collectionRepository.findOwned(
+            userId,
+            exhibitionStatus,
+            normalizedKeyword,
+            sort
+        );
         List<CollectionResponse> responses = new ArrayList<>();
 
         for (Challenge challenge : challenges) {
