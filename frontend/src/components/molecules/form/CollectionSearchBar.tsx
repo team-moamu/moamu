@@ -14,9 +14,15 @@ export function CollectionSearchBar({
   className = '',
 }: CollectionSearchBarProps) {
   return (
-    <div className={`flex w-full items-center justify-center gap-2 ${className}`}>
-      <SearchInput {...inputProps} />
-      <MoreButton {...moreButtonProps} />
+    <div className={`grid w-full grid-cols-[596fr_90fr] items-stretch gap-[2.28%] ${className}`}>
+      <SearchInput
+        {...inputProps}
+        style={{ height: 'auto', aspectRatio: '596 / 64', ...inputProps?.style }}
+      />
+      <MoreButton
+        {...moreButtonProps}
+        style={{ width: '100%', height: '100%', ...moreButtonProps?.style }}
+      />
     </div>
   )
 }

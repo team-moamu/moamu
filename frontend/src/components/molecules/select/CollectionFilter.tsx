@@ -15,13 +15,13 @@ type CollectionFilterProps = {
 
 export function CollectionFilter({ value, onChange }: CollectionFilterProps) {
   return (
-    <div role="group" aria-label="작품 전시 상태 필터" className="flex items-center justify-center gap-[29px]">
+    <div role="group" aria-label="작품 전시 상태 필터" className="mx-auto flex w-[90.6%] items-center justify-between">
       {filters.map((filter) => (
         <FilterButton
           key={filter.value}
           selected={value === filter.value}
           onClick={() => onChange(filter.value)}
-          className="w-[102px] min-w-0 px-2"
+          style={{ width: '27.2%', height: 'auto', aspectRatio: '173 / 52' }}
         >
           {filter.label}
         </FilterButton>
