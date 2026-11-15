@@ -15,22 +15,39 @@ public enum UserErrorCode implements ErrorCode {
   DUPLICATE_LOGIN_ID(
       HttpStatus.CONFLICT,
       "DUPLICATE_LOGIN_ID",
-      "이미 사용 중인 이메일입니다."
-    ),
+      "이미 사용 중인 이메일입니다."),
 
   // 이메일이 없거나 비밀번호가 일치하지 않는 경우
   INVALID_CREDENTIALS(
       HttpStatus.UNAUTHORIZED,
       "INVALID_CREDENTIALS",
-      "이메일 또는 비밀번호가 올바르지 않습니다."
-    ),
+      "이메일 또는 비밀번호가 올바르지 않습니다."),
 
   // 탈퇴 등으로 로그인할 수 없는 경우
   LOGIN_NOT_ALLOWED(
       HttpStatus.FORBIDDEN,
       "LOGIN_NOT_ALLOWED",
-      "로그인할 수 없는 회원입니다."
-    );
+      "로그인할 수 없는 회원입니다."),
+
+  VERIFICATION_RESEND_TOO_SOON(
+      HttpStatus.TOO_MANY_REQUESTS,
+      "VERIFICATION_RESEND_TOO_SOON",
+      "잠시 후 인증번호를 다시 요청해 주세요."),
+
+  VERIFICATION_MAIL_FAILED(
+      HttpStatus.SERVICE_UNAVAILABLE,
+      "VERIFICATION_MAIL_FAILED",
+      "인증번호를 보내지 못했어요. 잠시 후 다시 시도해 주세요."),
+
+  INVALID_VERIFICATION_CODE(
+      HttpStatus.BAD_REQUEST,
+      "INVALID_VERIFICATION_CODE",
+      "인증번호가 올바르지 않거나 만료됐어요."),
+
+  VERIFICATION_ATTEMPTS_EXCEEDED(
+      HttpStatus.TOO_MANY_REQUESTS,
+      "VERIFICATION_ATTEMPTS_EXCEEDED",
+      "입력 횟수를 초과했어요. 인증번호를 다시 요청해 주세요.");
 
   private final HttpStatus httpStatus;
   private final String code;
