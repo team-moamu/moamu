@@ -13,10 +13,12 @@ interface ConfirmDialogProps {
   onCancel: () => void
   onConfirm?: () => void
   pending?: boolean
+  error?: string | null
+  variant?: 'confirm' | 'alert'
 }
 
 // 부모에서 조건부 렌더링으로 열고 닫습니다.
-export function ConfirmDialog({ title, description, confirmLabel = '확인', cancelLabel = '취소', icon = 'alert', onCancel, onConfirm, pending = false }: ConfirmDialogProps) {
+export function ConfirmDialog({ title, description, confirmLabel = '확인', cancelLabel = '취소', icon = 'alert', onCancel, onConfirm, pending = false, error, variant = 'confirm' }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null)
   const titleId = useId()
   const descriptionId = useId()
@@ -37,6 +39,7 @@ export function ConfirmDialog({ title, description, confirmLabel = '확인', can
   return (
     <dialog
       ref={dialogRef}
+      role={variant === 'alert' ? 'alertdialog' : 'dialog'}
       aria-labelledby={titleId}
       aria-describedby={description ? descriptionId : undefined}
       aria-busy={pending}
@@ -54,9 +57,10 @@ export function ConfirmDialog({ title, description, confirmLabel = '확인', can
       <div className="mb-4 flex justify-center text-[#493725]"><Icon name={icon} size={40} /></div>
       <DialogTitle id={titleId}>{title}</DialogTitle>
       {description && <DialogDescription id={descriptionId} className="mt-2">{description}</DialogDescription>}
+      {error && <p role="alert" className="mt-3 text-sm text-[var(--color-error)]">{error}</p>}
       <div className="mt-6 flex gap-3">
-        <DialogButton variant="cancel" onClick={onCancel} disabled={pending} autoFocus>{cancelLabel}</DialogButton>
-        <DialogButton onClick={onConfirm} disabled={pending || !onConfirm}>{confirmLabel}</DialogButton>
+        {variant === 'confirm' && <DialogButton variant="cancel" onClick={onCancel} disabled={pending} autoFocus>{cancelLabel}</DialogButton>}
+        <DialogButton onClick={onConfirm} disabled={pending || !onConfirm} autoFocus={variant === 'alert'}>{confirmLabel}</DialogButton>
       </div>
     </dialog>
   )
