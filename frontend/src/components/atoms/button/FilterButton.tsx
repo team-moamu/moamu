@@ -10,7 +10,7 @@ export function FilterButton({ selected, children, className = '', ...props }: F
       {...props}
       type="button"
       aria-pressed={selected}
-      className={`cursor-pointer rounded-full border border-[var(--color-text)] px-4 py-1 text-sm leading-5 whitespace-nowrap transition-colors ${
+      className={`inline-flex h-[26px] w-[85px] shrink-0 items-center justify-center cursor-pointer rounded-full border border-[var(--color-text)] p-0 font-[family-name:var(--font-ui)] text-[12px] font-normal leading-none whitespace-nowrap transition-colors ${
         selected
           ? 'bg-[var(--color-text)] text-[var(--color-background)]'
           : 'bg-transparent text-[var(--color-text)]'

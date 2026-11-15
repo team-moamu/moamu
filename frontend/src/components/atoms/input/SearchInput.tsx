@@ -10,7 +10,7 @@ export function SearchInput({
   ...props
 }: SearchInputProps) {
   return (
-    <div className="relative w-[293px] shrink-0 text-[#4A382A]">
+    <div className="relative w-full min-w-0 text-[#4A382A]">
       <Icon
         name="search"
         size={20}

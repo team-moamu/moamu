@@ -14,6 +14,7 @@ export const iconMap = {
   back: 'icon-[lucide--arrow-left]',
   search: 'icon-[lucide--search]',
   more: 'icon-[lucide--ellipsis]',
+  moreVertical: 'icon-[lucide--ellipsis-vertical]',
 
   // 목표 카드 아이콘
   study: 'icon-[lucide--book-open]',
