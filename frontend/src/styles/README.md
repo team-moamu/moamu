@@ -75,8 +75,8 @@ Hover/pressed 색상은 기본 Forest 색에서 어둡게 파생한 구현값입
 | 설명 | 강원교육모두체 / GangwonEduAll BoldA | `text-description` |
 | 본문·UI | Pretendard Regular/Medium/SemiBold | `text-body`, `text-label`, `text-caption` |
 
-**현재 저장소에 글꼴 파일이 없어 웹폰트 로딩은 아직 연결하지 않았습니다.** CSS의 `font-family`는 글꼴을 설치하거나 다운로드하는 기능이 아닙니다. 해당 글꼴이 없는 환경에서는 시스템 글꼴로 표시됩니다.
+`src/main.tsx`에서 `font.css`를 불러와 `src/assets/fonts`의 글꼴을 앱 전체에 등록합니다. 강원교육모두체는 `--font-description`으로 사용하며 Light(300), Bold(700)가 연결되어 있습니다. 학교안심 둥근미소는 아직 파일이 연결되지 않아 대체 글꼴로 표시됩니다.
 
-팀에서 사용할 웹폰트 파일과 라이선스를 준비한 뒤 이 폴더에 `fonts.css`를 추가하고 `index.css`에서 import하면 됩니다. `@font-face`의 이름을 `tokens.css`의 family 이름과 맞추고, 굵기별 파일을 연결하세요. PC에만 설치된 글꼴에 의존하면 팀원과 배포 환경의 화면이 달라질 수 있습니다.
+강원교육 TTF 5개(모두 Bold/Light, 새음, 튼튼, 현옥샘)의 잘못된 `kern` 하위 테이블 길이와 체크섬을 수정했습니다. 커닝 쌍과 간격 값, 글리프, 문자 매핑, 글자 폭 테이블은 원본 그대로 유지했습니다. 팝업도 별도 웹폰트 사본 대신 동일한 공통 TTF를 사용합니다.
 
 현재 초기 화면의 너비·바깥 여백은 `src/index.css`에 남아 있습니다. 화면 구현을 시작할 때 해당 `main` 규칙을 실제 앱 레이아웃으로 옮기세요. 공통 스타일에는 모바일 화면 폭이나 하단 내비게이션 위치를 고정하지 않았습니다.

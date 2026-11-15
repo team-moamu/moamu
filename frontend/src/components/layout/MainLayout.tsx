@@ -5,7 +5,6 @@ import { BackHeader } from './header/BackHeader'
 import { TitleHeader } from './header/TitleHeader'
 import { LoginHeader } from './header/LoginHeader'
 import { BottomNavigation } from './navigation/BottomNavigation'
-import '../../styles/font.css'
 
 interface MainLayoutProps {
   headerType?: 'main' | 'back' | 'title' | 'login'

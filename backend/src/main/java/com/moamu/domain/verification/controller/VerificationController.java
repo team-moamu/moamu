@@ -6,7 +6,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestAttribute;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.RequestBody;
 import jakarta.validation.Valid;
 import com.moamu.domain.verification.dto.VerificationSubmitRequest;
@@ -38,7 +38,7 @@ public class VerificationController {
     // 인증하기
     @PostMapping
     public ApiResponse<VerificationSubmitResponse> submitVerification(
-            @RequestAttribute(value = "userId", required = false) Long userId,
+            @AuthenticationPrincipal Long userId,
             @Valid @RequestBody VerificationSubmitRequest request) {
         return ApiResponse.success(submissionService.submit(userId, request));
     }

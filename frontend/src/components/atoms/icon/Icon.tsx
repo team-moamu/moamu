@@ -14,6 +14,13 @@ export const iconMap = {
   back: 'icon-[lucide--arrow-left]',
   chevronRight: 'icon-[lucide--chevron-right]',
 
+  search: 'icon-[lucide--search]',
+  more: 'icon-[lucide--ellipsis]',
+  calendar: 'icon-[lucide--calendar]',
+  folder: 'icon-[lucide--folder]',
+  alphabetical: 'icon-[lucide--spell-check]',
+  moreVertical: 'icon-[lucide--ellipsis-vertical]',
+
   // 목표 카드 아이콘
   study: 'icon-[lucide--book-open]',
   exercise: 'icon-[lucide--dumbbell]',
@@ -26,6 +33,7 @@ export const iconMap = {
   camera: 'icon-[lucide--camera]',
   clock: 'icon-[lucide--clock]',
   check: 'icon-[lucide--circle-check]',
+  alert: 'icon-[lucide--circle-alert]',
   palette: 'icon-[lucide--palette]',
 } as const
 
