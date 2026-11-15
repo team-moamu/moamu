@@ -12,13 +12,10 @@ import { VerificationResultPage } from '../pages/challenge/VerificationResultPag
 import { HomePage } from '../pages/home/HomePage'
 import { ChallengeCompletionPage } from '../pages/challenge/ChallengeCompletionPage'
 import { GalleryPage } from '../pages/gallery/GalleryPage'
+import { CollectionPage } from '../pages/collection/CollectionPage'
 
 function ChallengePage() {
   return <h1>도전하기 화면</h1>
-}
-
-function CollectionPage() {
-  return <h1>보관함 화면</h1>
 }
 
 function MyPage() {
@@ -40,7 +37,6 @@ export default function AppRoutes() {
       {/* 기본 헤더 + 하단 내비게이션 */}
       <Route element={<MainLayout showBottomNav />}>
         <Route path="/" element={<HomePage />} />
-        <Route path="/collection" element={<CollectionPage />} />
         <Route path="/mypage" element={<MyPage />} />
       </Route>
 
@@ -54,7 +50,11 @@ export default function AppRoutes() {
       </Route>
 
       {/* 제목 헤더 */}
-      <Route element={<MainLayout showBottomNav headerType="title" title="내 미술관" />} >
+      <Route element={<MainLayout showBottomNav headerType="title" title="보관함" />}>
+        <Route path="/collection" element={<CollectionPage />} />
+      </Route>
+
+      <Route element={<MainLayout showBottomNav headerType="title" title="내 미술관" />}>
         <Route path="/museum" element={<GalleryPage />} />
         <Route path="/challenge/complete" element={<GalleryPage />} />
       </Route>
