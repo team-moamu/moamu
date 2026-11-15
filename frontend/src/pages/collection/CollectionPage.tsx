@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import collectionMu from '../../assets/images/collection_mu.png'
 import { SectionTitle } from '../../components/atoms/typography/SectionTitle'
+import { CollectionSearchBar } from '../../components/molecules/form/CollectionSearchBar'
 import { CollectionFilter, type CollectionFilterValue } from '../../components/molecules/select/CollectionFilter'
 
 export function CollectionPage() {
   const [filter, setFilter] = useState<CollectionFilterValue>('all')
+  const [keyword, setKeyword] = useState('')
 
   return (
     <>
@@ -16,6 +18,13 @@ export function CollectionPage() {
         <div className="mt-5">
           <CollectionFilter value={filter} onChange={setFilter} />
         </div>
+        <CollectionSearchBar
+          className="mt-3"
+          inputProps={{
+            value: keyword,
+            onChange: (event) => setKeyword(event.target.value),
+          }}
+        />
       </section>
     </>
   )
