@@ -8,6 +8,8 @@ import { CalendarInput } from '../../components/molecules/form/CalendarInput'
 import { DurationSelector } from '../../components/molecules/select/DurationSelector'
 import { SuccessButton } from '../../components/atoms/button/successButton'
 import type { IconName } from '../../components/atoms/icon/Icon'
+import { GoalCard } from '../../components/atoms/card/GoalCard'
+import { CustomGoalModal } from '../../components/molecules/modal/CustomGoalModal'
 
 type Goal = {
   goalTemplateId: number
@@ -31,6 +33,8 @@ export function ChallengeCreatePage() {
   const [isLoadingGoals, setIsLoadingGoals] = useState(true)
   // 목표 선택
   const [selectedGoalId, setSelectedGoalId] = useState<number | null>(null)
+  const [customGoal, setCustomGoal] = useState('')
+  const [isCustomGoalModalOpen, setIsCustomGoalModalOpen] = useState(false)
 
   // 시작 날짜
   const [startDate, setStartDate] = useState('')
@@ -104,10 +108,18 @@ export function ChallengeCreatePage() {
         {isLoadingGoals && <p role="status">목표 목록을 불러오는 중...</p>}
         {!isLoadingGoals && goals.length === 0 && !error && <p>선택할 수 있는 목표가 없어요.</p>}
         <GoalCardList
-          goals={goals}
+          goals={goals.filter((goal) => goal.icon !== 'nametag')}
           value={selectedGoalId}
           onChange={setSelectedGoalId}
-        />
+        >
+          <GoalCard
+            title="나만의 도전"
+            description={customGoal || '직접 생성하기'}
+            icon="plus"
+            selected={customGoal !== '' && selectedGoalId === null}
+            onClick={() => setIsCustomGoalModalOpen(true)}
+          />
+        </GoalCardList>
       </section>
 
       {/* 시작 날짜 선택 */}
@@ -117,6 +129,8 @@ export function ChallengeCreatePage() {
         </h2>
 
         <CalendarInput
+          id="challenge-start-date"
+          name="startDate"
           value={startDate}
           onChange={setStartDate}
         />
@@ -145,6 +159,18 @@ export function ChallengeCreatePage() {
       >
         {isSubmitting ? '생성 중...' : '도전 생성하기'}
       </SuccessButton>
+
+      {isCustomGoalModalOpen && (
+        <CustomGoalModal
+          value={customGoal}
+          onClose={() => setIsCustomGoalModalOpen(false)}
+          onConfirm={(goal) => {
+            setCustomGoal(goal)
+            setSelectedGoalId(null)
+            setIsCustomGoalModalOpen(false)
+          }}
+        />
+      )}
 
     </div>
   )

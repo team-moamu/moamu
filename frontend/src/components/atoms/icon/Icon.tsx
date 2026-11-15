@@ -20,6 +20,7 @@ export const iconMap = {
   algorithm: 'icon-[lucide--pencil]',
   supplement: 'icon-[lucide--pill]',
   nametag: 'icon-[lucide--contact]',
+  plus: 'icon-[lucide--plus]',
 
   camera: 'icon-[lucide--camera]',
   clock: 'icon-[lucide--clock]',

@@ -23,7 +23,7 @@ export function GoalCard({
       onClick={onClick}
       aria-pressed={selected}
       className={`
-        flex w-full items-center gap-3 rounded-lg
+        flex w-full items-center gap-3 rounded-md
         border p-3 text-left transition-colors
         ${
           selected
