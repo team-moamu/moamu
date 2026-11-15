@@ -1,6 +1,6 @@
 
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useLocation, useNavigate } from 'react-router'
 import { createChallenge } from '../../api/ChallengeApi'
 import { getGoalTemplates } from '../../api/GoalTemplateApi'
 import { GoalCardList } from '../../components/molecules/card/GoalCardList'
@@ -29,12 +29,15 @@ function getGoalIcon(name: string): IconName {
 
 export function ChallengeCreatePage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [goals, setGoals] = useState<Goal[]>([])
   const [isLoadingGoals, setIsLoadingGoals] = useState(true)
   // 목표 선택
   const [selectedGoalId, setSelectedGoalId] = useState<number | null>(null)
-  const [customGoal, setCustomGoal] = useState('')
-  const [isCustomGoalModalOpen, setIsCustomGoalModalOpen] = useState(false)
+  const [customGoal, setCustomGoal] = useState<string>(
+    typeof location.state?.customGoal === 'string' ? location.state.customGoal : '',
+  )
+  const [isCustomGoalModalOpen, setIsCustomGoalModalOpen] = useState(location.state?.editCustomGoal === true)
 
   // 시작 날짜
   const [startDate, setStartDate] = useState('')

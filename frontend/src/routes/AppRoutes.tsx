@@ -11,6 +11,7 @@ import { EmailSignupPage } from '../pages/signup/EmailSignupPage'
 import { VerificationResultPage } from '../pages/challenge/VerificationResultPage'
 import { HomePage } from '../pages/home/HomePage'
 import { ChallengeCompletionPage } from '../pages/challenge/ChallengeCompletionPage'
+import { GoalVerificationConditionsPage } from '../pages/challenge/GoalVerificationConditionsPage'
 
 function ChallengePage() {
   return <h1>도전하기 화면</h1>
@@ -31,6 +32,7 @@ function MyPage() {
 export default function AppRoutes() {
   return (
     <Routes>
+      <Route path="/challenge/create/conditions" element={<GoalVerificationConditionsPage />} />
       {/* 도전 전체 완료: 축하 화면을 먼저 표시한 뒤 결과 화면으로 자동 전환 */}
       <Route path="/challenge/:challengeId/completion" element={<ChallengeCompletionPage />} />
       {/* 인증 결과는 자체 레이아웃 사용: 실패·검토 화면에만 하단 내비게이션 표시 */}
