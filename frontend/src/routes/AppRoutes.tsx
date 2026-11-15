@@ -11,13 +11,10 @@ import { EmailSignupPage } from '../pages/signup/EmailSignupPage'
 import { VerificationResultPage } from '../pages/challenge/VerificationResultPage'
 import { HomePage } from '../pages/home/HomePage'
 import { ChallengeCompletionPage } from '../pages/challenge/ChallengeCompletionPage'
+import { GalleryPage } from '../pages/gallery/GalleryPage'
 
 function ChallengePage() {
   return <h1>도전하기 화면</h1>
-}
-
-function GalleryPage() {
-  return <h1>미술관 화면</h1>
 }
 
 function CollectionPage() {
@@ -57,7 +54,7 @@ export default function AppRoutes() {
       </Route>
 
       {/* 제목 헤더 */}
-      <Route element={<MainLayout showBottomNav headerType="title" title="미술관" />} >
+      <Route element={<MainLayout showBottomNav headerType="title" title="내 미술관" />} >
         <Route path="/museum" element={<GalleryPage />} />
         <Route path="/challenge/complete" element={<GalleryPage />} />
       </Route>
