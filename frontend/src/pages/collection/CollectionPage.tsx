@@ -7,6 +7,7 @@ import { CollectionArtworkCard } from '../../components/molecules/card/Collectio
 import { SectionTitle } from '../../components/atoms/typography/SectionTitle'
 import { CollectionSearchBar } from '../../components/molecules/form/CollectionSearchBar'
 import { CollectionFilter, type CollectionFilterValue } from '../../components/molecules/select/CollectionFilter'
+import { CollectionEmptyState } from '../../components/molecules/feedback/CollectionEmptyState'
 
 export function CollectionPage() {
   const [filter, setFilter] = useState<CollectionFilterValue>('all')
@@ -17,7 +18,18 @@ export function CollectionPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [retry, setRetry] = useState(0)
+  const [hasAnyArtwork, setHasAnyArtwork] = useState(true)
   const searchRef = useRef<HTMLDivElement>(null)
+
+  function reloadCollection() {
+    setLoading(true)
+    setError(null)
+    setSortOpen(false)
+    setFilter('all')
+    setKeyword('')
+    setSort('latest')
+    setRetry((value) => value + 1)
+  }
 
   function closeSort() {
     setSortOpen(false)
@@ -35,16 +47,24 @@ export function CollectionPage() {
 
   useEffect(() => {
     const controller = new AbortController()
-    setLoading(true)
-    setError(null)
     const timer = window.setTimeout(async () => {
+      setLoading(true)
+      setError(null)
       try {
         const data = await getCollections({
           exhibited: filter === 'all' ? undefined : filter === 'exhibited',
           keyword,
           sort,
         }, controller.signal)
-        if (!controller.signal.aborted) setCollections(data)
+        // 검색 결과가 없는 것과 보관함 전체가 비어 있는 것을 구분한다.
+        const hasFilter = filter !== 'all' || keyword.trim() !== ''
+        const allItems = data.length === 0 && hasFilter
+          ? await getCollections({}, controller.signal)
+          : data
+        if (!controller.signal.aborted) {
+          setCollections(data)
+          setHasAnyArtwork(allItems.length > 0)
+        }
       } catch (cause) {
         if (!controller.signal.aborted) {
           setError(cause instanceof Error ? cause.message : '보관함을 불러오지 못했어요.')
@@ -66,6 +86,12 @@ export function CollectionPage() {
       </div>
       <section className="px-6 py-5">
         <SectionTitle>진행된 작품</SectionTitle>
+        {!loading && error ? (
+          <CollectionEmptyState variant="error" onRetry={reloadCollection} />
+        ) : !loading && !hasAnyArtwork ? (
+          <CollectionEmptyState variant="empty" onRetry={reloadCollection} />
+        ) : (
+          <>
         <div className="mt-5">
           <CollectionFilter value={filter} onChange={setFilter} />
         </div>
@@ -120,6 +146,8 @@ export function CollectionPage() {
             </>
           )}
         </div>
+          </>
+        )}
       </section>
     </>
   )
