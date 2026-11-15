@@ -53,7 +53,7 @@ export default function AppRoutes() {
       </Route>
 
       {/* 제목 헤더 */}
-      <Route element={<MainLayout headerType="title" title="보관함" />}>
+      <Route element={<MainLayout showBottomNav headerType="title" title="보관함" />}>
         <Route path="/collection" element={<CollectionPage />} />
       </Route>
 
