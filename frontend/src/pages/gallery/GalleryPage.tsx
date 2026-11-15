@@ -4,11 +4,36 @@ import leaf from '../../assets/icons/leaf.svg'
 import { GallerySectionHeader } from '../../components/molecules/gallery/GallerySectionHeader'
 import { CollectionSortMenu } from '../../components/molecules/select/CollectionSortMenu'
 import type { CollectionSort } from '../../types/Collection'
+import type { GalleryResponse } from '../../types/Gallery'
+import { getGalleries } from '../../api/GalleryApi'
+import { GalleryArtworkCard } from '../../components/molecules/card/GalleryArtworkCard'
 
 export function GalleryPage() {
   const [sort, setSort] = useState<CollectionSort>('latest')
   const [sortOpen, setSortOpen] = useState(false)
   const headerRef = useRef<HTMLDivElement>(null)
+  const [artworks, setArtworks] = useState<GalleryResponse[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [retry, setRetry] = useState(0)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    async function loadArtworks() {
+      try {
+        const data = await getGalleries(sort, controller.signal)
+        if (!controller.signal.aborted) setArtworks(data)
+      } catch (cause) {
+        if (!controller.signal.aborted) {
+          setError(cause instanceof Error ? cause.message : '미술관 작품을 불러오지 못했어요.')
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false)
+      }
+    }
+    void loadArtworks()
+    return () => controller.abort()
+  }, [sort, retry])
 
   function closeSort() {
     setSortOpen(false)
@@ -68,9 +93,33 @@ export function GalleryPage() {
           {sortOpen && (
             <div className="absolute top-full right-[52px] z-20 mt-1 w-[116px]">
               <CollectionSortMenu id="gallery-sort" value={sort} onChange={(value) => {
+                if (value !== sort) {
+                  setLoading(true)
+                  setError(null)
+                }
                 setSort(value)
                 closeSort()
               }} />
+            </div>
+          )}
+        </div>
+        <div className="mt-4" aria-busy={loading}>
+          {loading ? (
+            <p role="status" className="py-6 text-center text-sm">작품을 불러오는 중이에요.</p>
+          ) : error ? (
+            <div role="alert" className="py-6 text-center text-sm">
+              <p>{error}</p>
+              <button type="button" onClick={() => {
+                setLoading(true)
+                setError(null)
+                setRetry((value) => value + 1)
+              }} className="mt-2 cursor-pointer underline">다시 시도</button>
+            </div>
+          ) : artworks.length === 0 ? (
+            <p role="status" className="py-6 text-center text-sm">아직 전시된 작품이 없어요.</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-x-4 gap-y-5">
+              {artworks.map((artwork) => <GalleryArtworkCard key={artwork.challengeId} {...artwork} />)}
             </div>
           )}
         </div>
