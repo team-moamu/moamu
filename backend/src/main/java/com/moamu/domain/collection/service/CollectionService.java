@@ -11,6 +11,7 @@ import com.moamu.domain.media.entity.Media;
 import com.moamu.domain.media.repository.MediaRepository;
 import com.moamu.domain.schedule.enums.Status;
 import com.moamu.domain.verification.repository.VerificationSuccessRepository;
+import com.moamu.domain.verification.service.ArtworkImageUrlService;
 import com.moamu.global.exception.BusinessException;
 import com.moamu.global.exception.CommonErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class CollectionService {
     private final VerificationSuccessRepository verificationSuccessRepository;
     private final ArtworkRepository artworkRepository;
     private final MediaRepository mediaRepository;
+    private final ArtworkImageUrlService artworkImageUrlService;
 
     // 소유권과 완료 여부를 확인하고 전시 상태를 Y로 변경
     @Transactional
@@ -103,7 +105,7 @@ public class CollectionService {
                 new CollectionResponse.Artworks(
                     artwork.getArtworkId(),
                     artwork.getArtworkTitle(),
-                    imageKey
+                    artworkImageUrlService.resolve(imageKey)
                 );
 
             // 3. 퍼즐 상태 생성
