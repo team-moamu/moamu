@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { CollectionSortMenu } from '../../components/molecules/select/CollectionSortMenu'
 import collectionMu from '../../assets/images/collection_mu.png'
 import { getCollections } from '../../api/CollectionApi'
 import type { CollectionResponse, CollectionSort } from '../../types/Collection'
@@ -16,6 +17,21 @@ export function CollectionPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [retry, setRetry] = useState(0)
+  const searchRef = useRef<HTMLDivElement>(null)
+
+  function closeSort() {
+    setSortOpen(false)
+    searchRef.current?.querySelector<HTMLButtonElement>('[aria-controls="collection-sort"]')?.focus()
+  }
+
+  useEffect(() => {
+    if (!sortOpen) return
+    function handlePointer(event: PointerEvent) {
+      if (!searchRef.current?.contains(event.target as Node)) setSortOpen(false)
+    }
+    document.addEventListener('pointerdown', handlePointer)
+    return () => document.removeEventListener('pointerdown', handlePointer)
+  }, [sortOpen])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -53,8 +69,17 @@ export function CollectionPage() {
         <div className="mt-5">
           <CollectionFilter value={filter} onChange={setFilter} />
         </div>
+        <div
+          ref={searchRef}
+          className="relative mt-[3.56%]"
+          onKeyDown={(event) => {
+            if (event.key === 'Escape' && sortOpen) closeSort()
+          }}
+          onBlur={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget)) setSortOpen(false)
+          }}
+        >
         <CollectionSearchBar
-          className="mt-[3.56%]"
           inputProps={{
             value: keyword,
             onChange: (event) => setKeyword(event.target.value),
@@ -67,24 +92,12 @@ export function CollectionPage() {
           }}
         />
         {sortOpen && (
-          <div id="collection-sort" className="mt-2 flex justify-end">
-            <label className="text-[12px]">
-              정렬 기준
-              <select
-                value={sort}
-                onChange={(event) => {
-                  setSort(event.target.value as CollectionSort)
-                  setSortOpen(false)
-                }}
-                className="ml-2 rounded-lg border border-[#8A7762] bg-[#FFF8ED] p-2"
-              >
-                <option value="latest">최신순</option>
-                <option value="successRate">성공률 높은 순</option>
-                <option value="name">이름순</option>
-              </select>
-            </label>
-          </div>
+          <CollectionSortMenu value={sort} onChange={(value) => {
+            setSort(value)
+            closeSort()
+          }} />
         )}
+        </div>
         <div className="mt-1" aria-busy={loading}>
           {loading ? (
             <p role="status" className="py-6 text-center text-sm">작품을 불러오는 중이에요.</p>
