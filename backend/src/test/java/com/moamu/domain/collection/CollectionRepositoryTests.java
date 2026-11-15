@@ -36,13 +36,13 @@ class CollectionRepositoryTests {
         challenge("Other owner", 7, 7, 'Y', 2L, 5);
         flush();
 
-        assertThat(repository.findOwned(1L, null, "successRate"))
+        assertThat(repository.findOwned(1L, null, null, "successRate"))
             .extracting(Challenge::getChallengeId)
             .containsExactly(high.getChallengeId(), low.getChallengeId(),
                 invalidDuration.getChallengeId(), zero.getChallengeId());
-        assertThat(repository.findOwned(1L, 'Y', "successRate"))
+        assertThat(repository.findOwned(1L, 'Y', null, "successRate"))
             .extracting(Challenge::getChallengeId).containsExactly(high.getChallengeId());
-        assertThat(repository.findOwned(1L, 'N', "successRate"))
+        assertThat(repository.findOwned(1L, 'N', null, "successRate"))
             .extracting(Challenge::getChallengeId).containsExactly(low.getChallengeId(),
                 invalidDuration.getChallengeId(), zero.getChallengeId());
     }
@@ -52,7 +52,7 @@ class CollectionRepositoryTests {
         Challenge first = challenge("First", 7, 5, 'N', 1L, 1);
         Challenge second = challenge("Second", 14, 10, 'N', 1L, 2);
         flush();
-        assertThat(repository.findOwned(1L, null, "successRate"))
+        assertThat(repository.findOwned(1L, null, null, "successRate"))
             .extracting(Challenge::getChallengeId)
             .containsExactly(second.getChallengeId(), first.getChallengeId());
     }
@@ -62,10 +62,28 @@ class CollectionRepositoryTests {
         Challenge a = challenge("A", 7, 1, 'N', 1L, 2);
         Challenge b = challenge("B", 7, 7, 'N', 1L, 1);
         flush();
-        assertThat(repository.findOwned(1L, null, "latest"))
+        assertThat(repository.findOwned(1L, null, null, "latest"))
             .extracting(Challenge::getChallengeId).containsExactly(a.getChallengeId(), b.getChallengeId());
-        assertThat(repository.findOwned(1L, null, "name"))
+        assertThat(repository.findOwned(1L, null, null, "name"))
             .extracting(Challenge::getChallengeId).containsExactly(a.getChallengeId(), b.getChallengeId());
+    }
+
+    @Test
+    void searchesChallengeTitleByPartialKeywordAndCombinesExhibitionFilter() {
+        Challenge pearl = challenge("공부하는 진주귀걸이를 한 소녀", 7, 5, 'Y', 1L, 1);
+        challenge("진주를 찾는 도전", 7, 4, 'N', 1L, 2);
+        challenge("명찰 챙긴 모나리자", 7, 3, 'Y', 1L, 3);
+        flush();
+
+        assertThat(repository.findOwned(1L, null, "진주", "latest"))
+            .extracting(Challenge::getChallengeTitle)
+            .containsExactly("진주를 찾는 도전", "공부하는 진주귀걸이를 한 소녀");
+
+        assertThat(repository.findOwned(1L, 'Y', "진주", "latest"))
+            .extracting(Challenge::getChallengeId)
+            .containsExactly(pearl.getChallengeId());
+
+        assertThat(repository.findOwned(1L, null, "없는 이름", "latest")).isEmpty();
     }
 
     private Challenge challenge(String title, int days, int successes, char exhibited, long userId, int endDay) {
