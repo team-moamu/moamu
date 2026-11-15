@@ -4,14 +4,15 @@ interface ArtworkImageProps {
   imageUrl: string | null
   artworkTitle: string
   className?: string
+  variant?: 'thumbnail' | 'gallery'
 }
 
-export function ArtworkImage({ imageUrl, artworkTitle, className = '' }: ArtworkImageProps) {
+export function ArtworkImage({ imageUrl, artworkTitle, className = '', variant = 'thumbnail' }: ArtworkImageProps) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null)
   const showImage = Boolean(imageUrl && imageUrl !== failedUrl)
 
   return (
-    <div className={`h-[60px] w-[60px] shrink-0 overflow-hidden rounded-[4px] bg-[#F2E6D2] ${className}`}>
+    <div className={`${variant === 'gallery' ? 'aspect-square w-full' : 'h-[60px] w-[60px] rounded-[4px]'} shrink-0 overflow-hidden bg-[#F2E6D2] ${className}`}>
       {showImage ? (
         <img
           src={imageUrl!}
