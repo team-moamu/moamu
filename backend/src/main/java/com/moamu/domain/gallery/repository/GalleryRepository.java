@@ -6,8 +6,22 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface GalleryRepository extends JpaRepository<Challenge, Long> {
+
+    @Query("""
+        SELECT c
+        FROM Challenge c
+        WHERE c.challengeId = :challengeId
+            AND c.userId = :userId
+            AND c.delYn = 'N'
+        """)
+    Optional<Challenge> findOwnedForExhibition(
+        @Param("userId") Long userId,
+        @Param("challengeId") Long challengeId
+    );
+
 
     // 사용자의 완료된 도전 중 미술관에 전시된 작품만 조회
     @Query("""

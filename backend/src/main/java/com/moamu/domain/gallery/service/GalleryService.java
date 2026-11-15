@@ -4,6 +4,8 @@ import com.moamu.domain.artwork.entity.Artwork;
 import com.moamu.domain.artwork.repository.ArtworkRepository;
 import com.moamu.domain.challenge.entity.Challenge;
 import com.moamu.domain.gallery.dto.GalleryResponse;
+import com.moamu.domain.gallery.dto.GalleryExhibitionResponse;
+import com.moamu.domain.challenge.exception.ChallengeErrorCode;
 import com.moamu.domain.gallery.repository.GalleryRepository;
 import com.moamu.domain.media.entity.Media;
 import com.moamu.domain.media.repository.MediaRepository;
@@ -30,6 +32,27 @@ public class GalleryService {
     private final ArtworkRepository artworkRepository;
     private final MediaRepository mediaRepository;
     private final ArtworkImageUrlService artworkImageUrlService;
+
+    @Transactional
+    public GalleryExhibitionResponse hideExhibition(Long userId, Long challengeId) {
+        if (userId == null || userId <= 0) {
+            throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
+        }
+        if (challengeId == null || challengeId <= 0) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
+        }
+
+        Challenge challenge = galleryRepository.findOwnedForExhibition(userId, challengeId)
+            .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
+        if (challenge.getStatus() != com.moamu.domain.challenge.enums.Status.COMPLETED) {
+            throw new BusinessException(ChallengeErrorCode.CHALLENGE_NOT_COMPLETED);
+        }
+        challenge.setIsExhibited('N');
+
+        return new GalleryExhibitionResponse(
+            challenge.getChallengeId(), challenge.getIsExhibited() == 'Y'
+        );
+    }
 
     public List<GalleryResponse> getGalleries(Long userId, String sort) {
         if (userId == null || userId <= 0) {
