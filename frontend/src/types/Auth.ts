@@ -11,6 +11,7 @@ export interface LoginResponse {
 export interface SignupRequest {
   loginId: string
   password: string
+  verificationToken: string
 }
 
 export interface SignupResponse {
