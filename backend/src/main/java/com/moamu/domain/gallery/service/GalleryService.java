@@ -116,6 +116,8 @@ public class GalleryService {
             responses.add(new GalleryResponse(
                 challenge.getChallengeId(),
                 challenge.getChallengeTitle(),
+                challenge.getGoalText(),
+                challenge.getStartDate(),
                 challenge.getEndDate(),
                 progress,
                 artworkResponse,

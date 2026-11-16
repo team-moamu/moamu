@@ -7,6 +7,8 @@ import java.util.List;
 public record GalleryResponse (
     Long challengeId,
     String challengeTitle,
+    String goalText,
+    LocalDate startDate,
     LocalDate endDate,
     Progress progress,
     Artworks artwork,
