@@ -1,5 +1,5 @@
 
-import { DurationButton } from '../../atoms/button/durationButton'
+import { DurationButton } from '../../atoms/button/DurationButton'
 
 interface DurationSelectorProps {
   value: number | null

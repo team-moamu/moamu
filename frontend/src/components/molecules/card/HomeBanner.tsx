@@ -1,4 +1,4 @@
-import type { HomeChallenge, HomeDataMode } from '../../../pages/home/homeData'
+import type { HomeChallenge, HomeDataMode } from '../../../pages/home/HomeData'
 
 const tileColors = [
   'bg-[#305536]', 'bg-[#dfe8d3]', 'bg-[#e9b964]',

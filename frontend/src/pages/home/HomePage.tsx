@@ -4,8 +4,8 @@ import { Link, Navigate } from 'react-router'
 import { Icon } from '../../components/atoms/icon/Icon'
 import { HomeDateSelector } from '../../components/molecules/select/HomeDateSelector'
 import { HomeChallengeSection } from '../../components/molecules/card/HomeChallengeSection'
-import { dateKey, shiftDate } from './homeData'
-import { useHomeChallenges } from './useHomeChallenges'
+import { dateKey, shiftDate } from './HomeData'
+import { useHomeChallenges } from './UseHomeChallenges'
 
 const greetingDateFormat = new Intl.DateTimeFormat('ko-KR', {
   month: 'long',
