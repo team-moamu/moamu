@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { signup, SignupError, checkEmailAvailability, } from '../../api/AuthApi'
+import { signup, SignupError, checkEmailAvailability, sendEmailVerification, verifyEmailCode } from '../../api/AuthApi'
 import { Heading } from '../../components/atoms/typography/Heading'
 import { Description } from '../../components/atoms/typography/Description'
 import { Button } from '../../components/atoms/button/Button'
@@ -273,7 +273,8 @@ export function EmailSignupPage() {
             </p>
           )}
 
-          <Button disabled className="button button--secondary w-full font-normal">
+          <Button disabled={!canSendCode || codeSent}
+            onClick={() => void handleSendCode()} className="button button--secondary w-full font-normal">
             인증번호 보내기
           </Button>
         </div>
@@ -293,12 +294,14 @@ export function EmailSignupPage() {
             inputMode="numeric"
             maxLength={6}
             action={
-              <Button disabled className="button button--primary shrink-0 font-normal">
+              <Button disabled={!canVerifyCode}
+                onClick={() => void handleVerifyCode()} className="button button--primary shrink-0 font-normal">
                 인증하기
               </Button>
             }
+            error={codeError || undefined}
           />
-          
+
           {(verificationToken || codeSent) && (
             <p role="status" className="text-caption text-[var(--color-primary)]">
               {verificationToken
@@ -309,7 +312,8 @@ export function EmailSignupPage() {
 
           <div className="flex items-center gap-1">
             <Description className="text-muted">인증번호를 받지 못했나요?</Description>
-            <Button disabled className="text-caption text-[#426B45] disabled:cursor-not-allowed disabled:opacity-50">
+            <Button disabled={!canSendCode || !codeSent}
+              onClick={() => void handleSendCode()} className="text-caption text-[#426B45] disabled:cursor-not-allowed disabled:opacity-50">
               재전송
             </Button>
           </div>
@@ -353,7 +357,7 @@ export function EmailSignupPage() {
         )}
 
         <Button
-          disabled={isSubmitting}
+          disabled={isSubmitting || isVerificationBusy || !verificationToken}
           onClick={() => void handleNext()}
           className="button button--primary w-full font-normal"
         >
