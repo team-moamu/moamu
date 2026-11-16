@@ -160,3 +160,64 @@ export async function checkEmailAvailability(
 
   return body.data
 }
+async function postEmailVerification(
+  path: '' | '/verify',
+  request: { email: string; code?: string },
+): Promise<Response> {
+  let response: Response
+
+  try {
+    response = await fetch(`/api/users/email-verifications${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    })
+  } catch {
+    throw new SignupError(
+      'NETWORK_ERROR',
+      '서버에 연결하지 못했어요. 잠시 후 다시 시도해 주세요.',
+    )
+  }
+
+  if (!response.ok) {
+    const body: ApiResponse<never> | null =
+      await response.json().catch(() => null)
+
+    if (body?.success === false) {
+      throw new SignupError(body.error.code, body.error.message)
+    }
+
+    throw new SignupError(
+      'EMAIL_VERIFICATION_FAILED',
+      '이메일 인증 요청에 실패했어요. 다시 시도해 주세요.',
+    )
+  }
+
+  return response
+}
+
+export async function sendEmailVerification(email: string): Promise<void> {
+  await postEmailVerification('', { email })
+}
+
+export async function verifyEmailCode(
+  email: string,
+  code: string,
+): Promise<string> {
+  const response = await postEmailVerification('/verify', { email, code })
+  const body: ApiResponse<{ verificationToken: string }> | null =
+    await response.json().catch(() => null)
+
+  if (
+    body?.success !== true ||
+    typeof body.data?.verificationToken !== 'string' ||
+    !/^[A-Za-z0-9_-]{43}$/.test(body.data.verificationToken)
+  ) {
+    throw new SignupError(
+      'INVALID_RESPONSE',
+      '이메일 인증 결과를 확인하지 못했어요. 인증번호를 다시 요청해 주세요.',
+    )
+  }
+
+  return body.data.verificationToken
+}

@@ -15,6 +15,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.moamu.domain.user.dto.EmailAvailabilityResponse;
+import com.moamu.domain.user.dto.EmailVerificationSendRequest;
+import com.moamu.domain.user.dto.EmailVerificationVerifyRequest;
+import com.moamu.domain.user.dto.EmailVerificationVerifyResponse;
 import com.moamu.domain.user.dto.UserLoginRequest;
 import com.moamu.domain.user.dto.UserLoginResponse;
 import com.moamu.domain.user.dto.UserSignupRequest;
@@ -22,6 +25,7 @@ import com.moamu.domain.user.dto.UserSignupResponse;
 import com.moamu.domain.user.entity.User;
 import com.moamu.domain.user.enums.UserStatus;
 import com.moamu.domain.user.repository.UserRepository;
+import com.moamu.domain.user.service.EmailVerificationService;
 import com.moamu.domain.user.service.UserService;
 import com.moamu.global.response.ApiResponse;
 import com.moamu.global.security.JwtTokenProvider;
@@ -47,6 +51,8 @@ public class UserController {
     private final RefreshTokenService refreshTokenService;
 
     private final UserRepository userRepository;
+
+    private final EmailVerificationService emailVerificationService;
 
     @Value("${auth.refresh-cookie-secure:true}")
     private boolean refreshCookieSecure;
@@ -167,5 +173,22 @@ public class UserController {
         return ResponseEntity.noContent()
                 .header(HttpHeaders.SET_COOKIE, expiredCookie.toString())
                 .build();
+    }
+
+    @PostMapping("/email-verifications")
+    public ResponseEntity<Void> sendEmailVerification(
+            @Valid @RequestBody EmailVerificationSendRequest request) {
+        emailVerificationService.sendCode(request.email());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/email-verifications/verify")
+    public ResponseEntity<ApiResponse<EmailVerificationVerifyResponse>> verifyEmail(
+            @Valid @RequestBody EmailVerificationVerifyRequest request) {
+        String token = emailVerificationService.verifyCode(
+                request.email(), request.code());
+
+        var response = new EmailVerificationVerifyResponse(token);
+        return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

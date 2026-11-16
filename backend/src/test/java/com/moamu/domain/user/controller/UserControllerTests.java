@@ -10,12 +10,14 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
+import com.moamu.domain.user.dto.EmailVerificationSendRequest;
 import com.moamu.domain.user.dto.UserLoginRequest;
 import com.moamu.domain.user.dto.UserSignupRequest;
 import com.moamu.domain.user.entity.User;
 import com.moamu.domain.user.exception.UserErrorCode;
 import com.moamu.domain.user.repository.UserRepository;
 import com.moamu.domain.user.service.UserService;
+import com.moamu.domain.user.service.EmailVerificationService;
 import com.moamu.global.exception.BusinessException;
 import com.moamu.global.exception.GlobalExceptionHandler;
 import com.moamu.global.security.JwtTokenProvider;
@@ -44,7 +46,8 @@ class UserControllerTests {
                 userService,
                 jwtTokenProvider,
                 refreshTokenService,
-                mock(UserRepository.class));
+                mock(UserRepository.class),
+                mock(EmailVerificationService.class));
 
         // standalone 테스트에서는 @Value가 자동 주입되지 않습니다.
         ReflectionTestUtils.setField(

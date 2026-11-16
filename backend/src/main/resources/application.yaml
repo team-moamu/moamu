@@ -14,7 +14,16 @@ spring:
     multipart:
       max-file-size: 10MB
       max-request-size: 11MB
-      
+  # 회원가입 인증번호 발송용 SMTP 설정    
+  mail:
+    properties:
+      "[mail.smtp.auth]": true
+      "[mail.smtp.starttls.enable]": true
+      "[mail.smtp.starttls.required]": true
+      "[mail.smtp.connectiontimeout]": 5000
+      "[mail.smtp.timeout]": 5000
+      "[mail.smtp.writetimeout]": 5000
+
 # S3 설정
 app:
   # 자동 마감 스케줄러를 제어하는 설정
