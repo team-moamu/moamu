@@ -2,7 +2,7 @@ import { BlurImage } from '../../atoms/image/BlurImage'
 import { Text } from '../../atoms/typography/Text'
 import { SubText } from '../../atoms/typography/SubText'
 import { Badge } from '../../atoms/badge/Badge'
-import { SuccessButton } from '../../atoms/button/successButton'
+import { SuccessButton } from '../../atoms/button/SuccessButton'
 import { Icon } from '../../atoms/icon/Icon'
 
 type ChallengeCardProps = {

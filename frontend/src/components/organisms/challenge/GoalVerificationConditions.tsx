@@ -1,5 +1,5 @@
 import { useId } from 'react'
-import { SuccessButton } from '../../atoms/button/successButton'
+import { SuccessButton } from '../../atoms/button/SuccessButton'
 import { Icon } from '../../atoms/icon/Icon'
 import { Text } from '../../atoms/typography/Text'
 

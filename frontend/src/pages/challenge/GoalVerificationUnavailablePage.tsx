@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router'
-import { SuccessButton } from '../../components/atoms/button/successButton'
+import { SuccessButton } from '../../components/atoms/button/SuccessButton'
 import { GoalVerificationUnavailable, type UnverifiableGoal } from '../../components/organisms/challenge/GoalVerificationUnavailable'
 
 function isUnverifiableGoal(value: unknown): value is UnverifiableGoal {
