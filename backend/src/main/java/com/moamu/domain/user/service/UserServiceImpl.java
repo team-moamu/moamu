@@ -29,112 +29,112 @@ import lombok.extern.slf4j.Slf4j;
 @Transactional(readOnly = true)
 public class UserServiceImpl implements UserService {
 
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final SignupVerificationTokenStore signupVerificationTokenStore;
+	private final UserRepository userRepository;
+	private final PasswordEncoder passwordEncoder;
+	private final SignupVerificationTokenStore signupVerificationTokenStore;
 
-    @Override
-    @Transactional
-    public Long signup(UserSignupRequest request) {
-        // 입력한 이메일의 대소문자를 유지해서 중복을 확인한다.
-        String email = request.getLoginId();
-        if (userRepository.existsByLoginId(email)) {
-            throw new BusinessException(UserErrorCode.DUPLICATE_LOGIN_ID);
-        }
+	@Override
+	@Transactional
+	public Long signup(UserSignupRequest request) {
+		// 입력한 이메일의 대소문자를 유지해서 중복을 확인한다.
+		String email = request.getLoginId();
+		if (userRepository.existsByLoginId(email)) {
+			throw new BusinessException(UserErrorCode.DUPLICATE_LOGIN_ID);
+		}
 
-        String verificationToken = request.getVerificationToken();
-        if (!signupVerificationTokenStore.matchesEmail(verificationToken, email)) {
-            throw new BusinessException(UserErrorCode.INVALID_EMAIL_VERIFICATION_TOKEN);
-        }
+		String verificationToken = request.getVerificationToken();
+		if (!signupVerificationTokenStore.matchesEmail(verificationToken, email)) {
+			throw new BusinessException(UserErrorCode.INVALID_EMAIL_VERIFICATION_TOKEN);
+		}
 
-        String encodedPassword = passwordEncoder.encode(request.getPassword());
+		String encodedPassword = passwordEncoder.encode(request.getPassword());
 
-        // 가입 시 기본 닉네임을 생성하고, 이후 마이페이지에서 변경한다.
-        String nickname = "뮤_" + UUID.randomUUID()
-                .toString()
-                .replace("-", "")
-                .substring(0, 12);
+		// 가입 시 기본 닉네임을 생성하고, 이후 마이페이지에서 변경한다.
+		String nickname = "뮤_" + UUID.randomUUID()
+				.toString()
+				.replace("-", "")
+				.substring(0, 12);
 
-        User user = User.createLocal(email, encodedPassword, nickname);
+		User user = User.createLocal(email, encodedPassword, nickname);
 
-        try {
-            User savedUser = userRepository.saveAndFlush(user);
-            deleteVerificationTokenAfterCommit(verificationToken);
-            return savedUser.getUserId();
-        } catch (DataIntegrityViolationException exception) {
-            if (isDuplicateLoginId(exception)) {
-                throw new BusinessException(UserErrorCode.DUPLICATE_LOGIN_ID);
-            }
+		try {
+			User savedUser = userRepository.saveAndFlush(user);
+			deleteVerificationTokenAfterCommit(verificationToken);
+			return savedUser.getUserId();
+		} catch (DataIntegrityViolationException exception) {
+			if (isDuplicateLoginId(exception)) {
+				throw new BusinessException(UserErrorCode.DUPLICATE_LOGIN_ID);
+			}
 
-            throw exception;
-        }
-    }
+			throw exception;
+		}
+	}
 
-    private void deleteVerificationTokenAfterCommit(String token) {
-        // DB 커밋이 성공한 뒤에 토큰을 폐기해 저장 실패 시 재시도할 수 있게 한다.
-        TransactionSynchronizationManager.registerSynchronization(
-                new TransactionSynchronization() {
-                    @Override
-                    public void afterCommit() {
-                        try {
-                            signupVerificationTokenStore.delete(token);
-                        } catch (DataAccessException exception) {
-                            log.warn("회원가입 완료 후 이메일 인증 토큰을 삭제하지 못했습니다.");
-                        }
-                    }
-                });
-    }
+	private void deleteVerificationTokenAfterCommit(String token) {
+		// DB 커밋이 성공한 뒤에 토큰을 폐기해 저장 실패 시 재시도할 수 있게 한다.
+		TransactionSynchronizationManager.registerSynchronization(
+				new TransactionSynchronization() {
+					@Override
+					public void afterCommit() {
+						try {
+							signupVerificationTokenStore.delete(token);
+						} catch (DataAccessException exception) {
+							log.warn("회원가입 완료 후 이메일 인증 토큰을 삭제하지 못했습니다.");
+						}
+					}
+				});
+	}
 
-    @Override
-    public boolean isEmailAvailable(String email) {
-        return !userRepository.existsByLoginId(email);
-    }
+	@Override
+	public boolean isEmailAvailable(String email) {
+		return !userRepository.existsByLoginId(email);
+	}
 
-    private boolean isDuplicateLoginId(Throwable exception) {
-        Throwable cause = exception;
+	private boolean isDuplicateLoginId(Throwable exception) {
+		Throwable cause = exception;
 
-        while (cause != null) {
-            if (cause instanceof ConstraintViolationException violation) {
-                String constraintName = violation.getConstraintName();
+		while (cause != null) {
+			if (cause instanceof ConstraintViolationException violation) {
+				String constraintName = violation.getConstraintName();
 
-                if (constraintName != null) {
-                    String normalizedName = constraintName
-                            .replace("`", "")
-                            .replace("'", "")
-                            .replace("\"", "");
+				if (constraintName != null) {
+					String normalizedName = constraintName
+							.replace("`", "")
+							.replace("'", "")
+							.replace("\"", "");
 
-                    if (normalizedName.equalsIgnoreCase("uk_users_login_id")
-                            || normalizedName.toLowerCase(Locale.ROOT)
-                                    .endsWith(".uk_users_login_id")) {
-                        return true;
-                    }
-                }
-            }
+					if (normalizedName.equalsIgnoreCase("uk_users_login_id")
+							|| normalizedName.toLowerCase(Locale.ROOT)
+									.endsWith(".uk_users_login_id")) {
+						return true;
+					}
+				}
+			}
 
-            cause = cause.getCause();
-        }
+			cause = cause.getCause();
+		}
 
-        return false;
-    }
+		return false;
+	}
 
-    @Override
-    public User login(UserLoginRequest request) {
-        String email = request.getLoginId();
+	@Override
+	public User login(UserLoginRequest request) {
+		String email = request.getLoginId();
 
-        User user = userRepository.findByLoginId(email)
-                .orElseThrow(() -> new BusinessException(UserErrorCode.INVALID_CREDENTIALS));
+		User user = userRepository.findByLoginId(email)
+				.orElseThrow(() -> new BusinessException(UserErrorCode.INVALID_CREDENTIALS));
 
-        // 비밀번호가 없거나 일치하지 않으면 로그인을 거절한다.
-        if (user.getPassword() == null
-                || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            throw new BusinessException(UserErrorCode.INVALID_CREDENTIALS);
-        }
+		// 비밀번호가 없거나 일치하지 않으면 로그인을 거절한다.
+		if (user.getPassword() == null
+				|| !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+			throw new BusinessException(UserErrorCode.INVALID_CREDENTIALS);
+		}
 
-        // 활성 회원만 로그인을 허용한다.
-        if (user.getStatus() != UserStatus.ACTIVE) {
-            throw new BusinessException(UserErrorCode.LOGIN_NOT_ALLOWED);
-        }
+		// 활성 회원만 로그인을 허용한다.
+		if (user.getStatus() != UserStatus.ACTIVE) {
+			throw new BusinessException(UserErrorCode.LOGIN_NOT_ALLOWED);
+		}
 
-        return user;
-    }
+		return user;
+	}
 }
