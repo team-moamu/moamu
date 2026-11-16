@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { getChallengeDetail, getTodayChallenges } from '../../api/ChallengeApi'
 import { AuthenticationRequiredError } from '../../api/authenticatedFetch'
 import { getAccessToken } from '../../auth/authStorage'
-import { centeredDates, dateKey, toHomeChallenge } from './homeData'
-import type { HomeDataMode, HomeRecords } from './homeData'
+import { centeredDates, dateKey, toHomeChallenge } from './HomeData'
+import type { HomeDataMode, HomeRecords } from './HomeData'
 
 interface HomeDataState {
   selectedKey: string

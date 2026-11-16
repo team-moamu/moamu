@@ -1,4 +1,4 @@
-import type { HomeChallenge, HomeDataMode } from '../../../pages/home/homeData'
+import type { HomeChallenge, HomeDataMode } from '../../../pages/home/HomeData'
 import { HomeChallengeCard } from './HomeChallengeCard'
 
 interface HomeChallengeSectionProps {
