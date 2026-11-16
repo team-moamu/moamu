@@ -1,5 +1,5 @@
 import { useLocation, useNavigate, useSearchParams } from 'react-router'
-import { SuccessButton } from '../../components/atoms/button/successButton'
+import { SuccessButton } from '../../components/atoms/button/SuccessButton'
 import { GoalVerificationConditions, type GoalVerification } from '../../components/organisms/challenge/GoalVerificationConditions'
 import { isVerifiableGoalAnalysis } from '../../types/GoalAnalysis'
 

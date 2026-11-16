@@ -4,7 +4,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router'
 
 import { Text } from '../../components/atoms/typography/Text'
 import { SubText } from '../../components/atoms/typography/SubText'
-import { SuccessButton } from '../../components/atoms/button/successButton'
+import { SuccessButton } from '../../components/atoms/button/SuccessButton'
 import { Icon } from '../../components/atoms/icon/Icon'
 import { VerificationImage } from '../../components/molecules/form/VerificationImage'
 import { StatusMessage } from '../../components/molecules/feedback/StatusMessage'

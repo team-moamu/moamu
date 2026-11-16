@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { CancelButton } from '../../atoms/button/CancelButton'
-import { SuccessButton } from '../../atoms/button/successButton'
+import { SuccessButton } from '../../atoms/button/SuccessButton'
 import { TextInput } from '../../atoms/input/TextInput'
 import { Text } from '../../atoms/typography/Text'
 import { Description } from '../../atoms/typography/Description'
