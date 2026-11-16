@@ -16,7 +16,7 @@ export function DurationButton({
       onClick={onClick}
       aria-pressed={selected}
       className={`
-        flex-1 rounded-lg border py-3
+        flex-1 rounded-md border py-3
         text-sm font-medium transition-colors
         ${
           selected

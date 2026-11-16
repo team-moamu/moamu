@@ -1,4 +1,5 @@
 
+import type { ReactNode } from 'react'
 import { GoalCard } from '../../atoms/card/GoalCard'
 import type { IconName } from '../../atoms/icon/Icon'
 
@@ -13,12 +14,14 @@ interface GoalCardListProps {
   goals: Goal[]
   value: number | null
   onChange: (goalTemplateId: number) => void
+  children?: ReactNode
 }
 
 export function GoalCardList({
   goals,
   value,
   onChange,
+  children,
 }: GoalCardListProps) {
   return (
     <div className="grid grid-cols-2 gap-2">
@@ -32,6 +35,7 @@ export function GoalCardList({
           onClick={() => onChange(goal.goalTemplateId)}
         />
       ))}
+      {children}
     </div>
   )
 }

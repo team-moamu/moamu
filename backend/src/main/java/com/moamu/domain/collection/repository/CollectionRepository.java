@@ -31,6 +31,8 @@ public interface CollectionRepository extends JpaRepository<Challenge, Long> {
             AND c.status = com.moamu.domain.challenge.enums.Status.COMPLETED
             AND c.delYn = 'N'
             AND (:exhibitionStatus IS NULL OR c.isExhibited = :exhibitionStatus)
+            AND (:keyword IS NULL
+                OR LOWER(c.challengeTitle) LIKE LOWER(CONCAT('%', :keyword, '%')))
         ORDER BY
             CASE WHEN :sort = 'name' THEN c.challengeTitle END ASC,
             CASE WHEN :sort = 'latest' THEN c.endDate END DESC,
@@ -47,6 +49,7 @@ public interface CollectionRepository extends JpaRepository<Challenge, Long> {
     List<Challenge> findOwned(
         @Param("userId") Long userId,
         @Param("exhibitionStatus") Character exhibitionStatus,
+        @Param("keyword") String keyword,
         @Param("sort") String sort
     );
 }

@@ -11,17 +11,14 @@ import { EmailSignupPage } from '../pages/signup/EmailSignupPage'
 import { VerificationResultPage } from '../pages/challenge/VerificationResultPage'
 import { HomePage } from '../pages/home/HomePage'
 import { ChallengeCompletionPage } from '../pages/challenge/ChallengeCompletionPage'
+import { GoalVerificationConditionsPage } from '../pages/challenge/GoalVerificationConditionsPage'
+import { GoalVerificationUnavailablePage } from '../pages/challenge/GoalVerificationUnavailablePage'
+import { GalleryPage } from '../pages/gallery/GalleryPage'
+import { GalleryDetailPage } from '../pages/gallery/GalleryDetailPage'
+import { CollectionPage } from '../pages/collection/CollectionPage'
 
 function ChallengePage() {
   return <h1>도전하기 화면</h1>
-}
-
-function GalleryPage() {
-  return <h1>미술관 화면</h1>
-}
-
-function CollectionPage() {
-  return <h1>보관함 화면</h1>
 }
 
 function MyPage() {
@@ -31,10 +28,6 @@ function MyPage() {
 export default function AppRoutes() {
   return (
     <Routes>
-      {/* 도전 전체 완료: 축하 화면을 먼저 표시한 뒤 결과 화면으로 자동 전환 */}
-      <Route path="/challenge/:challengeId/completion" element={<ChallengeCompletionPage />} />
-      {/* 인증 결과는 자체 레이아웃 사용: 실패·검토 화면에만 하단 내비게이션 표시 */}
-      <Route path="/challenge/:challengeId/verification/result/:verificationId" element={<VerificationResultPage />} />
       {/* 
         - element에 showBottomNav 추가하면 네비게이션바가 생깁니다. 
         - headerType: MainLayout.tsx에 있는 헤더 타입
@@ -43,7 +36,6 @@ export default function AppRoutes() {
       {/* 기본 헤더 + 하단 내비게이션 */}
       <Route element={<MainLayout showBottomNav />}>
         <Route path="/" element={<HomePage />} />
-        <Route path="/collection" element={<CollectionPage />} />
         <Route path="/mypage" element={<MyPage />} />
       </Route>
 
@@ -52,14 +44,27 @@ export default function AppRoutes() {
         <Route path="/challenge/create" element={<ChallengeCreatePage />} />
       </Route>
 
+      <Route element={<MainLayout headerType="back" title="인증 조건 확인" background="white" />}>
+        <Route path="/challenge/create/conditions" element={<GoalVerificationConditionsPage />} />
+        <Route path="/challenge/create/conditions/unverifiable" element={<GoalVerificationUnavailablePage />} />
+      </Route>
+
       <Route element={<MainLayout showBottomNav headerType="back" title="도전" />}>
         <Route path="/challenge" element={<ChallengePage />} />
       </Route>
 
       {/* 제목 헤더 */}
-      <Route element={<MainLayout showBottomNav headerType="title" title="미술관" />} >
+      <Route element={<MainLayout showBottomNav headerType="title" title="보관함" />}>
+        <Route path="/collection" element={<CollectionPage />} />
+      </Route>
+
+      <Route element={<MainLayout showBottomNav headerType="title" title="내 미술관" />}>
         <Route path="/museum" element={<GalleryPage />} />
         <Route path="/challenge/complete" element={<GalleryPage />} />
+      </Route>
+
+      <Route element={<MainLayout showBottomNav background="white" headerType="back" title="내 미술관" />}>
+        <Route path="/museum/:challengeId" element={<GalleryDetailPage />} />
       </Route>
 
       <Route element={<MainLayout showBottomNav background='white' headerType="title" title="도전하기" />} >
@@ -104,6 +109,11 @@ export default function AppRoutes() {
       >
         <Route path="/signup/email" element={<EmailSignupPage />} />
       </Route>
+      {/* 자체 레이아웃: 화면 상태에 따라 헤더와 하단 내비게이션 구성 */}
+      {/* 도전 전체 완료: 축하 화면을 먼저 표시한 뒤 결과 화면으로 자동 전환 */}
+      <Route path="/challenge/:challengeId/completion" element={<ChallengeCompletionPage />} />
+      {/* 인증 결과: 실패·검토 화면에만 하단 내비게이션 표시 */}
+      <Route path="/challenge/:challengeId/verification/result/:verificationId" element={<VerificationResultPage />} />
     </Routes >
   )
 }

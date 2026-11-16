@@ -5,7 +5,6 @@ import { BackHeader } from './header/BackHeader'
 import { TitleHeader } from './header/TitleHeader'
 import { LoginHeader } from './header/LoginHeader'
 import { BottomNavigation } from './navigation/BottomNavigation'
-import '../../styles/font.css'
 
 interface MainLayoutProps {
   headerType?: 'main' | 'back' | 'title' | 'login'
@@ -42,7 +41,7 @@ export function MainLayout({
 
       <main
         className={`
-          m-0 flex-1
+          m-0 flex flex-1 flex-col
           ${showBottomNav ? 'pb-28' : ''}
           ${background === 'white' ? 'bg-white' : ''}
         `}

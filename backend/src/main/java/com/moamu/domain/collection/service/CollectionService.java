@@ -11,6 +11,7 @@ import com.moamu.domain.media.entity.Media;
 import com.moamu.domain.media.repository.MediaRepository;
 import com.moamu.domain.schedule.enums.Status;
 import com.moamu.domain.verification.repository.VerificationSuccessRepository;
+import com.moamu.domain.verification.service.ArtworkImageUrlService;
 import com.moamu.global.exception.BusinessException;
 import com.moamu.global.exception.CommonErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class CollectionService {
     private final VerificationSuccessRepository verificationSuccessRepository;
     private final ArtworkRepository artworkRepository;
     private final MediaRepository mediaRepository;
+    private final ArtworkImageUrlService artworkImageUrlService;
 
     // 소유권과 완료 여부를 확인하고 전시 상태를 Y로 변경
     @Transactional
@@ -53,7 +55,12 @@ public class CollectionService {
         );
     }
 
-    public List<CollectionResponse> getCollections(Long userId, Boolean exhibited, String sort) {
+    public List<CollectionResponse> getCollections(
+        Long userId,
+        Boolean exhibited,
+        String keyword,
+        String sort
+    ) {
         if (userId == null || userId <= 0) {
             throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
         }
@@ -67,7 +74,15 @@ public class CollectionService {
         // true는 전시 중(Y)
         // false는 미전시(N) 조회
         Character exhibitionStatus = exhibited == null ? null : (exhibited ? 'Y' : 'N');
-        List<Challenge> challenges = collectionRepository.findOwned(userId, exhibitionStatus, sort);
+        String normalizedKeyword = keyword == null || keyword.isBlank()
+            ? null
+            : keyword.trim();
+        List<Challenge> challenges = collectionRepository.findOwned(
+            userId,
+            exhibitionStatus,
+            normalizedKeyword,
+            sort
+        );
         List<CollectionResponse> responses = new ArrayList<>();
 
         for (Challenge challenge : challenges) {
@@ -103,7 +118,7 @@ public class CollectionService {
                 new CollectionResponse.Artworks(
                     artwork.getArtworkId(),
                     artwork.getArtworkTitle(),
-                    imageKey
+                    artworkImageUrlService.resolve(imageKey)
                 );
 
             // 3. 퍼즐 상태 생성

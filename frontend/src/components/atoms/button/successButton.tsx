@@ -1,6 +1,7 @@
 // 초록색 공통컨포넌트
 
-import type { ReactNode } from 'react'
+import type { ButtonHTMLAttributes, ReactNode } from 'react'
+import { Button } from './Button'
 import { Icon, type IconName } from '../icon/Icon'
 
 interface SuccessButtonProps {
@@ -8,6 +9,7 @@ interface SuccessButtonProps {
   icon?: IconName
   disabled?: boolean
   onClick?: React.MouseEventHandler<HTMLButtonElement>
+  type?: ButtonHTMLAttributes<HTMLButtonElement>['type']
 }
 
 export function SuccessButton({
@@ -15,10 +17,11 @@ export function SuccessButton({
   icon,
   disabled = false,
   onClick,
+  type = 'button',
 }: SuccessButtonProps) {
   return (
-    <button
-      type="button"
+    <Button
+      type={type}
       onClick={onClick}
       disabled={disabled}
       className={`
@@ -34,6 +37,6 @@ export function SuccessButton({
     >
       {icon && <Icon name={icon} size={18} />}
       {children}
-    </button>
+    </Button>
   )
 }

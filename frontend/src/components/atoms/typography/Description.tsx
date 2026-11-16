@@ -1,8 +1,7 @@
-type DescriptionProps = {
-  children: React.ReactNode
-  className?: string
-}
+import type { HTMLAttributes } from 'react'
 
-export function Description({ children, className = '' }: DescriptionProps) {
-  return <p className={`text-caption ${className}`}>{children}</p>
+type DescriptionProps = HTMLAttributes<HTMLParagraphElement>
+
+export function Description({ children, className = '', ...props }: DescriptionProps) {
+  return <p {...props} className={`text-caption ${className}`}>{children}</p>
 }
