@@ -14,6 +14,7 @@ import { ChallengeCompletionPage } from '../pages/challenge/ChallengeCompletionP
 import { GoalVerificationConditionsPage } from '../pages/challenge/GoalVerificationConditionsPage'
 import { GoalVerificationUnavailablePage } from '../pages/challenge/GoalVerificationUnavailablePage'
 import { GalleryPage } from '../pages/gallery/GalleryPage'
+import { GalleryDetailPage } from '../pages/gallery/GalleryDetailPage'
 import { CollectionPage } from '../pages/collection/CollectionPage'
 
 function ChallengePage() {
@@ -60,6 +61,10 @@ export default function AppRoutes() {
       <Route element={<MainLayout showBottomNav headerType="title" title="내 미술관" />}>
         <Route path="/museum" element={<GalleryPage />} />
         <Route path="/challenge/complete" element={<GalleryPage />} />
+      </Route>
+
+      <Route element={<MainLayout showBottomNav background="white" headerType="back" title="내 미술관" />}>
+        <Route path="/museum/:challengeId" element={<GalleryDetailPage />} />
       </Route>
 
       <Route element={<MainLayout showBottomNav background='white' headerType="title" title="도전하기" />} >

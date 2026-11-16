@@ -129,6 +129,7 @@ export function GalleryPage() {
                 <GalleryArtworkCard
                   key={artwork.challengeId}
                   {...artwork}
+                  detailUrl={`/museum/${artwork.challengeId}`}
                   selected={selectedIds.has(artwork.challengeId)}
                   onToggleSelect={selectionMode ? () => toggleArtwork(artwork.challengeId) : undefined}
                 />
