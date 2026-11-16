@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router'
 import { ChallengeCardList } from '../../components/organisms/challenge/ChallengeCardList'
 import { getTodayChallenges } from '../../api/ChallengeApi'
 import backgroundMu from '../../assets/images/background_mu.png'
-import { goalArtworkImages } from '../../constants/goalArtworkImages'
+import { goalArtworkImages } from '../../constants/GoalArtworkImages'
 import { getRemainingTime } from '../../utils/time'
 import { Icon } from '../../components/atoms/icon/Icon'
 

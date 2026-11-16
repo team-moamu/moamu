@@ -1,9 +1,9 @@
 import { Link } from 'react-router'
 import { ProgressBar } from '../../atoms/progressBar/ProgressBar'
-import { goalArtworkImages } from '../../../constants/goalArtworkImages'
+import { goalArtworkImages } from '../../../constants/GoalArtworkImages'
 import backgroundMu from '../../../assets/images/background_mu.png'
 import type { ScheduleStatus } from '../../../types/schedule'
-import type { HomeChallenge } from '../../../pages/home/homeData'
+import type { HomeChallenge } from '../../../pages/home/HomeData'
 
 const statusLabels: Record<ScheduleStatus, string> = {
   UPCOMING: '시작 예정',
