@@ -1,4 +1,5 @@
-import { ArtworkImage } from '../../atoms/image/ArtworkImage'
+import type { CollectionResponse } from '../../../types/Collection'
+import { ArtworkPuzzle } from '../../organisms/puzzle/ArtworkPuzzle'
 import { ArtworkTitle } from '../../atoms/typography/ArtworkTitle'
 import { SuccessDaysText } from '../../atoms/typography/SuccessDaysText'
 import { ArtworkProgressBar } from '../../atoms/progressBar/ArtworkProgressBar'
@@ -18,6 +19,7 @@ interface CollectionArtworkCardProps {
     progressPercent: number
   }
   isExhibited: boolean
+  puzzle: CollectionResponse['puzzle']
   onMoreClick?: () => void
   moreExpanded?: boolean
   moreControls?: string
@@ -28,6 +30,7 @@ export function CollectionArtworkCard({
   challengeTitle,
   artwork,
   progress,
+  puzzle,
   isExhibited,
   onMoreClick,
   moreExpanded,
@@ -36,7 +39,17 @@ export function CollectionArtworkCard({
 }: CollectionArtworkCardProps) {
   return (
     <article className="flex items-center gap-3 border-b border-[#F2E6D2] px-2 py-3">
-      <ArtworkImage imageUrl={artwork.imageUrl} artworkTitle={artwork.artworkTitle} />
+      <div className="h-[60px] w-[60px] shrink-0 overflow-hidden rounded-[4px]">
+        <ArtworkPuzzle
+          imageUrl={artwork.imageUrl}
+          title={artwork.artworkTitle}
+          gridRows={puzzle.gridRows}
+          gridCols={puzzle.gridCols}
+          totalPieceCount={puzzle.totalPieceCount}
+          revealedPieceIndices={puzzle.revealedPieceIndices}
+          rounded={false}
+        />
+      </div>
       <div className="min-w-0 flex-1">
         <ArtworkTitle challengeTitle={challengeTitle} />
         <SuccessDaysText durationDays={progress.durationDays} successDays={progress.successDays} />

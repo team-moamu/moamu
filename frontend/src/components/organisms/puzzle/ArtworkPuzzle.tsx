@@ -11,6 +11,7 @@ interface ArtworkPuzzleProps {
   revealedPieceIndices: number[]
   allPiecesEarned?: boolean
   highlightedPieceIndex?: number
+  rounded?: boolean
 }
 
 // 인증 성공과 도전 완료 화면에서 동일한 획득 위치를 표시한다.
@@ -23,6 +24,7 @@ export function ArtworkPuzzle({
   revealedPieceIndices,
   allPiecesEarned = false,
   highlightedPieceIndex,
+  rounded = true,
 }: ArtworkPuzzleProps) {
   const [failedImageUrl, setFailedImageUrl] = useState<string | null>(null)
   const revealedPieces = new Set(revealedPieceIndices.filter(index => index >= 0 && index < totalPieceCount))
@@ -38,7 +40,7 @@ export function ArtworkPuzzle({
   const highlightedPiece = pieces.find(piece => piece.index === highlightedPieceIndex && piece.revealed)
 
   return (
-    <div className="relative aspect-square overflow-hidden rounded-lg bg-[#e5dac5]"
+    <div className={`relative aspect-square overflow-hidden bg-[#e5dac5] ${rounded ? 'rounded-lg' : 'rounded-none'}`}
       role="img"
       aria-label={`${title || '작품'} 퍼즐, ${totalPieceCount}개 중 ${complete ? totalPieceCount : revealedPieces.size}개 공개${highlightedLabel}`}>
       {imageAvailable ? (

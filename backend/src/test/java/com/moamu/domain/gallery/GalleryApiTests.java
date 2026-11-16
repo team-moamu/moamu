@@ -70,8 +70,10 @@ class GalleryApiTests {
         Challenge challenge = mock(Challenge.class);
         when(challenge.getChallengeId()).thenReturn(id);
         when(challenge.getChallengeTitle()).thenReturn("Practice guitar " + id);
+        when(challenge.getGoalText()).thenReturn("Practice guitar daily");
         when(challenge.getDurationDays()).thenReturn(duration);
         when(challenge.getEndDate()).thenReturn(LocalDate.of(2026, 11, 10));
+        when(challenge.getStartDate()).thenReturn(LocalDate.of(2026, 11, 3));
         when(challenge.getArtworkId()).thenReturn(30L);
         when(challenge.getGridRows()).thenReturn(3);
         when(challenge.getGridCols()).thenReturn(3);
@@ -107,7 +109,9 @@ class GalleryApiTests {
             .andExpect(jsonPath("$.data.length()").value(1))
             .andExpect(jsonPath("$.data[0].challengeId").value(10))
             .andExpect(jsonPath("$.data[0].challengeTitle").value("Practice guitar 10"))
+            .andExpect(jsonPath("$.data[0].goalText").value("Practice guitar daily"))
             .andExpect(jsonPath("$.data[0].endDate").value("2026-11-10"))
+            .andExpect(jsonPath("$.data[0].startDate").value("2026-11-03"))
             .andExpect(jsonPath("$.data[0].challengeStatus").doesNotHaveJsonPath())
             .andExpect(jsonPath("$.data[0].isExhibited").doesNotHaveJsonPath())
             .andExpect(jsonPath("$.data[0].progress.durationDays").value(7))

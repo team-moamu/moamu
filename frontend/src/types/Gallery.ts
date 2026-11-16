@@ -7,4 +7,7 @@ export interface GalleryExhibitionResponse {
 
 export type GalleryResponse = Pick<CollectionResponse,
   'challengeId' | 'challengeTitle' | 'endDate' | 'progress' | 'artwork' | 'puzzle'
->
+> & {
+  goalText: string
+  startDate: string
+}
