@@ -40,8 +40,10 @@ public class UserServiceImplTests {
                 userRepository = mock(UserRepository.class);
                 passwordEncoder = mock(PasswordEncoder.class);
 
-                userService = new UserServiceImpl(userRepository, passwordEncoder);
-
+                userService = new UserServiceImpl(
+                                userRepository,
+                                passwordEncoder,
+                                mock(SignupVerificationTokenStore.class));
         }
 
         @Test
