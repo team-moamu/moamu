@@ -1,11 +1,12 @@
 # SeedData — 서비스 초기 시드 (Flyway V6)
 
-`v6_seed-service.sql`은 현재 Flyway V1~V6 스키마에 맞는 MySQL 8용 초기 카탈로그입니다. 
+`v8_seed-service.sql`은 Flyway V1~V6 스키마를 기준으로 하는 MySQL 8용 초기 카탈로그 및 테스트 회원 시드입니다. Flyway V7~V8이 적용된 스키마와도 호환됩니다.
 
 ## 생성 데이터
 
 | 데이터 | 추가 건수 |
 | --- | ---: |
+| 테스트 회원 | 5 |
 | 시스템 카테고리 / 활성 목표 | 각각 6 |
 | 목표 인증 조건 | 8 |
 | 준비 완료 작품 / 목표-작품 연결 | 각각 6 |
@@ -13,12 +14,14 @@
 
 알고리즘, 출근, 학습, 운동, 수분 섭취, 영양제 목표를 제공합니다. 사진에서 확인할 수 있는 대상과 기록을 인증 조건으로 사용하며, 실제 수행 시간이나 섭취 여부까지 보장하지 않는다는 안내를 포함합니다.
 
-회원, 비밀번호, 도전, 회차, 가상 인증, AI 작업은 생성하지 않습니다. 모든 ID는 AUTO_INCREMENT와 LAST_INSERT_ID()로 연결하며 고정 ID를 요구하지 않습니다. 기본 프로필 미디어는 등록만 하며 기존 회원에게 자동 연결하지 않습니다.
+테스트 회원은 `users` 테이블에 `ACTIVE` 상태로 생성합니다. 로그인 이메일은 `member11@example.com`, `member12@example.com`, `member13@example.com`, `member14@example.com`, `member15@example.com`이며, 공통 비밀번호는 `12345678a`입니다. DB에는 BCrypt 해시로 저장합니다.
+
+도전, 회차, 가상 인증, AI 작업은 생성하지 않습니다. 모든 ID는 AUTO_INCREMENT와 LAST_INSERT_ID()로 연결하며 고정 ID를 요구하지 않습니다. 기본 프로필 미디어는 등록만 하며 회원에게 자동 연결하지 않습니다.
 
 ## 반영 순서
 
 1. 대상 DB를 백업하고 서비스의 데이터 쓰기를 중지합니다. 이 스크립트는 동시 실행을 지원하지 않습니다.
-2. Flyway V1~V6가 성공 적용되었는지 확인합니다. 6개 카탈로그 테이블은 비어 있어야 합니다. 회원 및 다른 미디어는 남아 있어도 되지만 아래 7개 이미지 키와 중복되면 중단합니다.
+2. Flyway V1~V6가 성공 적용되었는지 확인합니다. 6개 카탈로그 테이블은 비어 있어야 합니다. 기존 회원 및 다른 미디어는 남아 있어도 되지만 테스트 회원의 로그인 이메일 또는 아래 7개 이미지 키와 중복되면 중단합니다.
 3. 서비스 S3 버킷에 아래 PNG 객체를 준비하고 접근 권한을 확인합니다. SQL은 이미지를 업로드하거나 실제 객체의 존재를 검증하지 않습니다.
 4. 아래 Windows 또는 macOS 방법으로 SQL 파일 전체를 실행합니다. 두 방법 모두 프로젝트 루트에서 시작하며, MySQL 8 클라이언트가 설치되어 PATH에 등록되어 있어야 합니다. `DELIMITER`를 지원하는 스크립트 실행 모드를 사용합니다.
 
@@ -37,7 +40,7 @@ mysql --host=DB_HOST --port=3306 --user=DB_USER --password --default-character-s
 
 ```sql
 SELECT DATABASE();
-SOURCE backend/data/seedData/v6_seed-service.sql;
+SOURCE backend/data/seedData/v8_seed-service.sql;
 ```
 
 오류가 발생하면 서비스를 재개하기 전에 원인을 확인합니다. 성공 후 `EXIT;`로 클라이언트를 종료합니다. PowerShell의 파일 파이프 대신 MySQL의 `SOURCE`를 사용하므로 한글 데이터를 PowerShell 인코딩 변환 없이 읽습니다.
@@ -48,7 +51,7 @@ SOURCE backend/data/seedData/v6_seed-service.sql;
 
 ```sh
 cd /path/to/moamu
-mysql --host=DB_HOST --port=3306 --user=DB_USER --password --default-character-set=utf8mb4 --database=moamu < backend/data/seedData/v6_seed-service.sql
+mysql --host=DB_HOST --port=3306 --user=DB_USER --password --default-character-set=utf8mb4 --database=moamu < backend/data/seedData/v8_seed-service.sql
 ```
 
 명령이 끝난 직후 종료 코드를 확인합니다. `0`이면 정상 종료이고, 그 외 값이면 오류를 확인합니다.

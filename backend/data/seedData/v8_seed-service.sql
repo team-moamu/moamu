@@ -55,6 +55,13 @@ BEGIN
   SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Seed image keys already exist. Inspect media before seeding.';
  END IF;
 
+ -- 회원 정보
+insert into users (login_id, password, name, status, frst_reg_dt) values ('member11@example.com', '$2a$10$0dM/eX/jTCXxvLWx7rgMw.4FGUST8gSfZLch8V8XzmVGYNN3a0FR.', '김경연', 'ACTIVE', '2026-07-01' );
+insert into users (login_id, password, name, status, frst_reg_dt) values ('member12@example.com', '$2a$10$0dM/eX/jTCXxvLWx7rgMw.4FGUST8gSfZLch8V8XzmVGYNN3a0FR.', '김보경', 'ACTIVE', '2026-07-01' );
+insert into users (login_id, password, name, status, frst_reg_dt) values ('member13@example.com', '$2a$10$0dM/eX/jTCXxvLWx7rgMw.4FGUST8gSfZLch8V8XzmVGYNN3a0FR.', '김지원', 'ACTIVE', '2026-07-01' );
+insert into users (login_id, password, name, status, frst_reg_dt) values ('member14@example.com', '$2a$10$0dM/eX/jTCXxvLWx7rgMw.4FGUST8gSfZLch8V8XzmVGYNN3a0FR.', '김효연', 'ACTIVE', '2026-07-01' );
+insert into users (login_id, password, name, status, frst_reg_dt) values ('member15@example.com', '$2a$10$0dM/eX/jTCXxvLWx7rgMw.4FGUST8gSfZLch8V8XzmVGYNN3a0FR.', '이우식', 'ACTIVE', '2026-07-01' );
+
  INSERT INTO media (image_key, content_type, user_id, purpose, frst_reg_dt)
  VALUES ('uploads/default_profile_mu.png', 'image/png', NULL, 'PROFILE', v_now);
 
