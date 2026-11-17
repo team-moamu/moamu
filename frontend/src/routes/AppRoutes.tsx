@@ -17,6 +17,7 @@ import { GalleryPage } from '../pages/gallery/GalleryPage'
 import { GalleryDetailPage } from '../pages/gallery/GalleryDetailPage'
 import { CollectionPage } from '../pages/collection/CollectionPage'
 import { MyPage } from '../pages/mypage/MyPage'
+import { AccountSecurityPage } from '../pages/mypage/AccountSecurityPage'
 
 function ChallengePage() {
   return <h1>도전하기 화면</h1>
@@ -38,6 +39,10 @@ export default function AppRoutes() {
       {/* 마이페이지 헤더 + 하단 내비게이션 */}
       <Route element={<MainLayout showBottomNav headerType="back" title="마이페이지" />}>
         <Route path="/mypage" element={<MyPage />} />
+      </Route>
+
+      <Route element={<MainLayout headerType="back" title="계정 및 보안" />}>
+        <Route path="/mypage/account-security" element={<AccountSecurityPage />} />
       </Route>
 
       {/* 뒤로가기 헤더 */}

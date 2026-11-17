@@ -64,8 +64,14 @@ export function MyPage() {
         </h2>
 
         <ul className="divide-y divide-neutral-200 rounded-2xl bg-white 	divide-y divide-[#E8CFAC] rounded-2xl border border-[#E8CFAC] bg-white">
-          <li className="px-5 py-4 text-sm font-medium">
-            계정 및 보안
+          <li>
+            <Link
+              to="/mypage/account-security"
+              className="flex items-center justify-between px-5 py-4 text-sm font-medium"
+            >
+              <span>계정 및 보안</span>
+              <span aria-hidden="true">›</span>
+            </Link>
           </li>
           <li className="px-5 py-4 text-sm font-medium">
             약관 및 개인정보
