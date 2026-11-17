@@ -12,7 +12,7 @@ const exhibitionCount = 2
 export function MyPage() {
   return (
     <main className="space-y-6 px-6 py-6">
-      <section aria-label="프로필" className="flex items-center gap-4 rounded-2xl bg-white p-4">
+      <section aria-label="프로필" className="flex items-center gap-4 rounded-2xl bg-white p-4 flex items-center gap-4 rounded-2xl border border-[#E8CFAC] bg-white p-4">
         <img
           src={defaultProfileMu}
           alt=""
@@ -28,7 +28,7 @@ export function MyPage() {
           나의 활동
         </h2>
 
-        <ul className="grid grid-cols-3 divide-x rounded-2xl bg-white py-4 text-center">
+        <ul className="grid grid-cols-3 divide-x rounded-2xl bg-white py-4 text-center grid grid-cols-3 divide-x divide-[#E8CFAC] rounded-2xl border border-[#E8CFAC] bg-white py-4 text-center">
           {activityCounts.map(({ label, count }) => (
             <li key={label}>
               <p className="text-2xl font-bold">{count}</p>
@@ -42,7 +42,7 @@ export function MyPage() {
 
       {/* 그 아래에 <section aria-labelledby="my-exhibition-heading"> 블록 */}
       <section aria-labelledby="exhibition-heading">
-        <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="mb-3 flex items-center justify-between gap-3 ">
           <h2 id="exhibition-heading" className="text-lg font-bold">
             나의 전시
           </h2>
@@ -52,7 +52,7 @@ export function MyPage() {
           </Link>
         </div>
 
-        <div className="rounded-2xl bg-white p-4">
+        <div className="rounded-2xl bg-white p-4 rounded-2xl border border-[#E8CFAC] bg-white p-4">
           <p className="text-sm">현재 전시 중인 작품</p>
           <p className="mt-1 text-lg font-bold">{exhibitionCount}점 전시 중</p>
         </div>
@@ -63,7 +63,7 @@ export function MyPage() {
           설정 및 안내
         </h2>
 
-        <ul className="divide-y divide-neutral-200 rounded-2xl bg-white">
+        <ul className="divide-y divide-neutral-200 rounded-2xl bg-white 	divide-y divide-[#E8CFAC] rounded-2xl border border-[#E8CFAC] bg-white">
           <li className="px-5 py-4 text-sm font-medium">
             계정 및 보안
           </li>
