@@ -16,13 +16,10 @@ import { GoalVerificationUnavailablePage } from '../pages/challenge/GoalVerifica
 import { GalleryPage } from '../pages/gallery/GalleryPage'
 import { GalleryDetailPage } from '../pages/gallery/GalleryDetailPage'
 import { CollectionPage } from '../pages/collection/CollectionPage'
+import { MyPage } from '../pages/mypage/MyPage'
 
 function ChallengePage() {
   return <h1>도전하기 화면</h1>
-}
-
-function MyPage() {
-  return <h1>마이페이지 화면</h1>
 }
 
 export default function AppRoutes() {
@@ -36,6 +33,10 @@ export default function AppRoutes() {
       {/* 기본 헤더 + 하단 내비게이션 */}
       <Route element={<MainLayout showBottomNav />}>
         <Route path="/" element={<HomePage />} />
+      </Route>
+
+      {/* 마이페이지 헤더 + 하단 내비게이션 */}
+      <Route element={<MainLayout showBottomNav headerType="back" title="마이페이지" />}>
         <Route path="/mypage" element={<MyPage />} />
       </Route>
 

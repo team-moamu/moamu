@@ -1,0 +1,77 @@
+import { Link } from 'react-router'
+import defaultProfileMu from '../../assets/images/default_profile_mu.png'
+
+const activityCounts = [
+  { label: '진행 중', count: 2 },
+  { label: '완료', count: 4 },
+  { label: '중단', count: 1 },
+]
+
+const exhibitionCount = 2
+
+export function MyPage() {
+  return (
+    <main className="space-y-6 px-6 py-6">
+      <section aria-label="프로필" className="flex items-center gap-4 rounded-2xl bg-white p-4">
+        <img
+          src={defaultProfileMu}
+          alt=""
+          className="h-16 w-16 shrink-0 rounded-full object-cover"
+        />
+        <div className="min-w-0">
+          <p className="break-all text-xl font-bold">뮤_a1b2c3d4e5f6 님</p>
+          <p className="break-all text-sm">moa@example.com</p>
+        </div>
+      </section>
+      <section aria-labelledby="activity-heading">
+        <h2 id="activity-heading" className="mb-3 text-lg font-bold">
+          나의 활동
+        </h2>
+
+        <ul className="grid grid-cols-3 divide-x rounded-2xl bg-white py-4 text-center">
+          {activityCounts.map(({ label, count }) => (
+            <li key={label}>
+              <p className="text-2xl font-bold">{count}</p>
+              <p className="mt-1 text-sm">{label}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
+      {/* 나의 전시 */}
+      {/* 여기에 <section aria-labelledby="my-activity-heading"> 블록 */}
+
+      {/* 그 아래에 <section aria-labelledby="my-exhibition-heading"> 블록 */}
+      <section aria-labelledby="exhibition-heading">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 id="exhibition-heading" className="text-lg font-bold">
+            나의 전시
+          </h2>
+
+          <Link to="/museum" className="text-sm font-medium">
+            전시관 보기 <span aria-hidden="true">›</span>
+          </Link>
+        </div>
+
+        <div className="rounded-2xl bg-white p-4">
+          <p className="text-sm">현재 전시 중인 작품</p>
+          <p className="mt-1 text-lg font-bold">{exhibitionCount}점 전시 중</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="my-settings-heading">
+        <h2 id="my-settings-heading" className="mb-3 text-lg font-bold">
+          설정 및 안내
+        </h2>
+
+        <ul className="divide-y divide-neutral-200 rounded-2xl bg-white">
+          <li className="px-5 py-4 text-sm font-medium">
+            계정 및 보안
+          </li>
+          <li className="px-5 py-4 text-sm font-medium">
+            약관 및 개인정보
+          </li>
+        </ul>
+      </section>
+    </main>
+  )
+}
