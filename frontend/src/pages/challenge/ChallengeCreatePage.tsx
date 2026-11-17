@@ -4,7 +4,6 @@ import { useLocation, useNavigate } from 'react-router'
 import { CustomChallengeCreateError, createCustomChallenge, createChallenge } from '../../api/ChallengeApi'
 import { analyzeGoal } from '../../api/GoalAnalysisApi'
 import { isVerifiableGoalAnalysis, type VerifiableGoalAnalysis } from '../../types/GoalAnalysis'
-import { getGoalTemplates } from '../../api/GoalTemplateApi'
 import { GoalCardList } from '../../components/molecules/card/GoalCardList'
 import { CalendarInput } from '../../components/molecules/form/CalendarInput'
 import { DurationSelector } from '../../components/molecules/select/DurationSelector'
@@ -21,20 +20,18 @@ type Goal = {
   icon: IconName
 }
 
-function getGoalIcon(name: string): IconName {
-  if (name.includes('명찰')) return 'nametag'
-  if (name.includes('영양제')) return 'supplement'
-  if (name.includes('알고리즘')) return 'algorithm'
-  if (name.includes('물 마시기')) return 'water'
-  if (name.includes('운동') || name.includes('계단')) return 'exercise'
-  return 'study'
-}
+// Template IDs must match the service seed catalog.
+const GOALS: Goal[] = [
+  { goalTemplateId: 1, title: "알고리즘 문제 풀이 기록하기", description: "문제를 풀고 코드와 실행 결과를 기록해 보세요.", icon: 'algorithm' },
+  { goalTemplateId: 3, title: "학습 기록하기", description: "공부한 내용을 메모나 문제 풀이로 남겨 보세요.", icon: 'study' },
+  { goalTemplateId: 4, title: "계단 이용 기록하기", description: "일상에서 계단을 이용하고 사진으로 기록해 보세요.", icon: 'exercise' },
+  { goalTemplateId: 5, title: "물 마시기 기록하기", description: "물 마시기 습관을 사진으로 기록해 보세요.", icon: 'water' },
+  { goalTemplateId: 6, title: "영양제 챙기기 기록하기", description: "영양제를 챙긴 모습을 사진으로 기록해 보세요.", icon: 'supplement' },
+]
 
 export function ChallengeCreatePage() {
   const navigate = useNavigate()
   const location = useLocation()
-  const [goals, setGoals] = useState<Goal[]>([])
-  const [isLoadingGoals, setIsLoadingGoals] = useState(true)
   // 목표 선택
   const [selectedGoalId, setSelectedGoalId] = useState<number | null>(null)
   const [customGoal] = useState<string>(
@@ -61,29 +58,6 @@ export function ChallengeCreatePage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const submissionInFlight = useRef(false)
-
-  useEffect(() => {
-    const controller = new AbortController()
-    getGoalTemplates(controller.signal)
-      .then((templates) => {
-        if (controller.signal.aborted) return
-        setGoals(templates.map((template) => ({
-          goalTemplateId: template.goalTemplateId,
-          title: template.goalName,
-          description: template.description,
-          icon: getGoalIcon(template.goalName),
-        })))
-      })
-      .catch((error: unknown) => {
-        if (!controller.signal.aborted) {
-          setError(error instanceof Error ? error.message : '목표 목록을 불러오지 못했어요.')
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setIsLoadingGoals(false)
-      })
-    return () => controller.abort()
-  }, [])
 
   const handleAnalyzeGoal = async (goal: string) => {
     if (analysisInFlight.current) return
@@ -158,10 +132,8 @@ export function ChallengeCreatePage() {
           어떤 도전을 만들어 볼까요?
         </h2>
 
-        {isLoadingGoals && <p role="status">목표 목록을 불러오는 중...</p>}
-        {!isLoadingGoals && goals.length === 0 && !error && <p>선택할 수 있는 목표가 없어요.</p>}
         <GoalCardList
-          goals={goals.filter((goal) => goal.icon !== 'nametag')}
+          goals={GOALS}
           value={selectedGoalId}
           onChange={(id) => { setSelectedGoalId(id); setAnalysis(null) }}
         >
