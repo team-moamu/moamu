@@ -148,7 +148,14 @@ export function ChallengeCreatePage() {
       </section>
 
       {analysis && selectedGoalId === null && (
-        <p role="status" className="text-sm">인증 조건을 수락했어요. 시작일과 기간을 선택해 도전을 생성해 주세요.</p>
+        <section aria-labelledby="custom-goal-heading">
+          <h2 id="custom-goal-heading" className="mb-3 text-base font-semibold">
+            나만의 목표
+          </h2>
+          <p className="m-0 whitespace-pre-wrap break-words rounded-md bg-[#F4E7D4] p-4 text-sm text-[#4B3A29]">
+            {customGoal}
+          </p>
+        </section>
       )}
       {/* 시작 날짜 선택 */}
       <section>
