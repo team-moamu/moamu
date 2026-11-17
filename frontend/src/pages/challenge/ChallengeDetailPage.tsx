@@ -4,7 +4,7 @@ import { ChallengeStatus } from '../../components/molecules/card/ChallengeStatus
 import { ScheduleList } from '../../components/organisms/schedule/ScheduleList'
 import { getChallengeDetail } from '../../api/ChallengeApi'
 import type { ChallengeDetailResponse } from '../../types/Challenge'
-import type { Schedule } from '../../types/schedule'
+import type { Schedule } from '../../types/Schedule'
 
 type LayoutContext = {
   setPageTitle: (title: string) => void

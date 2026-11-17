@@ -1,6 +1,6 @@
 import type { ApiResponse } from '../types/ApiResponse'
 import type { VerificationSuccessResponse } from '../types/Challenge'
-import { authenticatedFetch } from './authenticatedFetch'
+import { authenticatedFetch } from './AuthenticatedFetch'
 
 // 인증 성공 결과 조회. 실패해도 사진 인증을 다시 제출하지 않음
 export async function getVerificationSuccess(

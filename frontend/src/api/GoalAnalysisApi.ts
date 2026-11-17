@@ -1,6 +1,6 @@
 import type { ApiResponse } from '../types/ApiResponse'
 import { isVerifiableGoalAnalysis, type GoalAnalysisResponse } from '../types/GoalAnalysis'
-import { authenticatedFetch } from './authenticatedFetch'
+import { authenticatedFetch } from './AuthenticatedFetch'
 
 export async function analyzeGoal(goal: string, signal?: AbortSignal): Promise<GoalAnalysisResponse> {
   const response = await authenticatedFetch('/api/goals/analyze', {

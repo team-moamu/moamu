@@ -1,5 +1,5 @@
 import type { ApiResponse } from '../types/ApiResponse'
-import { authenticatedFetch } from './authenticatedFetch'
+import { authenticatedFetch } from './AuthenticatedFetch'
 
 export interface GoalTemplate {
   goalTemplateId: number

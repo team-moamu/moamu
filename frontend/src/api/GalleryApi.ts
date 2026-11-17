@@ -1,4 +1,4 @@
-import { authenticatedFetch } from './authenticatedFetch'
+import { authenticatedFetch } from './AuthenticatedFetch'
 import type { ApiResponse } from '../types/ApiResponse'
 import type { CollectionSort } from '../types/Collection'
 import type { GalleryResponse, GalleryExhibitionResponse } from '../types/Gallery'

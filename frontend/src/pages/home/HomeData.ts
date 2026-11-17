@@ -1,4 +1,4 @@
-﻿import type { ScheduleStatus } from '../../types/schedule'
+﻿import type { ScheduleStatus } from '../../types/Schedule'
 import type { ChallengeDetailResponse, TodayChallengeResponse } from '../../types/Challenge'
 
 export interface HomeChallenge {

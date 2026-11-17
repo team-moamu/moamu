@@ -6,7 +6,7 @@ import { LabeledInput } from '../../components/molecules/form/LabeledInput'
 import { SocialLoginButton } from '../../components/molecules/form/SocialLoginButton'
 import { login, LoginError } from '../../api/AuthApi'
 import { Link, useLocation, useNavigate } from 'react-router'
-import { saveAccessToken } from '../../auth/authStorage'
+import { saveAccessToken } from '../../auth/AuthStorage'
 
 export function LoginPage() {
   const navigate = useNavigate()

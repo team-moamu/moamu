@@ -1,4 +1,4 @@
-import type { ScheduleStatus } from '../types/schedule'
+import type { ScheduleStatus } from '../types/Schedule'
 import type { BadgeVariant } from '../components/atoms/badge/Badge'
 
 export const scheduleStatusMap = {
