@@ -1,6 +1,6 @@
 import type { ApiResponse } from '../types/ApiResponse'
 import type { VerificationSubmitResponse } from '../types/Challenge'
-import { authenticatedFetch } from './authenticatedFetch'
+import { authenticatedFetch } from './AuthenticatedFetch'
 
 // 기술 오류와 통신 오류를 구분하여 재제출 시 멱등성 키 처리
 export class MediaVerificationError extends Error {

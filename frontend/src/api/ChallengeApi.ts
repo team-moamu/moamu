@@ -6,7 +6,7 @@ import type {
   ChallengeCompletionResponse,
 } from '../types/Challenge'
 import type { ApiResponse } from '../types/ApiResponse'
-import { authenticatedFetch } from './authenticatedFetch'
+import { authenticatedFetch } from './AuthenticatedFetch'
 
 export class ChallengeCompletionError extends Error {
   readonly code: string | undefined

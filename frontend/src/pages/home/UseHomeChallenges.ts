@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getChallengeDetail, getTodayChallenges } from '../../api/ChallengeApi'
-import { AuthenticationRequiredError } from '../../api/authenticatedFetch'
-import { getAccessToken } from '../../auth/authStorage'
+import { AuthenticationRequiredError } from '../../api/AuthenticatedFetch'
+import { getAccessToken } from '../../auth/AuthStorage'
 import { centeredDates, dateKey, toHomeChallenge } from './HomeData'
 import type { HomeDataMode, HomeRecords } from './HomeData'
 

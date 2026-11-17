@@ -5,7 +5,7 @@ import { ChallengeCardList } from '../../components/organisms/challenge/Challeng
 import { getTodayChallenges } from '../../api/ChallengeApi'
 import backgroundMu from '../../assets/images/background_mu.png'
 import { goalArtworkImages } from '../../constants/GoalArtworkImages'
-import { getRemainingTime } from '../../utils/time'
+import { getRemainingTime } from '../../utils/Time'
 import { Icon } from '../../components/atoms/icon/Icon'
 
 type Challenge = React.ComponentProps<

@@ -2,7 +2,7 @@ import { Link } from 'react-router'
 import { ProgressBar } from '../../atoms/progressBar/ProgressBar'
 import { goalArtworkImages } from '../../../constants/GoalArtworkImages'
 import backgroundMu from '../../../assets/images/background_mu.png'
-import type { ScheduleStatus } from '../../../types/schedule'
+import type { ScheduleStatus } from '../../../types/Schedule'
 import type { HomeChallenge } from '../../../pages/home/HomeData'
 
 const statusLabels: Record<ScheduleStatus, string> = {

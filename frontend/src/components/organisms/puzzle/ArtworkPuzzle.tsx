@@ -1,5 +1,5 @@
 ﻿import { useState } from 'react'
-import { puzzleLayout, puzzlePiecePath } from './puzzleGeometry'
+import { puzzleLayout, puzzlePiecePath } from './PuzzleGeometry'
 import './ArtworkPuzzle.css'
 
 interface ArtworkPuzzleProps {
