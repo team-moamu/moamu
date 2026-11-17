@@ -12,6 +12,7 @@ import { SuccessButton } from '../../components/atoms/button/SuccessButton'
 import type { IconName } from '../../components/atoms/icon/Icon'
 import { GoalCard } from '../../components/atoms/card/GoalCard'
 import { CustomGoalModal } from '../../components/molecules/modal/CustomGoalModal'
+import { dateKey } from '../home/HomeData'
 
 type Goal = {
   goalTemplateId: number
@@ -51,7 +52,9 @@ export function ChallengeCreatePage() {
   useEffect(() => () => analysisController.current?.abort(), [])
 
   // 시작 날짜
-  const [startDate, setStartDate] = useState<string>(location.state?.startDate ?? '')
+  const [startDate, setStartDate] = useState<string>(
+    () => location.state?.startDate || dateKey(new Date()),
+  )
 
   // 도전 기간
   const [durationDays, setDurationDays] = useState<number | null>(location.state?.durationDays ?? null)
