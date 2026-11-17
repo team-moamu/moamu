@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 import defaultProfileMu from '../../assets/images/default_profile_mu.png'
+import { previewNickname } from './profilePreview'
 
 const activityCounts = [
   { label: '진행 중', count: 2 },
@@ -20,7 +21,13 @@ export function MyPage() {
         />
         <div className="min-w-0">
           <p className="break-all text-xl font-bold">뮤_a1b2c3d4e5f6 님</p>
-          <p className="break-all text-sm">moa@example.com</p>
+          <p className="break-all text-sm">{previewNickname}</p>
+          <Link
+            to="/mypage/profile"
+            className="mt-2 inline-block text-sm font-medium text-accent"
+          >
+            프로필 수정
+          </Link>
         </div>
       </section>
       <section aria-labelledby="activity-heading">

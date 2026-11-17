@@ -1,0 +1,1 @@
+export const previewNickname = '뮤_a1b2c3d4e5f6'
