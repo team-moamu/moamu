@@ -1,8 +1,16 @@
 import defaultProfileMu from '../../assets/images/default_profile_mu.png'
-import { previewNickname } from './profilePreview'
+import { useNavigate } from 'react-router'
 import { useEffect, useState } from 'react'
 
-export function ProfileEditPage() {
+type ProfileEditPageProps = {
+  nickname: string
+  onSave: (nickname: string) => void
+}
+
+export function ProfileEditPage({ nickname, onSave }: ProfileEditPageProps) {
+  const navigate = useNavigate()
+  const [draftNickname, setDraftNickname] = useState(nickname)
+  const trimmedNickname = draftNickname.trim()
   const [photo, setPhoto] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [isPhotoMenuOpen, setIsPhotoMenuOpen] = useState(false)
@@ -20,7 +28,17 @@ export function ProfileEditPage() {
   }, [photo])
 
   return (
-    <div className="space-y-6 px-6 py-6">
+    <form
+      className="space-y-6 px-6 pt-6 pb-28"
+      onSubmit={(event) => {
+        event.preventDefault()
+
+        if (!trimmedNickname) return
+
+        onSave(trimmedNickname)
+        navigate('/mypage', { replace: true })
+      }}
+    >
       <div className="relative mx-auto w-fit">
         <img
           src={previewUrl ?? defaultProfileMu}
@@ -45,7 +63,8 @@ export function ProfileEditPage() {
           id="profile-nickname"
           name="nickname"
           type="text"
-          defaultValue={previewNickname}
+          value={draftNickname}
+          onChange={(event) => setDraftNickname(event.currentTarget.value)}
           aria-describedby="profile-nickname-help"
           className="w-full rounded-xl border border-neutral-200 bg-white px-4 py-3"
         />
@@ -54,12 +73,23 @@ export function ProfileEditPage() {
         </p>
       </div>
 
-      <section className="rounded-2xl bg-white p-4">
-        <h2 className="font-bold">프로필 사진 안내</h2>
-        <p className="mt-2 text-sm text-neutral-600">
+      <section className="flex min-h-[80px] flex-col justify-center gap-[8px] rounded-[12px] bg-[rgba(66,107,69,0.2)] px-3 py-3">
+        <h2 className="text-[16px] leading-[24px] font-bold text-[var(--color-primary)]">
+          프로필 사진 안내
+        </h2>
+        <p className="text-[12px] leading-[18px] font-normal text-black/50">
           사진을 선택하지 않으면 기본 이미지가 보여요.
         </p>
       </section>
+      <div className="fixed inset-x-0 bottom-0 z-10 mx-auto w-full max-w-[430px] px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+        <button
+          type="submit"
+          disabled={!trimmedNickname}
+          className="button button--primary button--full h-[52px]"
+        >
+          변경사항 저장
+        </button>
+      </div>
 
       {isPhotoMenuOpen && (
         <div className="fixed inset-y-0 left-1/2 z-50 flex w-full max-w-[430px] -translate-x-1/2 items-end justify-center bg-black/40">          <section
@@ -109,6 +139,6 @@ export function ProfileEditPage() {
         </section>
         </div>
       )}
-    </div>
+    </form>
   )
 }

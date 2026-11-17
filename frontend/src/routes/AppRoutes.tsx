@@ -19,12 +19,16 @@ import { CollectionPage } from '../pages/collection/CollectionPage'
 import { MyPage } from '../pages/mypage/MyPage'
 import { AccountSecurityPage } from '../pages/mypage/AccountSecurityPage'
 import { ProfileEditPage } from '../pages/mypage/ProfileEditPage'
+import { useState } from 'react'
+import { previewNickname } from '../pages/mypage/profilePreview'
 
 function ChallengePage() {
   return <h1>도전하기 화면</h1>
 }
 
 export default function AppRoutes() {
+  const [nickname, setNickname] = useState(previewNickname)
+
   return (
     <Routes>
       {/* 
@@ -39,7 +43,7 @@ export default function AppRoutes() {
 
       {/* 마이페이지 헤더 + 하단 내비게이션 */}
       <Route element={<MainLayout showBottomNav headerType="back" title="마이페이지" />}>
-        <Route path="/mypage" element={<MyPage />} />
+        <Route path="/mypage" element={<MyPage nickname={nickname} />} />
       </Route>
 
       <Route element={<MainLayout headerType="back" title="계정 및 보안" />}>
@@ -47,7 +51,10 @@ export default function AppRoutes() {
       </Route>
 
       <Route element={<MainLayout headerType="back" title="프로필 수정" />}>
-        <Route path="/mypage/profile" element={<ProfileEditPage />} />
+        <Route
+          path="/mypage/profile"
+          element={<ProfileEditPage nickname={nickname} onSave={setNickname} />}
+        />
       </Route>
 
       {/* 뒤로가기 헤더 */}
