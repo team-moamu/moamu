@@ -42,22 +42,35 @@ export function VerificationLoading({ challengeTitle, dayNo, dayCount }: Verific
       aria-busy="true"
       tabIndex={-1}
     >
+      <VerificationLoadingContent challengeTitle={challengeTitle} dayNo={dayNo} dayCount={dayCount} />
+    </section>,
+    document.body,
+  )
+}
+
+export function VerificationLoadingContent({ challengeTitle, dayNo, dayCount }: VerificationLoadingProps | {
+  challengeTitle: string
+  dayNo?: never
+  dayCount?: never
+}) {
+  return (
+    <>
       <img className="verification-loading__background" src={loadingBackground} alt="" />
       <div className="verification-loading__wash" aria-hidden="true" />
 
       <div className="verification-loading__content">
         <h1 id="verification-loading-title" className="verification-loading__title">
-          사진을 분석하는 중…
+          {dayNo === undefined ? '목표를 분석하는 중…' : '사진을 분석하는 중…'}
         </h1>
 
         <section className="verification-loading__card" aria-label="분석 중인 도전">
           <h2>나의 도전</h2>
           <p className="verification-loading__challenge">{challengeTitle}</p>
-          <p>Day {dayNo} · {dayCount}일 도전</p>
+          {dayNo !== undefined && <p>Day {dayNo} · {dayCount}일 도전</p>}
         </section>
 
         <div className="verification-loading__message" role="status">
-          <p>사진에서 오늘의 습관을 찾아보고 있어요</p>
+          <p>{dayNo === undefined ? '목표의 사진 인증 조건을 살펴보고 있어요' : '사진에서 오늘의 습관을 찾아보고 있어요'}</p>
           <p id="verification-loading-description">잠시만 기다려 주세요</p>
         </div>
 
@@ -67,7 +80,6 @@ export function VerificationLoading({ challengeTitle, dayNo, dayCount }: Verific
           ))}
         </div>
       </div>
-    </section>,
-    document.body,
+    </>
   )
 }
