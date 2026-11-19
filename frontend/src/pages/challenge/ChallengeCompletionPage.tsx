@@ -3,6 +3,7 @@ import type { CSSProperties } from 'react'
 import { Link, useParams } from 'react-router'
 
 import { ChallengeCompletionError, getChallengeCompletion } from '../../api/ChallengeApi'
+import celebrationBackground from '../../assets/images/background.png'
 import celebrationMu from '../../assets/images/complete_mu.png'
 import { ArtworkPuzzle } from '../../components/organisms/puzzle/ArtworkPuzzle'
 import { Icon } from '../../components/atoms/icon/Icon'
@@ -139,7 +140,7 @@ export function ChallengeCompletionPage({ accessToken }: ChallengeCompletionPage
         </div>
       </div>
       {(phase === 'celebration' || phase === 'transition') && (
-        <main className={`absolute inset-0 z-100 flex min-h-dvh flex-col items-center justify-center gap-12 overflow-hidden bg-[#4c4b46] px-7 py-20 text-center text-[#fff8ec] transition-opacity duration-[600ms] ease-[ease] motion-reduce:transition-none ${phase === 'transition' ? 'pointer-events-none opacity-0' : 'opacity-100'}`} aria-hidden={phase === 'transition'} aria-label="작품 완성 축하">
+        <main className={`absolute inset-0 z-100 flex min-h-dvh flex-col items-center justify-center gap-12 overflow-hidden bg-cover bg-center bg-no-repeat px-7 py-20 text-center text-[#fff8ec] transition-opacity duration-[600ms] ease-[ease] motion-reduce:transition-none ${phase === 'transition' ? 'pointer-events-none opacity-0' : 'opacity-100'}`} style={{ backgroundImage: `linear-gradient(rgb(0 0 0 / 35%), rgb(0 0 0 / 35%)), url(${celebrationBackground})` }} aria-hidden={phase === 'transition'} aria-label="작품 완성 축하">
           <div className="pointer-events-none absolute inset-0 z-0 motion-reduce:hidden" aria-hidden="true">
             {/* 화면 전체를 채우되 크기·속도·흔들림·회전은 입자마다 불규칙하게 설정 */}
             {Array.from({ length: 96 }, (_, index) => {
@@ -167,13 +168,13 @@ export function ChallengeCompletionPage({ accessToken }: ChallengeCompletionPage
               )
             })}
           </div>
-          <div className="relative z-0 mt-10 w-full max-w-[280px]">
-            <img className="relative z-1 w-full" src={celebrationMu} alt="작품 완성을 축하하는 뮤" />
-          </div>
           <div className="relative z-1" role="status">
             <h1 className="[font-family:var(--font-description)] text-[26px] font-bold leading-[1.45]">{result.durationDays}일의 기록이<br />작품이 되었어요!</h1>
             <p className="mt-[18px] text-[13px]">꾸준한 노력이 멋진 작품을 만들었어요.</p>
             <p className="mt-3 text-[11px] text-[#ded9ce]">잠시 후 완성된 기록을 보여드릴게요.</p>
+          </div>
+          <div className="relative z-0 w-full max-w-[280px]">
+            <img className="relative z-1 w-full" src={celebrationMu} alt="작품 완성을 축하하는 뮤" />
           </div>
         </main>
       )}
