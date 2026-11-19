@@ -26,7 +26,7 @@ export function GalleryDetailPage() {
         const id = Number(challengeId)
         if (!Number.isSafeInteger(id) || id <= 0) throw new Error('올바르지 않은 작품 주소예요.')
         // 전시 목록을 다시 조회해 직접 접속·새로고침에도 최신 작품을 표시한다.
-        const galleries = await getGalleries('latest', controller.signal)
+        const galleries = await getGalleries('endDate', 'desc', controller.signal)
         if (!controller.signal.aborted) {
           setArtwork(galleries.find(item => item.challengeId === id) ?? null)
         }

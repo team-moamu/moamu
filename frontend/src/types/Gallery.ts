@@ -11,3 +11,11 @@ export type GalleryResponse = Pick<CollectionResponse,
   goalText: string
   startDate: string
 }
+
+export type GallerySort = 'endDate' | 'successRate' | 'name'
+export type GallerySortDirection = 'asc' | 'desc'
+
+export interface GallerySortSelection {
+  sort: GallerySort
+  direction: GallerySortDirection
+}
