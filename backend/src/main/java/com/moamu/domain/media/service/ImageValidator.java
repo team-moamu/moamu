@@ -46,12 +46,17 @@ final class ImageValidator {
 
         // 3. 지원하는 형식과 실제 이미지인지 검증
         String extension = getExtension(image.getOriginalFilename());
+        // 해시는 변환 전 원본 기준
+        // HEIC/HEIF는 픽셀로만 읽고 최종 저장 형식을 JPEG로 지정
+        String fileHash = calculateHash(bytes);
+        if (extension.equals("heic") || extension.equals("heif")) {
+            BufferedImage decoded = new HeifConverter().read(bytes);
+            return new ValidatedImage(bytes, "jpg", "image/jpeg", fileHash, decoded);
+        }
         String contentType = validateImage(bytes, extension);
 
-        // 4. SHA-256 파일 해시 계산
-        String fileHash = calculateHash(bytes);
-
-        return new ValidatedImage(bytes, extension, contentType, fileHash);
+        // 4. 처리할 이미지 데이터와 원본 해시 반환
+        return new ValidatedImage(bytes, extension, contentType, fileHash, null);
     }
 
     // 파일 확장자 확인
@@ -79,6 +84,7 @@ final class ImageValidator {
             case "jpg", "jpeg" -> "jpg";
             case "png" -> "png";
             case "webp" -> "webp";
+            case "heic", "heif" -> extension;
             default -> throw new BusinessException(MediaErrorCode.UNSUPPORTED_IMAGE_FORMAT);
         };
     }
@@ -125,10 +131,9 @@ final class ImageValidator {
                 int width = reader.getWidth(0);
                 int height = reader.getHeight(0);
 
-                // 3. 과도한 메모리 사용 방지를 위해 최대 2,000만 픽셀로 제한
-                if (width <= 0 || height <= 0
-                        || (long) width * height > 20_000_000L) {
-                    throw new BusinessException(MediaErrorCode.IMAGE_RESOLUTION_TOO_LARGE);
+                // 3. 이미지의 가로, 세로가 유효한지 확인
+                if (width <= 0 || height <= 0) {
+                    throw new BusinessException(MediaErrorCode.INVALID_IMAGE);
                 }
 
                 // 4. 실제 디코딩을 통해 이미지 데이터 유효성 검증
@@ -158,5 +163,12 @@ final class ImageValidator {
         }
     }
 
-    record ValidatedImage(byte[] bytes, String extension, String contentType, String fileHash) {}
+    // 검증된 이미지 정보와 디코딩 결과
+    record ValidatedImage(byte[] bytes, String extension, String contentType, String fileHash,
+                          BufferedImage decodedImage) implements AutoCloseable {
+        @Override
+        public void close() {
+            if (decodedImage != null) decodedImage.flush();
+        }
+    }
 }

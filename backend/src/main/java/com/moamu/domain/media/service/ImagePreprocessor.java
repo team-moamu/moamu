@@ -5,6 +5,7 @@ import com.drew.imaging.ImageProcessingException;
 import com.drew.metadata.exif.ExifIFD0Directory;
 import com.moamu.domain.media.exception.MediaErrorCode;
 import com.moamu.global.exception.BusinessException;
+import java.awt.Color;
 import java.awt.RenderingHints;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
@@ -37,9 +38,12 @@ public class ImagePreprocessor {
         BufferedImage source = null;
         BufferedImage output = null;
         try {
-            source = ImageIO.read(new ByteArrayInputStream(validated.bytes()));
+            // HEIC/HEIF는 이미 디코딩한 픽셀을 직접 사용하여 중간 JPEG 인코딩/재디코딩을 생략
+            source = validated.decodedImage() != null ? validated.decodedImage()
+                : ImageIO.read(new ByteArrayInputStream(validated.bytes()));
             if (source == null) throw new BusinessException(MediaErrorCode.INVALID_IMAGE);
-            int orientation = orientation(validated.bytes());
+            // HEIC/HEIF 회전,반전은 디코더에서 처리했으므로 EXIF 미적용
+            int orientation = validated.decodedImage() != null ? 1 : orientation(validated.bytes());
             int width = source.getWidth();
             int height = source.getHeight();
             boolean swapped = orientation >= 5;
@@ -54,6 +58,11 @@ public class ImagePreprocessor {
             // 원본 이미지 방향 보정 또는 축소하여 새 이미지 생성
             var graphics = output.createGraphics();
             try {
+                // JPEG로 저장할 투명 이미지 흰색 배경으로 합성
+                if (!preserveAlpha && source.getColorModel().hasAlpha()) {
+                    graphics.setColor(Color.WHITE);
+                    graphics.fillRect(0, 0, targetWidth, targetHeight);
+                }
                 graphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
                     RenderingHints.VALUE_INTERPOLATION_BICUBIC);
                 graphics.scale((double) targetWidth / orientedWidth, (double) targetHeight / orientedHeight);
@@ -65,7 +74,7 @@ public class ImagePreprocessor {
         } catch (IOException | ImageProcessingException e) {
             throw new BusinessException(MediaErrorCode.INVALID_IMAGE);
         } finally {
-            if (source != null) source.flush();
+            if (source != null && validated.decodedImage() == null) source.flush();
             if (output != null) output.flush();
         }
     }
