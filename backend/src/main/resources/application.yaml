@@ -26,6 +26,8 @@ spring:
 
 # S3 설정
 app:
+  media:
+    jpeg-quality: ${IMAGE_JPEG_QUALITY:1.0}
   # 자동 마감 스케줄러를 제어하는 설정
   schedule-closing:
     enabled: ${SCHEDULE_CLOSING_ENABLED:true}
