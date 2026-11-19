@@ -54,17 +54,21 @@ public class GalleryService {
         );
     }
 
-    public List<GalleryResponse> getGalleries(Long userId, String sort) {
+    public List<GalleryResponse> getGalleries(Long userId, String sort, String direction) {
         if (userId == null || userId <= 0) {
             throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
         }
 
-        // latest는 최신순, name은 이름순, successRate는 성공률순
-        if (!"latest".equals(sort) && !"name".equals(sort) && !"successRate".equals(sort)) {
+        // 종료일, 이름, 성공률 기준과 정렬 방향을 검증
+        if (!"endDate".equals(sort) && !"name".equals(sort) && !"successRate".equals(sort)) {
             throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
         }
 
-        List<Challenge> challenges = galleryRepository.findExhibited(userId, sort);
+        if (!"asc".equals(direction) && !"desc".equals(direction)) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
+        }
+
+        List<Challenge> challenges = galleryRepository.findExhibited(userId, sort, direction);
         List<GalleryResponse> responses = new ArrayList<>();
 
         for (Challenge challenge : challenges) {
