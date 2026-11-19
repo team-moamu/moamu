@@ -38,6 +38,22 @@ class ImagePreprocessorTests {
     }
 
     @Test
+    void acceptsOverTwentyMillionPixelsWhenFileIsWithinTenMiB() throws Exception {
+        var source = new BufferedImage(5000, 4001, BufferedImage.TYPE_INT_RGB);
+        byte[] jpeg;
+        try {
+            jpeg = encode(source, "jpeg");
+        } finally {
+            source.flush();
+        }
+        assertTrue(jpeg.length <= 10 * 1024 * 1024);
+        var result = process(jpeg, "jpg");
+        assertEquals(1600, result.getWidth());
+        assertEquals(1280, result.getHeight());
+        result.flush();
+    }
+
+    @Test
     void preservesWebpWithoutUpscaling() throws Exception {
         byte[] webp = java.util.Base64.getDecoder().decode(
             "UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA");
