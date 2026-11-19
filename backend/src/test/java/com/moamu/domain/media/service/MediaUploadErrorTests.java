@@ -21,7 +21,7 @@ class MediaUploadErrorTests {
             org.mockito.Mockito.mock(software.amazon.awssdk.services.s3.S3Client.class);
 
     private MockMvc mvc() {
-        return MockMvcBuilders.standaloneSetup(new UploadController(new S3StorageService(client, "test-bucket", "verifications/")))
+        return MockMvcBuilders.standaloneSetup(new UploadController(new S3StorageService(client, "test-bucket", "verifications/", new ImagePreprocessor(1.0f))))
                 .setControllerAdvice(new GlobalExceptionHandler()).build();
     }
 

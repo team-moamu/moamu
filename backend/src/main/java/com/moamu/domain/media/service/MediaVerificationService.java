@@ -42,9 +42,10 @@ public class MediaVerificationService {
                     .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
             if (!userId.equals(stored.getUserId()) || !scheduleId.equals(verification.getScheduleId()))
                 throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
-            var validated = new ImageValidator().validate(image);
-            if (!validated.fileHash().equals(verification.getFileHash()))
-                throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
+            try (var validated = new ImageValidator().validate(image)) {
+                if (!validated.fileHash().equals(verification.getFileHash()))
+                    throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
+            }
             var submitted = submissionService.createVerification(userId, scheduleId, stored.getMediaId(), key);
             var completed = submissionService.verify(userId, submitted.aiTaskId());
             return response(submitted.verificationId(), submitted.mediaId(), submitted.aiTaskId(), completed);

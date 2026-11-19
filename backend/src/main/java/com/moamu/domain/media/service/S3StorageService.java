@@ -19,12 +19,15 @@ public class S3StorageService implements StorageService {
     private final String bucket;
     private final String verificationPrefix;
     private final ImageValidator imageValidator = new ImageValidator();
+    private final ImagePreprocessor imagePreprocessor;
 
     // S3 버킷 이름, S3 경로 확인
     public S3StorageService(
             S3Client s3Client,
             @Value("${app.storage.s3.bucket}") String bucket,
-            @Value("${app.storage.s3.verification-prefix}") String verificationPrefix) {
+            @Value("${app.storage.s3.verification-prefix}") String verificationPrefix,
+            ImagePreprocessor imagePreprocessor) {
+        this.imagePreprocessor = imagePreprocessor;
         if (bucket == null || bucket.isBlank()) {
             throw new IllegalArgumentException("S3 버킷 이름이 필요합니다.");
         }
@@ -45,21 +48,23 @@ public class S3StorageService implements StorageService {
     // ImageValidator 검증 (사진 검증 규칙)
     @Override
     public StoredFile saveVerification(MultipartFile image) {
-        var validated = imageValidator.validate(image);
-        String imageKey = verificationPrefix + UUID.randomUUID() + "." + validated.extension();
-        var request = PutObjectRequest.builder()
-                .bucket(bucket)
-                .key(imageKey)
-                .contentType(validated.contentType())
-                .build();
+        try (var validated = imageValidator.validate(image)) {
+            byte[] processed = imagePreprocessor.process(validated);
+            String imageKey = verificationPrefix + UUID.randomUUID() + "." + validated.extension();
+            var request = PutObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(imageKey)
+                    .contentType(validated.contentType())
+                    .build();
 
-        // 검증된 이미지 데이터를 S3에 업로드 (공개 ACL 미설정)
-        // 업로드 실패 시 예외를 전파하여 DB 성공 처리 방지
-        s3Client.putObject(request, RequestBody.fromBytes(validated.bytes()));
+            // 방향 보정, 축소한 이미지를 업로드 (공개 ACL 미설정)
+            // 업로드 실패 시 예외를 전파하여 DB 성공 처리 방지
+            s3Client.putObject(request, RequestBody.fromBytes(processed));
 
-        // S3 객체 키와 파일 정보를 반환 (DB 저장은 MediaService에서 처리)
-        return new StoredFile(imageKey, validated.fileHash(), validated.contentType(),
-                (long) validated.bytes().length);
+            // S3 객체 키와 파일 정보를 반환 (DB 저장은 MediaService에서 처리)
+            // 재전송 검증에는 원본 해시 유지
+            return new StoredFile(imageKey, validated.fileHash(), validated.contentType(), (long) processed.length);
+        }
     }
 
     @Override
