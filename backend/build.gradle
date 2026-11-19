@@ -22,6 +22,11 @@ configurations {
 
 repositories {
     mavenCentral()
+    // HEIC/HEIF 디코더 공식 저장소
+    maven {
+        url = uri('https://releases.aspose.com/java/repo/')
+        content { includeModule('openize', 'openize-heic') }
+    }
 }
 
 def jjwtVersion = '0.13.0'
@@ -29,7 +34,9 @@ def springdocVersion = '2.8.17'
 
 dependencies {
     // 이미지 EXIF 회전 정보 추출
-    implementation 'com.drewnoakes:metadata-extractor:2.19.0'
+    implementation 'com.drewnoakes:metadata-extractor:2.20.0'
+    // HEIC 정지 이미지 디코딩
+    implementation 'openize:openize-heic:26.5'
     // ImageIO WebP 디코딩 및 리사이징 후 원래 형식으로 인코딩
     runtimeOnly 'com.github.usefulness:webp-imageio:0.11.0'
 
