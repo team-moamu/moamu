@@ -17,7 +17,7 @@ import static org.mockito.Mockito.*;
 
 class S3StorageServiceTests {
     private final S3Client client = mock(S3Client.class);
-    private final S3StorageService storage = new S3StorageService(client, "test-bucket", "verifications");
+    private final S3StorageService storage = new S3StorageService(client, "test-bucket", "verifications", new ImagePreprocessor(1.0f));
 
     private byte[] png() throws Exception {
         var out = new ByteArrayOutputStream();
@@ -38,10 +38,13 @@ class S3StorageServiceTests {
         assertTrue(saved.imageKey().matches("verifications/[0-9a-f-]{36}\\.png"));
         assertEquals("image/png", request.getValue().contentType());
         assertEquals("image/png", saved.contentType());
-        assertEquals((long) bytes.length, saved.fileSize());
         assertEquals(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)), saved.fileHash());
         try (var input = body.getValue().contentStreamProvider().newStream()) {
-            assertArrayEquals(bytes, input.readAllBytes());
+            byte[] uploaded = input.readAllBytes();
+            assertEquals((long) uploaded.length, saved.fileSize());
+            assertArrayEquals(new byte[]{(byte) 137, 80, 78, 71, 13, 10, 26, 10},
+                java.util.Arrays.copyOf(uploaded, 8));
+            assertEquals(2, ImageIO.read(new java.io.ByteArrayInputStream(uploaded)).getWidth());
         }
     }
 
