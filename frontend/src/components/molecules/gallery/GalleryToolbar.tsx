@@ -1,11 +1,11 @@
 import { useEffect, useId, useRef, useState } from 'react'
-import type { CollectionSort } from '../../../types/Collection'
+import type { GallerySortSelection } from '../../../types/Gallery'
 import { GallerySectionHeader } from './GallerySectionHeader'
-import { CollectionSortMenu } from '../select/CollectionSortMenu'
+import { GallerySortMenu } from '../select/GallerySortMenu'
 
 interface GalleryToolbarProps {
-  sort: CollectionSort
-  onSortChange: (sort: CollectionSort) => void
+  sort: GallerySortSelection
+  onSortChange: (sort: GallerySortSelection) => void
   selectionMode: boolean
   onToggleSelection: () => void
   selectionDisabled: boolean
@@ -54,10 +54,9 @@ export function GalleryToolbar({ sort, onSortChange, selectionMode, onToggleSele
         }}
       />
       {sortOpen && !selectionMode && (
-        <div className="absolute top-full right-[52px] z-20 mt-1 w-[116px]">
-          <CollectionSortMenu id={menuId} value={sort} onChange={(value) => {
+        <div className="absolute top-full right-[52px] z-20 mt-1 w-[164px]">
+          <GallerySortMenu id={menuId} value={sort} onChange={(value) => {
             onSortChange(value)
-            closeSort()
           }} />
         </div>
       )}
