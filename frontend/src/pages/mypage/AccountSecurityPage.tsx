@@ -1,3 +1,5 @@
+import { Link } from 'react-router'
+
 export function AccountSecurityPage() {
   return (
     <div className="space-y-6 px-6 py-6">
@@ -26,12 +28,18 @@ export function AccountSecurityPage() {
         <h2 id="security-heading" className="mb-3 font-bold">
           보안 설정
         </h2>
-        <div className="rounded-2xl bg-white px-4 py-4 border border-[#E8CFAC]">
-          <p className="font-medium">비밀번호 변경</p>
-          <p className="mt-1 text-sm text-neutral-600">
-            비밀번호를 새로 설정해요.
-          </p>
-        </div>
+        <Link
+          to="/mypage/password-reset"
+          className="flex items-center justify-between gap-3 rounded-2xl border border-[#E8CFAC] bg-white px-4 py-4"
+        >
+          <div>
+            <p className="font-medium">비밀번호 변경</p>
+            <p className="mt-1 text-sm text-neutral-600">
+              비밀번호를 새로 설정해요.
+            </p>
+          </div>
+          <span aria-hidden="true">›</span>
+        </Link>
       </section>
 
       <section aria-labelledby="account-management-heading">

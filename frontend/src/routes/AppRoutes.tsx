@@ -19,6 +19,7 @@ import { CollectionPage } from '../pages/collection/CollectionPage'
 import { MyPage } from '../pages/mypage/MyPage'
 import { AccountSecurityPage } from '../pages/mypage/AccountSecurityPage'
 import { ProfileEditPage } from '../pages/mypage/ProfileEditPage'
+import { PasswordResetPage } from '../pages/mypage/PasswordResetPage'
 import { useEffect, useState } from 'react'
 import { previewNickname } from '../pages/mypage/profilePreview'
 
@@ -65,6 +66,18 @@ export default function AppRoutes() {
 
       <Route element={<MainLayout headerType="back" title="계정 및 보안" />}>
         <Route path="/mypage/account-security" element={<AccountSecurityPage />} />
+      </Route>
+
+      <Route
+        element={
+          <MainLayout
+            headerType="back"
+            title="비밀번호 재설정"
+            background="white"
+          />
+        }
+      >
+        <Route path="/mypage/password-reset" element={<PasswordResetPage />} />
       </Route>
 
       <Route element={<MainLayout headerType="back" title="프로필 수정" />}>
