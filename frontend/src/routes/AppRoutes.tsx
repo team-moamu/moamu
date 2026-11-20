@@ -23,6 +23,7 @@ import { PasswordResetPage } from '../pages/mypage/PasswordResetPage'
 import { NewPasswordPage } from '../pages/mypage/NewPasswordPage'
 import { useEffect, useState } from 'react'
 import { previewNickname } from '../pages/mypage/profilePreview'
+import { WithdrawalPage } from '../pages/mypage/WithdrawalPage'
 
 function ChallengePage() {
   return <h1>도전하기 화면</h1>
@@ -67,6 +68,18 @@ export default function AppRoutes() {
 
       <Route element={<MainLayout headerType="back" title="계정 및 보안" />}>
         <Route path="/mypage/account-security" element={<AccountSecurityPage />} />
+      </Route>
+
+      <Route
+        element={
+          <MainLayout
+            headerType="back"
+            title="회원 탈퇴"
+            background="white"
+          />
+        }
+      >
+        <Route path="/mypage/withdrawal" element={<WithdrawalPage />} />
       </Route>
 
       <Route

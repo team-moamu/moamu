@@ -85,9 +85,12 @@ export function AccountSecurityPage() {
             {logoutError}
           </p>
         )}
-        <p className="mt-3 text-center text-sm text-neutral-400">
+        <Link
+          to="/mypage/withdrawal"
+          className="mt-3 block text-center text-sm text-neutral-400 underline underline-offset-4"
+        >
           회원탈퇴를 하시겠습니까?
-        </p>
+        </Link>
       </section>
     </div>
   )

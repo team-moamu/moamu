@@ -221,3 +221,14 @@ export async function verifyEmailCode(
 
   return body.data.verificationToken
 }
+
+export async function logout(): Promise<void> {
+  const response = await fetch('/api/users/logout', {
+    method: 'POST',
+    credentials: 'same-origin',
+  })
+
+  if (!response.ok) {
+    throw new Error('로그아웃하지 못했어요. 잠시 후 다시 시도해 주세요.')
+  }
+}
