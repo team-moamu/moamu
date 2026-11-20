@@ -41,7 +41,10 @@ export function ProfileEditPage({
         if (!trimmedNickname) return
 
         onSave(trimmedNickname, photo)
-        navigate('/mypage', { replace: true })
+        navigate('/mypage', {
+          replace: true,
+          state: { profileSaved: true },
+        })
       }}
     >
       <div className="relative mx-auto w-fit">

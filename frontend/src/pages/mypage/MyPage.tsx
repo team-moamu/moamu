@@ -1,6 +1,6 @@
-import { Link } from 'react-router'
+import { useEffect, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router'
 import defaultProfileMu from '../../assets/images/default_profile_mu.png'
-import { previewNickname } from './profilePreview'
 
 const activityCounts = [
   { label: '진행 중', count: 2 },
@@ -16,6 +16,24 @@ type MyPageProps = {
 }
 
 export function MyPage({ nickname, profilePhotoUrl }: MyPageProps) {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [showSavedMessage, setShowSavedMessage] = useState(
+    location.state?.profileSaved === true,
+  )
+
+  useEffect(() => {
+    if (!showSavedMessage) return
+
+    // 뒤로가기나 새로고침으로 완료 안내가 다시 표시되지 않도록 처리해요.
+    navigate('/mypage', { replace: true, state: null })
+
+    const timer = window.setTimeout(() => {
+      setShowSavedMessage(false)
+    }, 3000)
+
+    return () => window.clearTimeout(timer)
+  }, [showSavedMessage, navigate])
   return (
     <main className="space-y-6 px-6 py-6">
       <section aria-label="프로필" className="flex items-center gap-4 rounded-2xl bg-white p-4 flex items-center gap-4 rounded-2xl border border-[#E8CFAC] bg-white p-4">
@@ -26,7 +44,7 @@ export function MyPage({ nickname, profilePhotoUrl }: MyPageProps) {
         />
         <div className="min-w-0">
           <p className="break-all text-xl font-bold">{nickname} 님</p>
-          <p className="break-all text-sm">{previewNickname}</p>
+          <p className="break-all text-sm">moa@example.com</p>
           <Link
             to="/mypage/profile"
             className="mt-2 inline-block text-sm font-medium text-accent"
@@ -90,6 +108,16 @@ export function MyPage({ nickname, profilePhotoUrl }: MyPageProps) {
           </li>
         </ul>
       </section>
+      {showSavedMessage && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-28 z-40 mx-auto w-full max-w-[430px] px-6">
+          <p
+            role="status"
+            className="rounded-xl bg-[var(--color-primary)] px-4 py-3 text-center text-sm text-white shadow-lg"
+          >
+            프로필이 변경됐어요.
+          </p>
+        </div>
+      )}
     </main>
   )
 }
