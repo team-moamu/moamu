@@ -33,9 +33,10 @@ public class GalleryController {
     @GetMapping
     public ApiResponse<List<GalleryResponse>> getGalleries(
         @AuthenticationPrincipal Long userId,
-        @RequestParam(value = "sort", defaultValue = "latest") String sort
+        @RequestParam(value = "sort", defaultValue = "endDate") String sort,
+        @RequestParam(value = "direction", defaultValue = "desc") String direction
     ) {
-        List<GalleryResponse> responses = galleryService.getGalleries(userId, sort);
+        List<GalleryResponse> responses = galleryService.getGalleries(userId, sort, direction);
 
         return ApiResponse.success(responses);
     }
