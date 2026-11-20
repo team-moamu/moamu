@@ -4,7 +4,7 @@ import { MainLayout } from '../components/layout/MainLayout'
 import { ChallengeCreatePage } from '../pages/challenge/ChallengeCreatePage'
 import { ChallengeListPage } from '../pages/challenge/ChallengeListPage'
 import { ChallengeDetailPage } from '../pages/challenge/ChallengeDetailPage'
-import { VerificationPage } from '../pages/challenge/VerificationPage'
+import { VerificationPage } from '../pages/challenge/verificationPage'
 import { LoginPage } from '../pages/auth/LoginPage'
 import { SignupPage } from '../pages/signup/SignupPage'
 import { EmailSignupPage } from '../pages/signup/EmailSignupPage'
@@ -24,6 +24,8 @@ import { NewPasswordPage } from '../pages/mypage/NewPasswordPage'
 import { useEffect, useState } from 'react'
 import { previewNickname } from '../pages/mypage/profilePreview'
 import { WithdrawalPage } from '../pages/mypage/WithdrawalPage'
+import { WithdrawalConfirmPage } from '../pages/mypage/WithdrawalConfirmPage'
+import { WithdrawalCompletePage } from '../pages/mypage/WithdrawalCompletePage'
 
 function ChallengePage() {
   return <h1>도전하기 화면</h1>
@@ -80,6 +82,14 @@ export default function AppRoutes() {
         }
       >
         <Route path="/mypage/withdrawal" element={<WithdrawalPage />} />
+        <Route
+          path="/mypage/withdrawal/confirm"
+          element={<WithdrawalConfirmPage />}
+        />
+        <Route
+          path="/mypage/withdrawal/complete"
+          element={<WithdrawalCompletePage />}
+        />
       </Route>
 
       <Route
