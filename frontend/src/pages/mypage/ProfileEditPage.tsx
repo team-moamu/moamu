@@ -4,14 +4,19 @@ import { useEffect, useState } from 'react'
 
 type ProfileEditPageProps = {
   nickname: string
-  onSave: (nickname: string) => void
+  profilePhoto: File | null
+  onSave: (nickname: string, photo: File | null) => void
 }
 
-export function ProfileEditPage({ nickname, onSave }: ProfileEditPageProps) {
+export function ProfileEditPage({
+  nickname,
+  profilePhoto,
+  onSave,
+}: ProfileEditPageProps) {
   const navigate = useNavigate()
   const [draftNickname, setDraftNickname] = useState(nickname)
   const trimmedNickname = draftNickname.trim()
-  const [photo, setPhoto] = useState<File | null>(null)
+  const [photo, setPhoto] = useState<File | null>(profilePhoto)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [isPhotoMenuOpen, setIsPhotoMenuOpen] = useState(false)
 
@@ -35,7 +40,7 @@ export function ProfileEditPage({ nickname, onSave }: ProfileEditPageProps) {
 
         if (!trimmedNickname) return
 
-        onSave(trimmedNickname)
+        onSave(trimmedNickname, photo)
         navigate('/mypage', { replace: true })
       }}
     >

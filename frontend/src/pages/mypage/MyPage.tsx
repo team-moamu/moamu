@@ -1,5 +1,6 @@
 import { Link } from 'react-router'
 import defaultProfileMu from '../../assets/images/default_profile_mu.png'
+import { previewNickname } from './profilePreview'
 
 const activityCounts = [
   { label: '진행 중', count: 2 },
@@ -9,18 +10,23 @@ const activityCounts = [
 
 const exhibitionCount = 2
 
-export function MyPage({ nickname }: { nickname: string }) {
+type MyPageProps = {
+  nickname: string
+  profilePhotoUrl: string | null
+}
+
+export function MyPage({ nickname, profilePhotoUrl }: MyPageProps) {
   return (
     <main className="space-y-6 px-6 py-6">
       <section aria-label="프로필" className="flex items-center gap-4 rounded-2xl bg-white p-4 flex items-center gap-4 rounded-2xl border border-[#E8CFAC] bg-white p-4">
         <img
-          src={defaultProfileMu}
+          src={profilePhotoUrl ?? defaultProfileMu}
           alt=""
           className="h-16 w-16 shrink-0 rounded-full object-cover"
         />
         <div className="min-w-0">
           <p className="break-all text-xl font-bold">{nickname} 님</p>
-          <p className="break-all text-sm">moa@example.com</p>
+          <p className="break-all text-sm">{previewNickname}</p>
           <Link
             to="/mypage/profile"
             className="mt-2 inline-block text-sm font-medium text-accent"

@@ -19,7 +19,7 @@ import { CollectionPage } from '../pages/collection/CollectionPage'
 import { MyPage } from '../pages/mypage/MyPage'
 import { AccountSecurityPage } from '../pages/mypage/AccountSecurityPage'
 import { ProfileEditPage } from '../pages/mypage/ProfileEditPage'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { previewNickname } from '../pages/mypage/profilePreview'
 
 function ChallengePage() {
@@ -28,6 +28,20 @@ function ChallengePage() {
 
 export default function AppRoutes() {
   const [nickname, setNickname] = useState(previewNickname)
+  const [profilePhoto, setProfilePhoto] = useState<File | null>(null)
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!profilePhoto) {
+      setProfilePhotoUrl(null)
+      return
+    }
+
+    const url = URL.createObjectURL(profilePhoto)
+    setProfilePhotoUrl(url)
+
+    return () => URL.revokeObjectURL(url)
+  }, [profilePhoto])
 
   return (
     <Routes>
@@ -43,7 +57,10 @@ export default function AppRoutes() {
 
       {/* 마이페이지 헤더 + 하단 내비게이션 */}
       <Route element={<MainLayout showBottomNav headerType="back" title="마이페이지" />}>
-        <Route path="/mypage" element={<MyPage nickname={nickname} />} />
+        <Route
+          path="/mypage"
+          element={<MyPage nickname={nickname} profilePhotoUrl={profilePhotoUrl} />}
+        />
       </Route>
 
       <Route element={<MainLayout headerType="back" title="계정 및 보안" />}>
@@ -53,7 +70,16 @@ export default function AppRoutes() {
       <Route element={<MainLayout headerType="back" title="프로필 수정" />}>
         <Route
           path="/mypage/profile"
-          element={<ProfileEditPage nickname={nickname} onSave={setNickname} />}
+          element={
+            <ProfileEditPage
+              nickname={nickname}
+              profilePhoto={profilePhoto}
+              onSave={(nextNickname, nextPhoto) => {
+                setNickname(nextNickname)
+                setProfilePhoto(nextPhoto)
+              }}
+            />
+          }
         />
       </Route>
 
