@@ -35,8 +35,8 @@ export function MyPage({ nickname, profilePhotoUrl }: MyPageProps) {
     return () => window.clearTimeout(timer)
   }, [showSavedMessage, navigate])
   return (
-    <main className="space-y-6 px-6 py-6">
-      <section aria-label="프로필" className="flex items-center gap-4 rounded-2xl bg-white p-4 flex items-center gap-4 rounded-2xl border border-[#E8CFAC] bg-white p-4">
+    <div className="space-y-6 px-6 py-6">
+      <section aria-label="프로필" className="flex items-center gap-4 rounded-2xl border border-[#E8CFAC] bg-white p-4">
         <img
           src={profilePhotoUrl ?? defaultProfileMu}
           alt=""
@@ -54,11 +54,16 @@ export function MyPage({ nickname, profilePhotoUrl }: MyPageProps) {
         </div>
       </section>
       <section aria-labelledby="activity-heading">
-        <h2 id="activity-heading" className="mb-3 text-lg font-bold">
-          나의 활동
-        </h2>
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 id="activity-heading" className="text-lg font-bold">
+            나의 활동
+          </h2>
+          <Link to="/collection" className="text-sm font-medium">
+            보관함 보기 <span aria-hidden="true">›</span>
+          </Link>
+        </div>
 
-        <ul className="grid grid-cols-3 divide-x rounded-2xl bg-white py-4 text-center grid grid-cols-3 divide-x divide-[#E8CFAC] rounded-2xl border border-[#E8CFAC] bg-white py-4 text-center">
+        <ul className="grid grid-cols-3 divide-x divide-[#E8CFAC] rounded-2xl border border-[#E8CFAC] bg-white py-4 text-center">
           {activityCounts.map(({ label, count }) => (
             <li key={label}>
               <p className="text-2xl font-bold">{count}</p>
@@ -68,9 +73,6 @@ export function MyPage({ nickname, profilePhotoUrl }: MyPageProps) {
         </ul>
       </section>
       {/* 나의 전시 */}
-      {/* 여기에 <section aria-labelledby="my-activity-heading"> 블록 */}
-
-      {/* 그 아래에 <section aria-labelledby="my-exhibition-heading"> 블록 */}
       <section aria-labelledby="exhibition-heading">
         <div className="mb-3 flex items-center justify-between gap-3 ">
           <h2 id="exhibition-heading" className="text-lg font-bold">
@@ -82,7 +84,7 @@ export function MyPage({ nickname, profilePhotoUrl }: MyPageProps) {
           </Link>
         </div>
 
-        <div className="rounded-2xl bg-white p-4 rounded-2xl border border-[#E8CFAC] bg-white p-4">
+        <div className="rounded-2xl border border-[#E8CFAC] bg-white p-4">
           <p className="text-sm">현재 전시 중인 작품</p>
           <p className="mt-1 text-lg font-bold">{exhibitionCount}점 전시 중</p>
         </div>
@@ -93,16 +95,17 @@ export function MyPage({ nickname, profilePhotoUrl }: MyPageProps) {
           설정 및 안내
         </h2>
 
-        <ul className="divide-y divide-neutral-200 rounded-2xl bg-white 	divide-y divide-[#E8CFAC] rounded-2xl border border-[#E8CFAC] bg-white">
+        <ul className="divide-y divide-[#E8CFAC] overflow-hidden rounded-2xl border border-[#E8CFAC] bg-white">
           <li>
             <Link
               to="/mypage/account-security"
-              className="flex items-center justify-between px-5 py-4 text-sm font-medium"
+              className="flex w-full items-center justify-between px-5 py-4 text-sm font-medium"
             >
               <span>계정 및 보안</span>
               <span aria-hidden="true">›</span>
             </Link>
           </li>
+
           <li className="px-5 py-4 text-sm font-medium">
             약관 및 개인정보
           </li>
@@ -118,6 +121,6 @@ export function MyPage({ nickname, profilePhotoUrl }: MyPageProps) {
           </p>
         </div>
       )}
-    </main>
+    </div>
   )
 }
