@@ -57,7 +57,11 @@ export default function AppRoutes() {
         - background='white' => 배경색
       */}
       {/* 기본 헤더 + 하단 내비게이션 */}
-      <Route element={<MainLayout showBottomNav />}>
+      <Route
+        element={
+          <MainLayout showBottomNav profilePhotoUrl={profilePhotoUrl} />
+        }
+      >
         <Route path="/" element={<HomePage />} />
       </Route>
 
