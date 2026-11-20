@@ -1,6 +1,30 @@
+import { useRef, useState } from 'react'
 import { Link } from 'react-router'
+import { logout } from '../../api/AuthApi'
+import { clearAccessToken } from '../../auth/authStorage'
 
 export function AccountSecurityPage() {
+  const logoutInProgress = useRef(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [logoutError, setLogoutError] = useState('')
+
+  async function handleLogout() {
+    if (logoutInProgress.current) return
+
+    logoutInProgress.current = true
+    setIsLoggingOut(true)
+    setLogoutError('')
+
+    try {
+      await logout()
+      clearAccessToken()
+      window.location.replace('/login')
+    } catch {
+      setLogoutError('로그아웃하지 못했어요. 잠시 후 다시 시도해 주세요.')
+      logoutInProgress.current = false
+      setIsLoggingOut(false)
+    }
+  }
   return (
     <div className="space-y-6 px-6 py-6">
       <section aria-labelledby="account-info-heading">
@@ -46,7 +70,21 @@ export function AccountSecurityPage() {
         <h2 id="account-management-heading" className="mb-3 font-bold">
           계정 관리
         </h2>
-        <p className="rounded-2xl bg-white px-4 py-4 font-medium border border-[#E8CFAC]">로그아웃</p>
+        <button
+          type="button"
+          disabled={isLoggingOut}
+          onClick={() => void handleLogout()}
+          className="flex w-full items-center justify-between rounded-2xl border border-[#E8CFAC] bg-white px-4 py-4 text-left font-medium disabled:opacity-50"
+        >
+          <span>{isLoggingOut ? '로그아웃 중…' : '로그아웃'}</span>
+          <span aria-hidden="true">›</span>
+        </button>
+
+        {logoutError && (
+          <p role="alert" className="mt-2 text-sm text-[var(--color-error)]">
+            {logoutError}
+          </p>
+        )}
         <p className="mt-3 text-center text-sm text-neutral-400">
           회원탈퇴를 하시겠습니까?
         </p>
