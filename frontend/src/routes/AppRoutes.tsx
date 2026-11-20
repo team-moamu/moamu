@@ -26,6 +26,7 @@ import { previewNickname } from '../pages/mypage/profilePreview'
 import { WithdrawalPage } from '../pages/mypage/WithdrawalPage'
 import { WithdrawalConfirmPage } from '../pages/mypage/WithdrawalConfirmPage'
 import { WithdrawalCompletePage } from '../pages/mypage/WithdrawalCompletePage'
+import { PasswordResetCompletePage } from '../pages/mypage/PasswordResetCompletePage'
 
 function ChallengePage() {
   return <h1>도전하기 화면</h1>
@@ -114,6 +115,21 @@ export default function AppRoutes() {
         }
       >
         <Route path="/mypage/password-reset/new" element={<NewPasswordPage />} />
+      </Route>
+
+      <Route
+        element={
+          <MainLayout
+            headerType="title"
+            title="변경 완료"
+            background="white"
+          />
+        }
+      >
+        <Route
+          path="/mypage/password-reset/complete"
+          element={<PasswordResetCompletePage />}
+        />
       </Route>
 
       <Route element={<MainLayout headerType="back" title="프로필 수정" />}>
