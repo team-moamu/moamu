@@ -20,6 +20,7 @@ import { MyPage } from '../pages/mypage/MyPage'
 import { AccountSecurityPage } from '../pages/mypage/AccountSecurityPage'
 import { ProfileEditPage } from '../pages/mypage/ProfileEditPage'
 import { PasswordResetPage } from '../pages/mypage/PasswordResetPage'
+import { NewPasswordPage } from '../pages/mypage/NewPasswordPage'
 import { useEffect, useState } from 'react'
 import { previewNickname } from '../pages/mypage/profilePreview'
 
@@ -78,6 +79,18 @@ export default function AppRoutes() {
         }
       >
         <Route path="/mypage/password-reset" element={<PasswordResetPage />} />
+      </Route>
+
+      <Route
+        element={
+          <MainLayout
+            headerType="back"
+            title="새 비밀번호 설정"
+            background="white"
+          />
+        }
+      >
+        <Route path="/mypage/password-reset/new" element={<NewPasswordPage />} />
       </Route>
 
       <Route element={<MainLayout headerType="back" title="프로필 수정" />}>
