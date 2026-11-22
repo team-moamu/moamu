@@ -16,16 +16,39 @@ import { GoalVerificationUnavailablePage } from '../pages/challenge/GoalVerifica
 import { GalleryPage } from '../pages/gallery/GalleryPage'
 import { GalleryDetailPage } from '../pages/gallery/GalleryDetailPage'
 import { CollectionPage } from '../pages/collection/CollectionPage'
+import { MyPage } from '../pages/mypage/MyPage'
+import { AccountSecurityPage } from '../pages/mypage/AccountSecurityPage'
+import { ProfileEditPage } from '../pages/mypage/ProfileEditPage'
+import { PasswordResetPage } from '../pages/mypage/PasswordResetPage'
+import { NewPasswordPage } from '../pages/mypage/NewPasswordPage'
+import { useEffect, useState } from 'react'
+import { previewNickname } from '../pages/mypage/profilePreview'
+import { WithdrawalPage } from '../pages/mypage/WithdrawalPage'
+import { WithdrawalConfirmPage } from '../pages/mypage/WithdrawalConfirmPage'
+import { WithdrawalCompletePage } from '../pages/mypage/WithdrawalCompletePage'
+import { PasswordResetCompletePage } from '../pages/mypage/PasswordResetCompletePage'
 
 function ChallengePage() {
   return <h1>도전하기 화면</h1>
 }
 
-function MyPage() {
-  return <h1>마이페이지 화면</h1>
-}
-
 export default function AppRoutes() {
+  const [nickname, setNickname] = useState(previewNickname)
+  const [profilePhoto, setProfilePhoto] = useState<File | null>(null)
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!profilePhoto) {
+      setProfilePhotoUrl(null)
+      return
+    }
+
+    const url = URL.createObjectURL(profilePhoto)
+    setProfilePhotoUrl(url)
+
+    return () => URL.revokeObjectURL(url)
+  }, [profilePhoto])
+
   return (
     <Routes>
       {/* 
@@ -34,9 +57,99 @@ export default function AppRoutes() {
         - background='white' => 배경색
       */}
       {/* 기본 헤더 + 하단 내비게이션 */}
-      <Route element={<MainLayout showBottomNav />}>
+      <Route
+        element={
+          <MainLayout showBottomNav profilePhotoUrl={profilePhotoUrl} />
+        }
+      >
         <Route path="/" element={<HomePage />} />
-        <Route path="/mypage" element={<MyPage />} />
+      </Route>
+
+      {/* 마이페이지 헤더 + 하단 내비게이션 */}
+      <Route element={<MainLayout showBottomNav headerType="back" title="마이페이지" />}>
+        <Route
+          path="/mypage"
+          element={<MyPage nickname={nickname} profilePhotoUrl={profilePhotoUrl} />}
+        />
+      </Route>
+
+      <Route element={<MainLayout headerType="back" title="계정 및 보안" />}>
+        <Route path="/mypage/account-security" element={<AccountSecurityPage />} />
+      </Route>
+
+      <Route
+        element={
+          <MainLayout
+            headerType="back"
+            title="회원 탈퇴"
+            background="white"
+          />
+        }
+      >
+        <Route path="/mypage/withdrawal" element={<WithdrawalPage />} />
+        <Route
+          path="/mypage/withdrawal/confirm"
+          element={<WithdrawalConfirmPage />}
+        />
+        <Route
+          path="/mypage/withdrawal/complete"
+          element={<WithdrawalCompletePage />}
+        />
+      </Route>
+
+      <Route
+        element={
+          <MainLayout
+            headerType="back"
+            title="비밀번호 재설정"
+            background="white"
+          />
+        }
+      >
+        <Route path="/mypage/password-reset" element={<PasswordResetPage />} />
+      </Route>
+
+      <Route
+        element={
+          <MainLayout
+            headerType="back"
+            title="새 비밀번호 설정"
+            background="white"
+          />
+        }
+      >
+        <Route path="/mypage/password-reset/new" element={<NewPasswordPage />} />
+      </Route>
+
+      <Route
+        element={
+          <MainLayout
+            headerType="title"
+            title="변경 완료"
+            background="white"
+          />
+        }
+      >
+        <Route
+          path="/mypage/password-reset/complete"
+          element={<PasswordResetCompletePage />}
+        />
+      </Route>
+
+      <Route element={<MainLayout headerType="back" title="프로필 수정" />}>
+        <Route
+          path="/mypage/profile"
+          element={
+            <ProfileEditPage
+              nickname={nickname}
+              profilePhoto={profilePhoto}
+              onSave={(nextNickname, nextPhoto) => {
+                setNickname(nextNickname)
+                setProfilePhoto(nextPhoto)
+              }}
+            />
+          }
+        />
       </Route>
 
       {/* 뒤로가기 헤더 */}

@@ -11,6 +11,7 @@ interface MainLayoutProps {
   title?: string
   showBottomNav?: boolean
   background?: 'white' | 'transparent'
+  profilePhotoUrl?: string | null
 }
 
 export function MainLayout({
@@ -18,6 +19,7 @@ export function MainLayout({
   title = '',
   showBottomNav = false,
   background = 'transparent',
+  profilePhotoUrl,
 }: MainLayoutProps) {
   // 동적 헤더 제목
   const [pageTitle, setPageTitle] = useState('')
@@ -31,7 +33,7 @@ export function MainLayout({
       case 'login':
         return <LoginHeader />
       default:
-        return <MainHeader />
+        return <MainHeader profilePhotoUrl={profilePhotoUrl} />
     }
   }
 
