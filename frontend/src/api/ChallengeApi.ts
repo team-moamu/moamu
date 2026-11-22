@@ -149,7 +149,7 @@ export class CustomChallengeCreateError extends Error {
 export async function createCustomChallenge(request: {
   analysisId: string
   startDate: string
-  durationDays: number
+  endDate: string
 }): Promise<{ challengeId: number }> {
   const response = await authenticatedFetch('/api/challenges/custom', {
     method: 'POST',

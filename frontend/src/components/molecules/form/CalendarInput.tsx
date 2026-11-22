@@ -4,6 +4,8 @@ interface CalendarInputProps {
   value: string
   onChange: (date: string) => void
   min?: string
+  max?: string
+  ariaLabel?: string
   id?: string
   name?: string
 }
@@ -12,6 +14,8 @@ export function CalendarInput({
   value,
   onChange,
   min,
+  max,
+  ariaLabel = '날짜 선택',
   id,
   name,
 }: CalendarInputProps) {
@@ -23,10 +27,11 @@ export function CalendarInput({
       <input
         id={inputId}
         name={name ?? inputId}
-        aria-label="날짜 선택"
+        aria-label={ariaLabel}
         type="date"
         value={value}
         min={min}
+        max={max}
         onChange={(e) => onChange(e.target.value)}
         className="
           w-full rounded-md border border-[#D8C8B5]

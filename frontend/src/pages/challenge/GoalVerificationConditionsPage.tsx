@@ -34,7 +34,7 @@ export function GoalVerificationConditionsPage() {
       replace: true,
       state: {
         startDate: location.state?.startDate,
-        durationDays: location.state?.durationDays,
+        endDate: location.state?.endDate,
         customGoal: isGoalVerification(verification) ? verification.goal : '',
         editCustomGoal: true,
       },
@@ -51,7 +51,7 @@ export function GoalVerificationConditionsPage() {
             replace: true,
             state: {
               startDate: location.state?.startDate,
-              durationDays: location.state?.durationDays,
+              endDate: location.state?.endDate,
               customGoal: verification.goal,
               acceptedVerification: isVerifiableGoalAnalysis(verification) ? verification : null,
             },
