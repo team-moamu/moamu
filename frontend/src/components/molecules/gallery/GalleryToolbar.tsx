@@ -47,8 +47,10 @@ export function GalleryToolbar({ sort, onSortChange, selectionMode, onToggleSele
         }}
         hideButtonProps={{ disabled: hideDisabled, onClick: onHide }}
         moreButtonProps={{
+          icon: sort.direction === 'asc' ? 'sortAscending' : 'sortDescending',
+          iconSize: 18,
           onClick: () => setSortOpen((open) => !open),
-          'aria-label': '전시된 작품 정렬 선택',
+          'aria-label': `전시된 작품 정렬 선택, 현재 ${sort.direction === 'asc' ? '오름차순' : '내림차순'}`,
           'aria-expanded': sortOpen,
           'aria-controls': menuId,
         }}

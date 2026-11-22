@@ -1,4 +1,4 @@
-export type CollectionSort = 'latest' | 'successRate' | 'name'
+export type CollectionSort = 'endDate' | 'successRate' | 'name'
 
 export interface CollectionResponse {
   challengeId: number
@@ -23,4 +23,11 @@ export interface CollectionResponse {
     earnedPieceCount: number
     totalPieceCount: number
   }
+}
+
+export type CollectionSortDirection = 'asc' | 'desc'
+
+export interface CollectionSortSelection {
+  sort: CollectionSort
+  direction: CollectionSortDirection
 }

@@ -14,14 +14,14 @@ export function CollectionSearchBar({
   className = '',
 }: CollectionSearchBarProps) {
   return (
-    <div className={`grid w-full grid-cols-[596fr_90fr] items-stretch gap-[2.28%] ${className}`}>
+    <div className={`grid w-full grid-cols-[minmax(0,1fr)_32px] items-center gap-[2.28%] ${className}`}>
       <SearchInput
         {...inputProps}
-        style={{ height: 'auto', aspectRatio: '596 / 64', ...inputProps?.style }}
+        style={{ height: '32px', ...inputProps?.style }}
       />
       <MoreButton
         {...moreButtonProps}
-        style={{ width: '100%', height: '100%', ...moreButtonProps?.style }}
+        style={{ width: '32px', height: '32px', ...moreButtonProps?.style }}
       />
     </div>
   )
