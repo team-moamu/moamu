@@ -3,7 +3,7 @@ import { CollectionSortMenu } from '../../components/molecules/select/Collection
 import collectionMu from '../../assets/images/collection_mu.png'
 import { getCollections, exhibitCollection } from '../../api/CollectionApi'
 import { ErrorDialog } from '../../components/molecules/modal/ErrorDialog'
-import type { CollectionResponse, CollectionSort } from '../../types/Collection'
+import type { CollectionResponse, CollectionSortSelection } from '../../types/Collection'
 import { CollectionArtworkCard } from '../../components/molecules/card/CollectionArtworkCard'
 import { SectionTitle } from '../../components/atoms/typography/SectionTitle'
 import { CollectionSearchBar } from '../../components/molecules/form/CollectionSearchBar'
@@ -13,7 +13,7 @@ import { CollectionEmptyState } from '../../components/molecules/feedback/Collec
 export function CollectionPage() {
   const [filter, setFilter] = useState<CollectionFilterValue>('all')
   const [keyword, setKeyword] = useState('')
-  const [sort, setSort] = useState<CollectionSort>('latest')
+  const [sort, setSort] = useState<CollectionSortSelection>({ sort: 'endDate', direction: 'desc' })
   const [sortOpen, setSortOpen] = useState(false)
   const [collections, setCollections] = useState<CollectionResponse[]>([])
   const [loading, setLoading] = useState(true)
@@ -67,7 +67,7 @@ export function CollectionPage() {
     setSortOpen(false)
     setFilter('all')
     setKeyword('')
-    setSort('latest')
+    setSort({ sort: 'endDate', direction: 'desc' })
     setRetry((value) => value + 1)
   }
 
@@ -94,7 +94,8 @@ export function CollectionPage() {
         const data = await getCollections({
           exhibited: filter === 'all' ? undefined : filter === 'exhibited',
           keyword,
-          sort,
+          sort: sort.sort,
+          direction: sort.direction,
         }, controller.signal)
         // 검색 결과가 없는 것과 보관함 전체가 비어 있는 것을 구분한다.
         const hasFilter = filter !== 'all' || keyword.trim() !== ''
@@ -151,8 +152,10 @@ export function CollectionPage() {
             onChange: (event) => setKeyword(event.target.value),
           }}
           moreButtonProps={{
+            icon: sort.direction === 'asc' ? 'sortAscending' : 'sortDescending',
+            iconSize: 18,
             onClick: () => setSortOpen((open) => !open),
-            'aria-label': '작품 정렬 선택',
+            'aria-label': `작품 정렬 선택, 현재 ${sort.direction === 'asc' ? '오름차순' : '내림차순'}`,
             'aria-expanded': sortOpen,
             'aria-controls': 'collection-sort',
           }}
@@ -160,7 +163,6 @@ export function CollectionPage() {
         {sortOpen && (
           <CollectionSortMenu value={sort} onChange={(value) => {
             setSort(value)
-            closeSort()
           }} />
         )}
         </div>

@@ -1,9 +1,10 @@
 import { authenticatedFetch } from './AuthenticatedFetch'
 import type { ApiResponse } from '../types/ApiResponse'
-import type { CollectionResponse, CollectionSort } from '../types/Collection'
+import type { CollectionResponse, CollectionSort, CollectionSortDirection } from '../types/Collection'
 
 interface CollectionQuery {
   exhibited?: boolean
+  direction?: CollectionSortDirection
   sort?: CollectionSort
   keyword?: string
 }
@@ -21,10 +22,10 @@ export async function exhibitCollection(challengeId: number): Promise<{ challeng
 }
 
 export async function getCollections(
-  { exhibited, sort = 'latest', keyword }: CollectionQuery = {},
+  { exhibited, sort = 'endDate', direction = 'desc', keyword }: CollectionQuery = {},
   signal?: AbortSignal,
 ): Promise<CollectionResponse[]> {
-  const params = new URLSearchParams({ sort })
+  const params = new URLSearchParams({ sort, direction })
   if (exhibited !== undefined) params.set('exhibited', String(exhibited))
   if (keyword?.trim()) params.set('keyword', keyword.trim())
 
