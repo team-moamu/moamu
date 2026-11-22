@@ -20,6 +20,8 @@ public enum ChallengeErrorCode implements ErrorCode {
             "같은 분석 결과로 도전을 생성하고 있습니다."),
     ANALYSIS_ALREADY_CONFIRMED(HttpStatus.CONFLICT, "ANALYSIS_ALREADY_CONFIRMED",
             "같은 분석 결과가 다른 시작일 또는 기간으로 이미 확정되었습니다."),
+    ARTWORK_TASK_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "ARTWORK_TASK_UNAVAILABLE",
+            "일시적으로 도전 접수 상태를 확인할 수 없습니다."),
     ANALYSIS_STALE(HttpStatus.CONFLICT, "ANALYSIS_STALE", "분석에 사용한 기존 카테고리 경로가 비활성화되었습니다. 목표를 다시 분석해 주세요.");
 
     private final HttpStatus httpStatus;

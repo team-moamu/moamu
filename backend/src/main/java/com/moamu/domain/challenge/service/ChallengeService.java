@@ -1,6 +1,7 @@
 package com.moamu.domain.challenge.service;
 
 import com.moamu.domain.schedule.repository.ScheduleRepository;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
@@ -14,8 +15,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.TransientDataAccessException;
+import org.springframework.data.redis.RedisConnectionFailureException;
+import org.springframework.data.redis.RedisSystemException;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.moamu.domain.artwork.repository.ArtworkRepository;
@@ -418,14 +422,27 @@ public class ChallengeService {
             throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
         }
 
-        // 이미 확정한 요청인지 확인
-        Optional<CustomChallengeCreateResponse> confirmed = findConfirmation(analysisId, userId, request, false);
+        try {
+            return receiveCustomChallenge(analysisId, userId, request, durationDays);
+        } catch (RedisConnectionFailureException | RedisSystemException exception) {
+            throw new BusinessException(ChallengeErrorCode.ARTWORK_TASK_UNAVAILABLE, exception);
+        }
+    }
+
+    private CustomChallengeCreateResponse receiveCustomChallenge(String analysisId, Long userId,
+            CustomChallengeCreateRequest request, int durationDays) {
+        Instant acceptedAt = Instant.now();
+        Optional<CustomChallengeCreateResponse> confirmed = findReceivedChallenge(analysisId, userId, request);
         if (confirmed.isPresent()) {
             return confirmed.get();
         }
 
-        GoalAnalysisSnapshot snapshot = goalAnalysisStore.findByAnalysisId(analysisId)
-                .orElseThrow(() -> new BusinessException(ChallengeErrorCode.ANALYSIS_NOT_FOUND));
+        var liveAnalysis = goalAnalysisStore.findByAnalysisId(analysisId);
+        if (liveAnalysis.isEmpty()) {
+            return findReceivedChallenge(analysisId, userId, request)
+                    .orElseThrow(() -> new BusinessException(ChallengeErrorCode.ANALYSIS_NOT_FOUND));
+        }
+        GoalAnalysisSnapshot snapshot = liveAnalysis.get();
         if (!userId.equals(snapshot.userId())) {
             throw new BusinessException(CommonErrorCode.FORBIDDEN);
         }
@@ -434,44 +451,76 @@ public class ChallengeService {
             throw new BusinessException(ChallengeErrorCode.ANALYSIS_STALE);
         }
 
-        Optional<String> lockToken = goalAnalysisStore.acquireConfirmation(analysisId);
+        Optional<String> lockToken = goalAnalysisStore.acquireConfirmation(
+                analysisId, snapshot, request.startDate(), request.endDate(), acceptedAt);
         if (lockToken.isEmpty()) {
-            // 그사이 완료된 요청인지 다시 확인
-            return findConfirmation(analysisId, userId, request, false)
-                    .orElseThrow(() -> new BusinessException(ChallengeErrorCode.ANALYSIS_CONFIRMATION_IN_PROGRESS));
+            // 다른 요청이 먼저 접수됐는지 다시 확인함.
+            var existing = findReceivedChallenge(analysisId, userId, request);
+            if (existing.isPresent()) {
+                return existing.get();
+            }
+            if (goalAnalysisStore.findByAnalysisId(analysisId).isEmpty()) {
+                throw new BusinessException(ChallengeErrorCode.ANALYSIS_NOT_FOUND);
+            }
+            throw new BusinessException(ChallengeErrorCode.ARTWORK_TASK_UNAVAILABLE);
         }
 
-        try {
-            TransactionTemplate transaction = new TransactionTemplate(transactionManager);
-            transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
-            // 같은 분류의 동시 생성 방지
-            transaction.setIsolationLevel(TransactionDefinition.ISOLATION_SERIALIZABLE);
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        // 여러 요청이 동시에 들어와도 같은 분류나 템플릿이 중복 생성되지 않도록 함.
+        transaction.setIsolationLevel(TransactionDefinition.ISOLATION_SERIALIZABLE);
 
-            // 분류 등록이 충돌하면 최대 3회 재시도
-            for (int attempt = 0; attempt < 4; attempt++) {
-                try {
-                    return transaction.execute(status -> confirmCustomChallenge(
-                            userId, analysisId, lockToken.get(), request, snapshot, durationDays));
-                } catch (DataIntegrityViolationException | TransientDataAccessException exception) {
-                    Optional<CustomChallengeCreateResponse> completed = findConfirmation(analysisId, userId, request,
-                            false);
-                    if (completed.isPresent()) {
-                        return completed.get();
-                    }
-                    if (attempt == 3) {
-                        throw exception;
-                    }
-                }
-            }
-            throw new IllegalStateException("자유목표 도전을 확정하지 못했습니다.");
-        } finally {
+        for (int attempt = 0; attempt < 4; attempt++) {
             try {
-                goalAnalysisStore.releaseConfirmation(analysisId, lockToken.get());
-            } catch (DataAccessException exception) {
-                // 해제에 실패한 잠금은 만료될 때까지 유지
-                log.warn("Failed to release goal confirmation lock for {}", analysisId, exception);
+                var response = transaction.execute(status -> {
+                    try {
+                        return confirmCustomChallenge(userId, analysisId, lockToken.get(), request, snapshot,
+                                durationDays);
+                    } catch (DataIntegrityViolationException | TransientDataAccessException exception) {
+                        throw new CustomChallengeWriteConflict(exception);
+                    }
+                });
+                try {
+                    goalAnalysisStore.finishConfirmation(analysisId, lockToken.get());
+                } catch (DataAccessException exception) {
+                    log.warn("Failed to set retention for committed custom challenge {}", analysisId, exception);
+                }
+                return response;
+            } catch (CustomChallengeWriteConflict exception) {
+                if (attempt == 3) {
+                    throw new BusinessException(ChallengeErrorCode.ARTWORK_TASK_UNAVAILABLE, exception.getCause());
+                }
+            } catch (TransactionException | DataAccessException exception) {
+                throw new BusinessException(ChallengeErrorCode.ARTWORK_TASK_UNAVAILABLE, exception);
             }
         }
+        throw new IllegalStateException("자유목표 도전을 확정하지 못했습니다.");
+    }
+
+    // 저장 중 충돌이 나고 DB 변경이 취소된 경우에만 다시 시도.
+    private static final class CustomChallengeWriteConflict extends RuntimeException {
+        private CustomChallengeWriteConflict(DataAccessException cause) {
+            super(cause);
+        }
+    }
+
+    private Optional<CustomChallengeCreateResponse> findReceivedChallenge(
+            String analysisId, Long userId, CustomChallengeCreateRequest request) {
+        var receipt = goalAnalysisStore.findCustomReceipt(analysisId);
+        receipt.ifPresent(existing -> {
+            if (!userId.equals(existing.userId())) {
+                throw new BusinessException(CommonErrorCode.FORBIDDEN);
+            }
+            if (!request.startDate().equals(existing.startDate()) || !request.endDate().equals(existing.endDate())) {
+                throw new BusinessException(ChallengeErrorCode.ANALYSIS_ALREADY_CONFIRMED);
+            }
+        });
+        var confirmed = findConfirmation(analysisId, userId, request, false);
+        // 기존 도전이 저장됐는지 알 수 없으면 새 도전을 만들지 않음.
+        if (receipt.isPresent() && confirmed.isEmpty()) {
+            throw new BusinessException(ChallengeErrorCode.ARTWORK_TASK_UNAVAILABLE);
+        }
+        return confirmed;
     }
 
     // Redis에 기록된 도전이 실제로 저장됐는지 확인
@@ -570,7 +619,7 @@ public class ChallengeService {
         challengeConditionRepository.saveAll(conditions);
         createSchedules(challenge.getChallengeId(), request.startDate(), durationDays);
 
-        // Redis 저장 실패 시 도전 생성도 롤백
+        // 응답이 끊겨도 다음 요청에서 도전을 찾을 수 있게 ID를 먼저 기록.
         challengeRepository.flush();
         goalAnalysisStore.saveConfirmation(
                 analysisId, lockToken, new GoalConfirmationSnapshot(userId, challenge.getChallengeId()));

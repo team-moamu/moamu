@@ -6,9 +6,10 @@ import com.moamu.domain.goal.dto.GoalConfirmationSnapshot;
 import com.moamu.domain.goal.dto.GoalEvaluationRequest.CategoryPath;
 import com.moamu.domain.goal.repository.GoalAnalysisStore;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
-import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,7 +19,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.script.RedisScript;
-import com.moamu.global.exception.BusinessException;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -76,49 +76,47 @@ class GoalAnalysisStoreTests {
     }
 
     @Test
-    void acquiresConfirmationWithUniqueTokenAndExpiry() {
-        when(values.setIfAbsent(startsWith("goal:confirmation:"), anyString(), eq(Duration.ofMinutes(30))))
-            .thenReturn(true);
+    void claimsReceiptUsingTheExactLiveSnapshotAndOriginalSchedule() throws Exception {
+        var json = mapper.writeValueAsString(snapshot);
+        var start = LocalDate.parse("2026-11-23");
+        var end = start.plusDays(6);
+        var acceptedAt = Instant.parse("2026-11-23T04:00:00Z");
+        when(values.get("goal:analysis:analysis-id")).thenReturn(json);
+        when(redis.execute(org.mockito.ArgumentMatchers.<RedisScript<Long>>any(), anyList(),
+                any(), any(), any(), any(), any(), any(), any())).thenReturn(1L);
 
-        Optional<String> token = store.acquireConfirmation("analysis-id");
+        String token = store.acquireConfirmation("analysis-id", snapshot, start, end, acceptedAt).orElseThrow();
 
-        assertThat(token).isPresent();
-        assertThat(UUID.fromString(token.orElseThrow()).toString()).isEqualTo(token.orElseThrow());
-        verify(values).setIfAbsent("goal:confirmation:analysis-id", token.orElseThrow(), Duration.ofMinutes(30));
+        verify(redis).execute(org.mockito.ArgumentMatchers.<RedisScript<Long>>any(),
+                eq(List.of("goal:custom-receipt:analysis-id", "goal:analysis:analysis-id",
+                        "goal:confirmation:analysis-id")),
+                eq(json), eq(token), eq("7"), eq(start.toString()), eq(end.toString()),
+                eq(acceptedAt.toString()), eq("2026-11-23T04:02:00Z"));
     }
 
     @Test
-    void rejectsAlreadyLockedAnalysis() {
-        when(values.setIfAbsent(anyString(), anyString(), any(Duration.class))).thenReturn(false);
-
-        assertThat(store.acquireConfirmation("analysis-id")).isEmpty();
+    void doesNotClaimWhenAnalysisExpires() {
+        var start = LocalDate.parse("2026-11-23");
+        assertThat(store.acquireConfirmation("analysis-id", snapshot, start, start.plusDays(6), Instant.now()))
+                .isEmpty();
+        verify(redis, never()).execute(any(RedisScript.class), anyList(), any(Object[].class));
     }
 
     @Test
-    void storesConfirmationForSevenDaysWhileCheckingLockOwnership() throws Exception {
-        GoalConfirmationSnapshot confirmation = new GoalConfirmationSnapshot(7L, 100L);
-        when(redis.execute(org.mockito.ArgumentMatchers.<RedisScript<Long>>any(), anyList(), any(), any(), any()))
-            .thenReturn(1L);
+    void onlySetsRetentionAfterConfirmationFinishes() throws Exception {
+        var confirmation = new GoalConfirmationSnapshot(7L, 100L);
+        when(redis.execute(org.mockito.ArgumentMatchers.<RedisScript<Long>>any(), anyList(), any(), any()))
+                .thenReturn(1L);
+        var keys = List.of("goal:custom-receipt:analysis-id", "goal:confirmation-result:analysis-id");
 
         store.saveConfirmation("analysis-id", "lock-token", confirmation);
+        store.finishConfirmation("analysis-id", "lock-token");
 
-        verify(redis).execute(
-            org.mockito.ArgumentMatchers.<RedisScript<Long>>any(),
-            eq(List.of("goal:confirmation:analysis-id", "goal:confirmation-result:analysis-id")),
-            eq("lock-token"),
-            eq(mapper.writeValueAsString(confirmation)),
-            eq(Long.toString(Duration.ofDays(7).toMillis()))
-        );
-    }
-
-    @Test
-    void expiredLockCannotWriteConfirmation() {
-        when(redis.execute(org.mockito.ArgumentMatchers.<RedisScript<Long>>any(), anyList(), any(), any(), any()))
-            .thenReturn(0L);
-
-        assertThatThrownBy(() -> store.saveConfirmation("analysis-id", "old-token", new GoalConfirmationSnapshot(7L, 100L)))
-            .isInstanceOfSatisfying(BusinessException.class,
-                exception -> assertThat(exception.getErrorCode().getCode()).isEqualTo("ANALYSIS_CONFIRMATION_IN_PROGRESS"));
+        var order = inOrder(redis);
+        order.verify(redis).execute(org.mockito.ArgumentMatchers.<RedisScript<Long>>any(),
+                eq(keys), eq("lock-token"), eq(mapper.writeValueAsString(confirmation)));
+        order.verify(redis).execute(org.mockito.ArgumentMatchers.<RedisScript<Long>>any(),
+                eq(keys), eq("lock-token"), eq(Long.toString(Duration.ofDays(7).toMillis())));
     }
 
     @Test

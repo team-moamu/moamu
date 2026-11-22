@@ -36,6 +36,7 @@ import com.moamu.domain.goal.entity.GoalTemplate;
 import com.moamu.domain.goal.entity.GoalTemplateCondition;
 import com.moamu.domain.goal.enums.Status;
 import com.moamu.domain.goal.repository.GoalAnalysisStore;
+import com.moamu.domain.goal.repository.GoalAnalysisStore.CustomReceipt;
 import com.moamu.domain.goal.repository.GoalCategoryRepository;
 import com.moamu.domain.goal.repository.GoalTemplateArtworkRepository;
 import com.moamu.domain.goal.repository.GoalTemplateConditionRepository;
@@ -122,7 +123,7 @@ class CustomChallengeServiceTests {
         }
         verify(transactionManager).commit(any());
         verify(goalAnalysisStore).saveConfirmation(ANALYSIS_ID, "lock-token", new GoalConfirmationSnapshot(1L, 100L));
-        verify(goalAnalysisStore).releaseConfirmation(ANALYSIS_ID, "lock-token");
+        verify(goalAnalysisStore).finishConfirmation(ANALYSIS_ID, "lock-token");
     }
 
     @Test
@@ -155,7 +156,7 @@ class CustomChallengeServiceTests {
         when(goalAnalysisStore.findConfirmation(ANALYSIS_ID)).thenReturn(Optional.empty());
         when(goalAnalysisStore.findByAnalysisId(ANALYSIS_ID)).thenReturn(Optional.of(SNAPSHOT));
         assertCode(() -> service.createCustomChallenge(2L, request(7)), "FORBIDDEN");
-        verify(goalAnalysisStore, never()).acquireConfirmation(anyString());
+        verify(goalAnalysisStore, never()).acquireConfirmation(anyString(), any(), any(), any(), any());
     }
 
     @Test
@@ -168,7 +169,7 @@ class CustomChallengeServiceTests {
     void parallelConfirmationReturns409() {
         when(goalAnalysisStore.findByAnalysisId(ANALYSIS_ID)).thenReturn(Optional.of(SNAPSHOT));
 
-        assertCode(() -> service.createCustomChallenge(1L, request(7)), "ANALYSIS_CONFIRMATION_IN_PROGRESS");
+        assertCode(() -> service.createCustomChallenge(1L, request(7)), "ARTWORK_TASK_UNAVAILABLE");
         verifyNoInteractions(transactionManager);
     }
 
@@ -181,7 +182,7 @@ class CustomChallengeServiceTests {
         assertCode(() -> service.createCustomChallenge(1L, request(7)), "ANALYSIS_STALE");
 
         verify(transactionManager).rollback(any());
-        verify(goalAnalysisStore).releaseConfirmation(ANALYSIS_ID, "lock-token");
+        verify(goalAnalysisStore, never()).finishConfirmation(ANALYSIS_ID, "lock-token");
         verifyNoInteractions(goalTemplateRepository, artworkRepository);
     }
 
@@ -194,7 +195,7 @@ class CustomChallengeServiceTests {
         assertThatThrownBy(() -> service.createCustomChallenge(1L, request(7)))
             .isInstanceOfSatisfying(BusinessException.class,
                 exception -> assertThat(exception.getErrorCode().getCode()).isEqualTo("ANALYSIS_STALE"));
-        verify(goalAnalysisStore, never()).acquireConfirmation(anyString());
+        verify(goalAnalysisStore, never()).acquireConfirmation(anyString(), any(), any(), any(), any());
         verifyNoInteractions(challengeRepository, goalTemplateRepository);
     }
 
@@ -233,14 +234,14 @@ class CustomChallengeServiceTests {
     }
 
     @Test
-    void persistenceFailureRollsBackAndAlwaysReleasesLock() {
+    void persistenceFailureRollsBackAndKeepsReceipt() {
         stubConfirmation(SNAPSHOT);
         when(goalCategoryRepository.findForConfirmation(null, "건강")).thenThrow(new IllegalStateException("DB unavailable"));
 
         assertThatThrownBy(() -> service.createCustomChallenge(1L, request(7))).isInstanceOf(IllegalStateException.class);
 
         verify(transactionManager).rollback(any());
-        verify(goalAnalysisStore).releaseConfirmation(ANALYSIS_ID, "lock-token");
+        verify(goalAnalysisStore, never()).finishConfirmation(ANALYSIS_ID, "lock-token");
     }
 
     @Test
@@ -254,7 +255,7 @@ class CustomChallengeServiceTests {
 
         verify(transactionManager).rollback(any());
         verify(transactionManager, never()).commit(any());
-        verify(goalAnalysisStore).releaseConfirmation(ANALYSIS_ID, "lock-token");
+        verify(goalAnalysisStore, never()).finishConfirmation(ANALYSIS_ID, "lock-token");
     }
 
     @Test
@@ -311,13 +312,60 @@ class CustomChallengeServiceTests {
 
     private void stubConfirmation(GoalAnalysisSnapshot snapshot) {
         when(goalAnalysisStore.findByAnalysisId(ANALYSIS_ID)).thenReturn(Optional.of(snapshot));
-        when(goalAnalysisStore.acquireConfirmation(ANALYSIS_ID)).thenReturn(Optional.of("lock-token"));
+        when(goalAnalysisStore.acquireConfirmation(eq(ANALYSIS_ID), eq(snapshot), eq(START_DATE), any(), any())).thenReturn(Optional.of("lock-token"));
         when(transactionManager.getTransaction(any())).thenAnswer(invocation -> {
             TransactionDefinition definition = invocation.getArgument(0);
             assertThat(definition.getPropagationBehavior()).isEqualTo(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
             assertThat(definition.getIsolationLevel()).isEqualTo(TransactionDefinition.ISOLATION_SERIALIZABLE);
             return new SimpleTransactionStatus();
         });
+    }
+
+    @Test
+    void sameReceiptReturnsConfirmedChallengeWithoutReadingAnalysis() {
+        when(goalAnalysisStore.findCustomReceipt(ANALYSIS_ID))
+            .thenReturn(Optional.of(new CustomReceipt(1L, START_DATE, START_DATE.plusDays(6))));
+        when(goalAnalysisStore.findConfirmation(ANALYSIS_ID))
+            .thenReturn(Optional.of(new GoalConfirmationSnapshot(1L, 100L)));
+        when(challengeRepository.findById(100L)).thenReturn(Optional.of(completed(1L)));
+
+        assertThat(service.createCustomChallenge(1L, request(7)).challengeId()).isEqualTo(100L);
+        verify(goalAnalysisStore, never()).findByAnalysisId(ANALYSIS_ID);
+        verifyNoInteractions(transactionManager);
+    }
+
+    @Test
+    void receiptGuardsItsOwnerAndScheduleBeforeConfirmation() {
+        when(goalAnalysisStore.findCustomReceipt(ANALYSIS_ID))
+            .thenReturn(Optional.of(new CustomReceipt(1L, START_DATE, START_DATE.plusDays(6))));
+
+        assertCode(() -> service.createCustomChallenge(2L, request(7)), "FORBIDDEN");
+        assertCode(() -> service.createCustomChallenge(1L, request(8)), "ANALYSIS_ALREADY_CONFIRMED");
+        assertCode(() -> service.createCustomChallenge(1L, request(7)), "ARTWORK_TASK_UNAVAILABLE");
+        verify(goalAnalysisStore, never()).findByAnalysisId(ANALYSIS_ID);
+        verifyNoInteractions(transactionManager);
+    }
+
+    @Test
+    void simultaneousSubmissionUsesTheWinningReceipt() {
+        when(goalAnalysisStore.findCustomReceipt(ANALYSIS_ID)).thenReturn(Optional.empty(),
+                Optional.of(new CustomReceipt(1L, START_DATE, START_DATE.plusDays(6))));
+        when(goalAnalysisStore.findByAnalysisId(ANALYSIS_ID)).thenReturn(Optional.of(SNAPSHOT));
+
+        assertCode(() -> service.createCustomChallenge(1L, request(8)), "ANALYSIS_ALREADY_CONFIRMED");
+        verifyNoInteractions(transactionManager);
+    }
+
+    @Test
+    void doesNotRetryWhenCommitOutcomeIsUnknown() {
+        stubConfirmation(SNAPSHOT);
+        stubCreation();
+        var failure = new org.springframework.dao.TransientDataAccessResourceException("Commit outcome unknown");
+        doThrow(failure).when(transactionManager).commit(any());
+
+        assertCode(() -> service.createCustomChallenge(1L, request(7)), "ARTWORK_TASK_UNAVAILABLE");
+        verify(transactionManager).commit(any());
+        verify(goalAnalysisStore, never()).finishConfirmation(ANALYSIS_ID, "lock-token");
     }
 
     private void stubCreation() {
