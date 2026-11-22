@@ -125,7 +125,7 @@ class ChallengeServiceTests {
 
     // 7·14·30일 이외의 기간은 안내 메시지와 함께 거절하고, 작품 조회·저장을 진행하지 않는지 검증합니다.
     @ParameterizedTest
-    @ValueSource(ints = {-1, 0, 1, 6, 8, 13, 15, 29, 31})
+    @ValueSource(ints = {-1, 0, 1, 6, 91})
     void rejectsUnsupportedDurationWithoutSaving(int days) {
         when(goalTemplateRepository.findByGoalTemplateIdAndDelYn(10L, "N")).thenReturn(Optional.of(mock(GoalTemplate.class)));
 
@@ -180,7 +180,7 @@ class ChallengeServiceTests {
 
     // 기간만 바꿔 동일한 템플릿과 시작일로 테스트 요청을 만듭니다.
     private ChallengeCreateRequest request(int days) {
-        return new ChallengeCreateRequest(10L, days, START_DATE);
+        return new ChallengeCreateRequest(10L, START_DATE, START_DATE.plusDays(days - 1));
     }
 
     // DB 조회 대신 반환할 템플릿 정보로, 생성된 도전에 복사되는 값을 검증할 때 사용합니다.

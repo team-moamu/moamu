@@ -3,6 +3,7 @@ package com.moamu.domain.challenge.service;
 import com.moamu.domain.schedule.repository.ScheduleRepository;
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -158,24 +159,14 @@ public class ChallengeService {
     @Transactional
     public void createChallenge(Long userId, ChallengeCreateRequest request) {
 
-        // 사용자 조회 -> 회원 기능 완료되면 적용
-        // User user = userRepository.findById(userId)
-        // .orElseThrow(() ->
-        // new IllegalArgumentException("존재하지 않는 회원입니다.")
-        // );
-
         // 목표 템플릿 조회
         GoalTemplate goalTemplate = goalTemplateRepository
                 .findByGoalTemplateIdAndDelYn(request.goalTemplateId(), "N")
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
 
-        // 도전 기간 검증 (7, 14, 30일)
-        int durationDays = request.durationDays();
-
-        validateDurationDays(durationDays);
-
         LocalDate startDate = request.startDate();
-        LocalDate endDate = startDate.plusDays(durationDays - 1);
+        LocalDate endDate = request.endDate();
+        int durationDays = calculateDurationDays(startDate, endDate);
 
         // 선택한 목표에 연결된 작품 조회
         GoalTemplateArtwork goalTemplateArtwork = goalTemplateArtworkRepository
@@ -372,12 +363,12 @@ public class ChallengeService {
         }
     }
 
-    // 도전 기간 검증 메서드
-    private void validateDurationDays(int durationDays) {
-        if (durationDays != 7 && durationDays != 14 && durationDays != 30) {
-            // if (durationDays < 1) {
+    private int calculateDurationDays(LocalDate startDate, LocalDate endDate) {
+        long durationDays = ChronoUnit.DAYS.between(startDate, endDate) + 1;
+        if (durationDays < 7 || durationDays > 90) {
             throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
         }
+        return (int) durationDays;
     }
 
     // 퍼즐 그리드 계산
@@ -411,11 +402,11 @@ public class ChallengeService {
         if (userId == null || userId <= 0) {
             throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
         }
-        if (request == null || request.analysisId() == null || request.durationDays() == null
-                || request.startDate() == null) {
+        if (request == null || request.analysisId() == null || request.startDate() == null
+                || request.endDate() == null) {
             throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
         }
-        validateDurationDays(request.durationDays());
+        int durationDays = calculateDurationDays(request.startDate(), request.endDate());
 
         String analysisId;
         try {
@@ -460,7 +451,7 @@ public class ChallengeService {
             for (int attempt = 0; attempt < 4; attempt++) {
                 try {
                     return transaction.execute(status -> confirmCustomChallenge(
-                            userId, analysisId, lockToken.get(), request, snapshot));
+                            userId, analysisId, lockToken.get(), request, snapshot, durationDays));
                 } catch (DataIntegrityViolationException | TransientDataAccessException exception) {
                     Optional<CustomChallengeCreateResponse> completed = findConfirmation(analysisId, userId, request,
                             false);
@@ -506,8 +497,8 @@ public class ChallengeService {
         if (!userId.equals(challenge.getUserId())) {
             throw new BusinessException(CommonErrorCode.FORBIDDEN);
         }
-        if (challenge.getDurationDays() != request.durationDays()
-                || !challenge.getStartDate().equals(request.startDate())) {
+        if (!challenge.getStartDate().equals(request.startDate())
+                || !challenge.getEndDate().equals(request.endDate())) {
             throw new BusinessException(ChallengeErrorCode.ANALYSIS_ALREADY_CONFIRMED);
         }
         return new CustomChallengeCreateResponse(challenge.getChallengeId());
@@ -516,7 +507,7 @@ public class ChallengeService {
     // 자유목표 도전 생성
     private CustomChallengeCreateResponse confirmCustomChallenge(
             Long userId, String analysisId, String lockToken, CustomChallengeCreateRequest request,
-            GoalAnalysisSnapshot snapshot) {
+            GoalAnalysisSnapshot snapshot, int durationDays) {
         Optional<CustomChallengeCreateResponse> confirmed = findConfirmation(analysisId, userId, request, true);
         if (confirmed.isPresent()) {
             return confirmed.get();
@@ -553,7 +544,7 @@ public class ChallengeService {
                     .save(GoalTemplateArtwork.create(template.getGoalTemplateId(), artwork.getArtworkId()));
         }
 
-        int[] gridSize = calculateGridSize(request.durationDays());
+        int[] gridSize = calculateGridSize(durationDays);
         Challenge challenge = Challenge.create(
                 userId,
                 minor.getCateId(),
@@ -563,9 +554,9 @@ public class ChallengeService {
                 snapshot.normalizedGoal(),
                 snapshot.goal(),
                 snapshot.photoGuide(),
-                request.durationDays(),
+                durationDays,
                 request.startDate(),
-                request.startDate().plusDays(request.durationDays() - 1),
+                request.endDate(),
                 snapshot.verificationScope(),
                 gridSize[0],
                 gridSize[1]);
@@ -577,7 +568,7 @@ public class ChallengeService {
                     challenge.getChallengeId(), "C" + (index + 1), snapshot.conditions().get(index)));
         }
         challengeConditionRepository.saveAll(conditions);
-        createSchedules(challenge.getChallengeId(), request.startDate(), request.durationDays());
+        createSchedules(challenge.getChallengeId(), request.startDate(), durationDays);
 
         // Redis 저장 실패 시 도전 생성도 롤백
         challengeRepository.flush();

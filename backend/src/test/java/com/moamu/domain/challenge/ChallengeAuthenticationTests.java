@@ -37,7 +37,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class ChallengeAuthenticationTests {
 
     private static final String CUSTOM_REQUEST = """
-        {"analysisId":"cc2e57ae-0f1b-49cf-9b2f-4c22f45f992b","durationDays":7,"startDate":"2026-11-16"}
+        {"analysisId":"cc2e57ae-0f1b-49cf-9b2f-4c22f45f992b","startDate":"2026-11-16","endDate":"2026-11-22"}
         """;
     @Autowired MockMvc mockMvc;
     @MockitoBean ChallengeService challengeService;
@@ -91,7 +91,7 @@ class ChallengeAuthenticationTests {
                 .header("Authorization", "Bearer user-two-token")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"goalTemplateId": 20, "durationDays": 7, "startDate": "2026-11-08"}
+                    {"goalTemplateId": 20, "startDate": "2026-11-08", "endDate": "2026-11-14"}
                     """))
             .andExpect(status().isOk());
 
@@ -116,9 +116,9 @@ class ChallengeAuthenticationTests {
     @ParameterizedTest
     @ValueSource(strings = {
         "{}",
-        "{\"analysisId\":\"bad-id\",\"durationDays\":7,\"startDate\":\"2026-11-16\"}",
+        "{\"analysisId\":\"bad-id\",\"startDate\":\"2026-11-16\",\"endDate\":\"2026-11-22\"}",
         "{\"analysisId\":\"cc2e57ae-0f1b-49cf-9b2f-4c22f45f992b\",\"startDate\":\"2026-11-16\"}",
-        "{\"analysisId\":\"cc2e57ae-0f1b-49cf-9b2f-4c22f45f992b\",\"durationDays\":7,\"startDate\":\"not-a-date\"}"
+        "{\"analysisId\":\"cc2e57ae-0f1b-49cf-9b2f-4c22f45f992b\",\"startDate\":\"not-a-date\",\"endDate\":\"2026-11-22\"}"
     })
     void invalidCustomRequestReturns400(String body) throws Exception {
         authenticateSecondUser();

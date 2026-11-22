@@ -9,8 +9,8 @@ public record ChallengeCreateRequest(
     Long goalTemplateId,
 
     @NotNull 
-    Integer durationDays,
+    LocalDate startDate,
 
-    @NotNull 
-    LocalDate startDate
+    @NotNull
+    LocalDate endDate
 ) {}
