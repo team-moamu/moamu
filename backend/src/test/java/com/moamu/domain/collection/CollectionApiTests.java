@@ -91,7 +91,7 @@ class CollectionApiTests {
     @Test
     void returnsCollectionWithoutUserIdParameter() throws Exception {
         authenticate();
-        doReturn(List.of(challenge(10, 7, 'Y'))).when(collections).findOwned(1L, null, null, "latest");
+        doReturn(List.of(challenge(10, 7, 'Y'))).when(collections).findOwned(1L, null, null, "endDate", "desc");
         when(verifications.findRevealed(10, Status.SUCCESS)).thenReturn(List.of(0, 2, 6));
         artwork(60L);
         Media image = mock(Media.class);
@@ -127,7 +127,7 @@ class CollectionApiTests {
     void filtersByExhibition(boolean exhibited, char storedStatus) throws Exception {
         authenticate();
         doReturn(List.of(challenge(10, 7, storedStatus)))
-            .when(collections).findOwned(1L, storedStatus, null, "latest");
+            .when(collections).findOwned(1L, storedStatus, null, "endDate", "desc");
         when(verifications.findRevealed(10, Status.SUCCESS)).thenReturn(List.of());
         artwork(null);
 
@@ -138,41 +138,65 @@ class CollectionApiTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.length()").value(1))
             .andExpect(jsonPath("$.data[0].isExhibited").value(exhibited));
-        verify(collections).findOwned(1L, storedStatus, null, "latest");
+        verify(collections).findOwned(1L, storedStatus, null, "endDate", "desc");
         verifyNoMoreInteractions(collections);
     }
 
     @ParameterizedTest
-    @CsvSource({"name,true,Y", "name,false,N", "latest,true,Y", "latest,false,N", "successRate,true,Y", "successRate,false,N"})
+    @CsvSource({"name,true,Y", "name,false,N", "endDate,true,Y", "endDate,false,N", "successRate,true,Y", "successRate,false,N"})
     void combinesSortAndExhibition(String sort, boolean exhibited, char storedStatus) throws Exception {
         authenticate();
-        when(collections.findOwned(1L, storedStatus, null, sort)).thenReturn(List.of());
+        when(collections.findOwned(1L, storedStatus, null, sort, "desc")).thenReturn(List.of());
 
         mvc.perform(get("/api/collections")
                 .param("sort", sort)
                 .param("exhibited", Boolean.toString(exhibited))
                 .header("Authorization", "Bearer owner-token"))
             .andExpect(status().isOk());
-        verify(collections).findOwned(1L, storedStatus, null, sort);
+        verify(collections).findOwned(1L, storedStatus, null, sort, "desc");
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"name", "latest", "successRate"})
+    @ValueSource(strings = {"name", "endDate", "successRate"})
     void sortsAllCollections(String sort) throws Exception {
         authenticate();
-        when(collections.findOwned(1L, null, null, sort)).thenReturn(List.of());
+        when(collections.findOwned(1L, null, null, sort, "desc")).thenReturn(List.of());
 
         mvc.perform(get("/api/collections")
                 .param("sort", sort)
                 .header("Authorization", "Bearer owner-token"))
             .andExpect(status().isOk());
-        verify(collections).findOwned(1L, null, null, sort);
+        verify(collections).findOwned(1L, null, null, sort, "desc");
+    }
+
+    @ParameterizedTest
+    @CsvSource({"endDate,asc", "endDate,desc", "name,asc", "name,desc", "successRate,asc", "successRate,desc"})
+    void combinesDirectionKeywordAndExhibition(String sort, String direction) throws Exception {
+        authenticate();
+        when(collections.findOwned(1L, 'Y', "진주", sort, direction)).thenReturn(List.of());
+        mvc.perform(get("/api/collections")
+                .param("sort", sort).param("direction", direction)
+                .param("keyword", " 진주 ").param("exhibited", "true")
+                .header("Authorization", "Bearer owner-token"))
+            .andExpect(status().isOk());
+        verify(collections).findOwned(1L, 'Y', "진주", sort, direction);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"ASC", "invalid", "ascending"})
+    void rejectsInvalidDirection(String direction) throws Exception {
+        authenticate();
+        mvc.perform(get("/api/collections").param("direction", direction)
+                .header("Authorization", "Bearer owner-token"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+        verifyNoInteractions(collections);
     }
 
     @Test
     void searchesByTrimmedKeywordWithExhibitionAndSortFilters() throws Exception {
         authenticate();
-        when(collections.findOwned(1L, 'Y', "진주", "name")).thenReturn(List.of());
+        when(collections.findOwned(1L, 'Y', "진주", "name", "desc")).thenReturn(List.of());
 
         mvc.perform(get("/api/collections")
                 .param("exhibited", "true")
@@ -182,13 +206,13 @@ class CollectionApiTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data").isEmpty());
 
-        verify(collections).findOwned(1L, 'Y', "진주", "name");
+        verify(collections).findOwned(1L, 'Y', "진주", "name", "desc");
     }
 
     @Test
     void treatsBlankKeywordAsNoSearchCondition() throws Exception {
         authenticate();
-        when(collections.findOwned(1L, null, null, "latest")).thenReturn(List.of());
+        when(collections.findOwned(1L, null, null, "endDate", "desc")).thenReturn(List.of());
 
         mvc.perform(get("/api/collections")
                 .param("keyword", "   ")
@@ -196,7 +220,7 @@ class CollectionApiTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data").isEmpty());
 
-        verify(collections).findOwned(1L, null, null, "latest");
+        verify(collections).findOwned(1L, null, null, "endDate", "desc");
     }
 
     @ParameterizedTest
@@ -215,7 +239,7 @@ class CollectionApiTests {
     @ValueSource(booleans = {true, false})
     void returnsEmptyFilteredCollection(boolean exhibited) throws Exception {
         authenticate();
-        when(collections.findOwned(1L, exhibited ? 'Y' : 'N', null, "latest")).thenReturn(List.of());
+        when(collections.findOwned(1L, exhibited ? 'Y' : 'N', null, "endDate", "desc")).thenReturn(List.of());
         mvc.perform(get("/api/collections")
                 .param("exhibited", Boolean.toString(exhibited))
                 .header("Authorization", "Bearer owner-token"))
@@ -236,15 +260,15 @@ class CollectionApiTests {
     @Test
     void ignoresSpoofedUserIdAndReturnsEmptyArray() throws Exception {
         authenticate();
-        when(collections.findOwned(1L, null, null, "latest")).thenReturn(List.of());
+        when(collections.findOwned(1L, null, null, "endDate", "desc")).thenReturn(List.of());
         mvc.perform(get("/api/collections").param("userId", "99")
                 .header("Authorization", "Bearer owner-token"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data").isArray())
             .andExpect(jsonPath("$.data").isEmpty());
-        verify(collections).findOwned(1L, null, null, "latest");
-        verify(collections, never()).findOwned(99L, null, null, "latest");
+        verify(collections).findOwned(1L, null, null, "endDate", "desc");
+        verify(collections, never()).findOwned(99L, null, null, "endDate", "desc");
         verifyNoInteractions(verifications, artworks, media);
     }
 
@@ -270,7 +294,7 @@ class CollectionApiTests {
     @CsvSource({"7,0,0", "7,3,43", "7,7,100", "14,5,36", "30,20,67"})
     void calculatesProgressForSupportedDurations(int duration, int earned, int percent) throws Exception {
         authenticate();
-        doReturn(List.of(challenge(10, duration, 'N'))).when(collections).findOwned(1L, null, null, "latest");
+        doReturn(List.of(challenge(10, duration, 'N'))).when(collections).findOwned(1L, null, null, "endDate", "desc");
         when(verifications.findRevealed(10, Status.SUCCESS))
             .thenReturn(IntStream.range(0, earned).boxed().toList());
         artwork(null);
@@ -289,7 +313,7 @@ class CollectionApiTests {
     @ValueSource(longs = {60L})
     void toleratesMissingMedia(Long mediaId) throws Exception {
         authenticate();
-        doReturn(List.of(challenge(10, 7, 'N'))).when(collections).findOwned(1L, null, null, "latest");
+        doReturn(List.of(challenge(10, 7, 'N'))).when(collections).findOwned(1L, null, null, "endDate", "desc");
         when(verifications.findRevealed(10, Status.SUCCESS)).thenReturn(List.of());
         artwork(mediaId);
         if (mediaId != null) {
@@ -307,7 +331,7 @@ class CollectionApiTests {
     @Test
     void returnsNotFoundWhenArtworkIsMissingOrDeleted() throws Exception {
         authenticate();
-        doReturn(List.of(challenge(10, 7, 'N'))).when(collections).findOwned(1L, null, null, "latest");
+        doReturn(List.of(challenge(10, 7, 'N'))).when(collections).findOwned(1L, null, null, "endDate", "desc");
         when(artworks.findByArtworkIdAndDelYn(30L, "N")).thenReturn(Optional.empty());
         mvc.perform(get("/api/collections").header("Authorization", "Bearer owner-token"))
             .andExpect(status().isNotFound())
@@ -318,7 +342,7 @@ class CollectionApiTests {
     @Test
     void preservesRepositoryOrderAndKeepsEachChallengesPiecesSeparate() throws Exception {
         authenticate();
-        doReturn(List.of(challenge(20, 7, 'N'), challenge(10, 7, 'Y'))).when(collections).findOwned(1L, null, null, "latest");
+        doReturn(List.of(challenge(20, 7, 'N'), challenge(10, 7, 'Y'))).when(collections).findOwned(1L, null, null, "endDate", "desc");
         when(verifications.findRevealed(20, Status.SUCCESS)).thenReturn(List.of(5));
         when(verifications.findRevealed(10, Status.SUCCESS)).thenReturn(List.of(0, 3));
         artwork(null);
@@ -339,7 +363,7 @@ class CollectionApiTests {
     @NullSource
     @ValueSource(longs = {0, -1})
     void serviceRejectsInvalidUserBeforeQuery(Long userId) {
-        assertThatThrownBy(() -> service.getCollections(userId, null, null, "latest"))
+        assertThatThrownBy(() -> service.getCollections(userId, null, null, "endDate", "desc"))
             .isInstanceOfSatisfying(BusinessException.class,
                 error -> assertThat(error.getErrorCode()).isEqualTo(CommonErrorCode.UNAUTHORIZED));
         verifyNoInteractions(collections, verifications, artworks, media);
@@ -378,7 +402,7 @@ class CollectionApiTests {
     void collectionReadReflectsExhibitedState() throws Exception {
         authenticate();
         Challenge challenge = exhibitionChallenge(com.moamu.domain.challenge.enums.Status.COMPLETED);
-        when(collections.findOwned(1L, null, null, "latest")).thenReturn(List.of(challenge));
+        when(collections.findOwned(1L, null, null, "endDate", "desc")).thenReturn(List.of(challenge));
         when(verifications.findRevealed(10, Status.SUCCESS)).thenReturn(List.of(0, 2));
         artwork(null);
 
