@@ -35,11 +35,12 @@ public class CollectionController {
         @AuthenticationPrincipal Long userId,
         @RequestParam(value = "exhibited", required = false) Boolean exhibited,
         @RequestParam(value = "keyword", required = false) String keyword,
-        @RequestParam(value = "sort", defaultValue = "latest") String sort
+        @RequestParam(value = "sort", defaultValue = "endDate") String sort,
+        @RequestParam(value = "direction", defaultValue = "desc") String direction
     ){
         // 사용자의 완료된 도전 목록 조회
         List<CollectionResponse> responses =
-            collectionService.getCollections(userId, exhibited, keyword, sort);
+            collectionService.getCollections(userId, exhibited, keyword, sort, direction);
 
         return ApiResponse.success(responses);
     }
