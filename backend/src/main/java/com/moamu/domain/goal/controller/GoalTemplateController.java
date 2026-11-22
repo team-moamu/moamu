@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 
 
 @RestController
-@RequestMapping("/api/goalTemaplate")
+@RequestMapping("/api/goalTemplate")
 @RequiredArgsConstructor
 public class GoalTemplateController {
     private final GoalTemplateService goalTemplateService;
