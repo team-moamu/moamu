@@ -59,14 +59,19 @@ public class CollectionService {
         Long userId,
         Boolean exhibited,
         String keyword,
-        String sort
+        String sort,
+        String direction
     ) {
         if (userId == null || userId <= 0) {
             throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
         }
 
-        // 정렬 기본값(latest)은 최신순, name 이름순, successRate 성공률순
-        if (!"latest".equals(sort) && !"name".equals(sort) && !"successRate".equals(sort)) {
+        // 정렬 기준과 방향을 검증
+        if (!"endDate".equals(sort) && !"name".equals(sort) && !"successRate".equals(sort)) {
+            throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
+        }
+
+        if (!"asc".equals(direction) && !"desc".equals(direction)) {
             throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
         }
 
@@ -81,7 +86,8 @@ public class CollectionService {
             userId,
             exhibitionStatus,
             normalizedKeyword,
-            sort
+            sort,
+            direction
         );
         List<CollectionResponse> responses = new ArrayList<>();
 

@@ -34,22 +34,29 @@ public interface CollectionRepository extends JpaRepository<Challenge, Long> {
             AND (:keyword IS NULL
                 OR LOWER(c.challengeTitle) LIKE LOWER(CONCAT('%', :keyword, '%')))
         ORDER BY
-            CASE WHEN :sort = 'name' THEN c.challengeTitle END ASC,
-            CASE WHEN :sort = 'latest' THEN c.endDate END DESC,
-            CASE WHEN :sort = 'successRate' THEN
-                CASE WHEN c.durationDays > 0 THEN
+            CASE WHEN :sort = 'name' AND :direction = 'asc' THEN c.challengeTitle END ASC,
+            CASE WHEN :sort = 'name' AND :direction = 'desc' THEN c.challengeTitle END DESC,
+            CASE WHEN :sort = 'endDate' AND :direction = 'asc' THEN c.endDate END ASC,
+            CASE WHEN :sort = 'endDate' AND :direction = 'desc' THEN c.endDate END DESC,
+            CASE WHEN :sort = 'successRate' AND :direction = 'asc' THEN CASE WHEN c.durationDays > 0 THEN
                     (SELECT COUNT(s) * 1.0 FROM Schedule s
                      WHERE s.challengeId = c.challengeId
                          AND s.status = com.moamu.domain.schedule.enums.Status.SUCCESS)
                     / c.durationDays
-                ELSE 0.0 END
-            END DESC,
+                ELSE 0.0 END END ASC,
+            CASE WHEN :sort = 'successRate' AND :direction = 'desc' THEN CASE WHEN c.durationDays > 0 THEN
+                    (SELECT COUNT(s) * 1.0 FROM Schedule s
+                     WHERE s.challengeId = c.challengeId
+                         AND s.status = com.moamu.domain.schedule.enums.Status.SUCCESS)
+                    / c.durationDays
+                ELSE 0.0 END END DESC,
             c.challengeId DESC
         """)
     List<Challenge> findOwned(
         @Param("userId") Long userId,
         @Param("exhibitionStatus") Character exhibitionStatus,
         @Param("keyword") String keyword,
-        @Param("sort") String sort
+        @Param("sort") String sort,
+        @Param("direction") String direction
     );
 }
