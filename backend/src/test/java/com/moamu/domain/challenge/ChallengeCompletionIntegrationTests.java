@@ -71,8 +71,8 @@ class ChallengeCompletionIntegrationTests {
     private void createCompletedChallenge(int duration) {
         jdbc.update("DELETE FROM schedule");
         jdbc.update("DELETE FROM challenge");
-        challengeService.createChallenge(1L, new ChallengeCreateRequest(20L, duration,
-            LocalDate.now(ZoneId.of("Asia/Seoul")).minusDays(duration)));
+        LocalDate startDate = LocalDate.now(ZoneId.of("Asia/Seoul")).minusDays(duration);
+        challengeService.createChallenge(1L, new ChallengeCreateRequest(20L, startDate, startDate.plusDays(duration - 1)));
         challengeId = jdbc.queryForObject("SELECT challenge_id FROM challenge", Long.class);
         jdbc.update("UPDATE challenge SET status='IN_PROGRESS'");
         jdbc.update("UPDATE schedule SET status='SUCCESS'");

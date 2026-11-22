@@ -12,7 +12,25 @@ export function puzzleLayout(total: number, rows: number, cols: number): PuzzleL
     cells: [0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 13],
   }
   if (total === 30) return { rows: 5, cols: 6, cells: Array.from({ length: 30 }, (_, i) => i) }
-  return { rows, cols, cells: Array.from({ length: rows * cols }, (_, i) => i) }
+
+  const cells: number[] = []
+  let pairsRemaining = rows * cols - total
+  let pieceIndex = 0
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      cells.push(pieceIndex)
+      // 한 행에서 한 쌍씩 합쳐 같은 인증 일차에 한 조각으로 공개한다.
+      if (col === 0 && cols > 1 && pairsRemaining > 0) {
+        cells.push(pieceIndex)
+        col++
+        pairsRemaining--
+      }
+      pieceIndex++
+    }
+  }
+
+  return { rows, cols, cells }
 }
 
 // 현재 정책의 조각은 단일 칸 또는 가로로 인접한 두 칸의 직사각형이다.

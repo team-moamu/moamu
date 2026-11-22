@@ -9,7 +9,7 @@ import jakarta.validation.constraints.NotNull;
 
 public record CustomChallengeCreateRequest(
     @NotBlank @UUID String analysisId,
-    @NotNull Integer durationDays,
-    @NotNull LocalDate startDate
+    @NotNull LocalDate startDate,
+    @NotNull LocalDate endDate
 ) {
 }

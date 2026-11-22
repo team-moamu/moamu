@@ -71,7 +71,7 @@ class CustomChallengeServiceTests {
     @InjectMocks private ChallengeService service;
 
     @ParameterizedTest
-    @CsvSource({"7,3,3", "14,4,4", "30,5,6"})
+    @CsvSource({"7,3,3", "8,3,3", "14,4,4", "30,5,6", "90,9,10"})
     void createsPublicTemplateChallengeConditionsAndDailySchedules(int days, int rows, int cols) {
         stubConfirmation(SNAPSHOT);
         stubCreation();
@@ -143,7 +143,7 @@ class CustomChallengeServiceTests {
 
         assertCode(() -> service.createCustomChallenge(1L, request(14)), "ANALYSIS_ALREADY_CONFIRMED");
         assertCode(() -> service.createCustomChallenge(1L,
-            new CustomChallengeCreateRequest(ANALYSIS_ID, 7, START_DATE.plusDays(1))), "ANALYSIS_ALREADY_CONFIRMED");
+            new CustomChallengeCreateRequest(ANALYSIS_ID, START_DATE.plusDays(1), START_DATE.plusDays(7))), "ANALYSIS_ALREADY_CONFIRMED");
         verify(goalAnalysisStore, never()).findByAnalysisId(anyString());
     }
 
@@ -302,9 +302,10 @@ class CustomChallengeServiceTests {
     @Test
     void validatesOwnerUuidAndDurationBeforeReadingStorage() {
         assertCode(() -> service.createCustomChallenge(null, request(7)), "UNAUTHORIZED");
-        assertCode(() -> service.createCustomChallenge(1L, request(8)), "INVALID_REQUEST");
+        assertCode(() -> service.createCustomChallenge(1L, request(6)), "INVALID_REQUEST");
+        assertCode(() -> service.createCustomChallenge(1L, request(91)), "INVALID_REQUEST");
         assertCode(() -> service.createCustomChallenge(1L,
-            new CustomChallengeCreateRequest("bad-id", 7, START_DATE)), "INVALID_REQUEST");
+            new CustomChallengeCreateRequest("bad-id", START_DATE, START_DATE.plusDays(6))), "INVALID_REQUEST");
         verifyNoInteractions(goalAnalysisStore, challengeRepository);
     }
 
@@ -359,7 +360,7 @@ class CustomChallengeServiceTests {
     }
 
     private CustomChallengeCreateRequest request(int days) {
-        return new CustomChallengeCreateRequest(ANALYSIS_ID, days, START_DATE);
+        return new CustomChallengeCreateRequest(ANALYSIS_ID, START_DATE, START_DATE.plusDays(days - 1));
     }
 
     private void assertCode(org.assertj.core.api.ThrowableAssert.ThrowingCallable action, String code) {

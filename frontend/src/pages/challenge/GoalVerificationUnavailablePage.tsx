@@ -21,7 +21,7 @@ export function GoalVerificationUnavailablePage() {
         customGoal: goal,
         editCustomGoal: true,
         startDate: location.state?.startDate,
-        durationDays: location.state?.durationDays,
+        endDate: location.state?.endDate,
       },
     })
   }

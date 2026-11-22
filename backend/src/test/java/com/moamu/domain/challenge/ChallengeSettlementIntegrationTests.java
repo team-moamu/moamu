@@ -65,8 +65,8 @@ class ChallengeSettlementIntegrationTests {
             """);
         jdbc.update("INSERT INTO artwork (artwork_id) VALUES (30)");
         jdbc.update("INSERT INTO goal_template_artwork (goal_template_id, artwork_id) VALUES (20, 30)");
-        challengeService.createChallenge(1L, new ChallengeCreateRequest(20L, 7,
-            LocalDate.now(ZoneId.of("Asia/Seoul")).minusDays(7)));
+        LocalDate startDate = LocalDate.now(ZoneId.of("Asia/Seoul")).minusDays(7);
+        challengeService.createChallenge(1L, new ChallengeCreateRequest(20L, startDate, startDate.plusDays(7 - 1)));
         challengeId = jdbc.queryForObject("SELECT challenge_id FROM challenge", Long.class);
         jdbc.update("UPDATE challenge SET status='IN_PROGRESS'");
         jdbc.update("UPDATE schedule SET status='SUCCESS'");

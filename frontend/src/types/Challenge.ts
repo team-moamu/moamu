@@ -93,5 +93,5 @@ export type ChallengeDetailResponse = {
 export interface ChallengeCreateRequest {
   goalTemplateId: number
   startDate: string
-  durationDays: number
+  endDate: string
 }

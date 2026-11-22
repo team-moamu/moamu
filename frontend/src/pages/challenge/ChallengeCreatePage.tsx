@@ -6,7 +6,6 @@ import { analyzeGoal } from '../../api/GoalAnalysisApi'
 import { isVerifiableGoalAnalysis, type VerifiableGoalAnalysis } from '../../types/GoalAnalysis'
 import { GoalCardList } from '../../components/molecules/card/GoalCardList'
 import { CalendarInput } from '../../components/molecules/form/CalendarInput'
-import { DurationSelector } from '../../components/molecules/select/DurationSelector'
 import { SuccessButton } from '../../components/atoms/button/SuccessButton'
 import type { IconName } from '../../components/atoms/icon/Icon'
 import { GoalCard } from '../../components/atoms/card/GoalCard'
@@ -29,6 +28,16 @@ const GOALS: Goal[] = [
   { goalTemplateId: 6, title: "영양제 챙기기 기록하기", description: "영양제를 챙긴 모습을 사진으로 기록해 보세요.", icon: 'supplement' },
 ]
 
+const MIN_DURATION_DAYS = 7
+const MAX_DURATION_DAYS = 90
+
+function endDateForDuration(startDate: string, durationDays: number): string {
+  const date = new Date(`${startDate}T00:00:00Z`)
+  if (Number.isNaN(date.getTime())) return ''
+  date.setUTCDate(date.getUTCDate() + durationDays - 1)
+  return date.toISOString().split('T')[0]
+}
+
 export function ChallengeCreatePage() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -50,14 +59,27 @@ export function ChallengeCreatePage() {
 
   // 시작 날짜
   const [startDate, setStartDate] = useState<string>(
-    () => location.state?.startDate || dateKey(new Date()),
+    () => location.state?.startDate ?? dateKey(new Date()),
   )
 
-  // 도전 기간
-  const [durationDays, setDurationDays] = useState<number | null>(location.state?.durationDays ?? null)
+  const [endDate, setEndDate] = useState<string>(
+    () => location.state?.endDate ?? endDateForDuration(startDate, MIN_DURATION_DAYS),
+  )
+  const minEndDate = endDateForDuration(startDate, MIN_DURATION_DAYS)
+  const maxEndDate = endDateForDuration(startDate, MAX_DURATION_DAYS)
+  const isEndDateInRange = minEndDate !== '' && endDate >= minEndDate && endDate <= maxEndDate
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState('')
   const submissionInFlight = useRef(false)
+
+  const handleStartDateChange = (date: string) => {
+    setStartDate(date)
+    if (date === '' ||
+        endDate < endDateForDuration(date, MIN_DURATION_DAYS) ||
+        endDate > endDateForDuration(date, MAX_DURATION_DAYS)) {
+      setEndDate('')
+    }
+  }
 
   const handleAnalyzeGoal = async (goal: string) => {
     if (analysisInFlight.current) return
@@ -69,7 +91,7 @@ export function ChallengeCreatePage() {
     try {
       const result = await analyzeGoal(goal, controller.signal)
       if (controller.signal.aborted) return
-      const draft = { customGoal: goal, startDate, durationDays }
+      const draft = { customGoal: goal, startDate, endDate }
       navigate(result.status === 'VERIFIABLE'
         ? '/challenge/create/conditions'
         : '/challenge/create/conditions/unverifiable', {
@@ -91,21 +113,20 @@ export function ChallengeCreatePage() {
     isSubmitting ||
     isAnalyzing ||
     (selectedGoalId === null && analysis === null) ||
-    startDate === '' ||
-    durationDays === null
+    !isEndDateInRange
 
   // 도전 생성 버튼 클릭
   const handleCreateChallenge = async () => {
-    if (isDisabled || submissionInFlight.current || durationDays === null) return
+    if (isDisabled || submissionInFlight.current) return
 
     submissionInFlight.current = true
     setIsSubmitting(true)
     setError('')
     try {
       if (selectedGoalId !== null) {
-        await createChallenge({ goalTemplateId: selectedGoalId, startDate, durationDays })
+        await createChallenge({ goalTemplateId: selectedGoalId, startDate, endDate })
       } else if (analysis) {
-        await createCustomChallenge({ analysisId: analysis.analysisId, startDate, durationDays })
+        await createCustomChallenge({ analysisId: analysis.analysisId, startDate, endDate })
       } else return
       // 도전 생성 성공하면 홈화면으로 이동(임시)
       navigate('/', { replace: true })
@@ -166,21 +187,30 @@ export function ChallengeCreatePage() {
         <CalendarInput
           id="challenge-start-date"
           name="startDate"
+          ariaLabel="도전 시작일"
           value={startDate}
-          onChange={setStartDate}
+          onChange={handleStartDateChange}
         />
       </section>
 
-      {/* 기간 선택 */}
+      {/* 종료 날짜 선택 */}
       <section>
         <h2 className="mb-3 text-base font-semibold">
-          얼마 동안 도전할까요?
+          언제까지 도전할까요?
         </h2>
 
-        <DurationSelector
-          value={durationDays}
-          onChange={setDurationDays}
+        <CalendarInput
+          id="challenge-end-date"
+          name="endDate"
+          ariaLabel="도전 종료일"
+          value={endDate}
+          min={minEndDate || undefined}
+          max={maxEndDate || undefined}
+          onChange={setEndDate}
         />
+        <p className="mt-2 text-xs text-[#4B3A29]">
+          시작일과 종료일을 포함해 {MIN_DURATION_DAYS}~{MAX_DURATION_DAYS}일 동안 도전할 수 있어요.
+        </p>
       </section>
 
       </fieldset>

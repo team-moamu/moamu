@@ -63,9 +63,9 @@ class ChallengeCreationIntegrationTests {
         cleanRows();
     }
 
-    // 7·14·30일 API 요청 각각에 대해 도전 1건과 기간만큼의 회차가 실제 커밋되는지 확인합니다.
+    // 허용 기간의 API 요청에 대해 도전 1건과 기간만큼의 회차가 실제 커밋되는지 확인합니다.
     @ParameterizedTest
-    @ValueSource(ints = {7, 14, 30})
+    @ValueSource(ints = {7, 8, 14, 30, 90})
     void postCommitsChallengeAndDailySchedules(int days) throws Exception {
         postChallenge(days, 200);
 
@@ -119,8 +119,8 @@ class ChallengeCreationIntegrationTests {
         return mockMvc.perform(post("/api/challenges").with(user("test")).with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                        {"goalTemplateId":20,"durationDays":%d,"startDate":"%s"}
-                        """.formatted(days, START_DATE)))
+                        {"goalTemplateId":20,"startDate":"%s","endDate":"%s"}
+                        """.formatted(START_DATE, START_DATE.plusDays(days - 1))))
                 .andExpect(status().is(expectedStatus)).andReturn();
     }
 
