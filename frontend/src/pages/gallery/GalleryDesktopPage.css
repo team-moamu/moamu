@@ -1,0 +1,29 @@
+.desktop-gallery { position: fixed; inset: 0; width: 100%; height: 100dvh; overflow: hidden; background: #fff8eb; color: #4a382a; }
+.desktop-gallery-viewport { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(100vw, 300dvh); height: min(33.333333vw, 100dvh); max-width: 100%; max-height: 100%; overflow: hidden; outline-offset: -3px; }
+.desktop-gallery-world { position: absolute; top: 0; left: 0; height: 100%; will-change: transform; }
+.desktop-gallery-background { position: absolute; top: 0; width: calc(100% / 3); max-width: none; height: 100%; object-fit: contain; object-position: center; user-select: none; }
+.desktop-gallery-character { width: 160px; max-width: 100%; position: absolute; top: 64%; left: 0; will-change: transform; pointer-events: none; }
+.desktop-gallery-mu { display: block; width: 100%; height: auto; user-select: none; }
+.desktop-gallery-header { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: flex-end; gap: 16px; padding: 20px clamp(16px, 4vw, 64px); pointer-events: none; }
+.desktop-gallery-header h1 { font-size: 24px; font-weight: 600; padding: 8px 16px; background: #fff8ebe6; border-radius: 12px; }
+.desktop-gallery-return { pointer-events: auto; border-radius: 8px; background: #426b45; color: white; padding: 10px 16px; font-size: 14px; }
+.desktop-gallery-guide { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); padding: 10px 20px; border-radius: 24px; background: #fff8ebe6; white-space: nowrap; pointer-events: none; font-size: 14px; }
+.desktop-gallery a:focus-visible { outline: 3px solid #426b45; outline-offset: 4px; }
+
+/* 데스크톱 미술관에서는 앱 공통 루트의 모바일 폭 제한을 해제한다. */
+#root:has(.desktop-gallery) { max-width: none; width: 100%; margin: 0; }
+body:has(.desktop-gallery) { overflow: hidden; }
+.desktop-gallery-header { padding: clamp(10px, 2.5vh, 20px) clamp(12px, 3vw, 64px); }
+.desktop-gallery-header h1 { font-size: clamp(16px, 2.5vw, 24px); flex-shrink: 0; }
+.desktop-gallery-return { font-size: clamp(11px, 1.5vw, 14px); text-align: center; }
+.desktop-gallery-guide { max-width: calc(100% - 24px); white-space: normal; text-align: center; bottom: 12%; font-size: clamp(11px, 1.5vw, 14px); }
+@media (max-height: 450px) {
+  .desktop-gallery-header h1, .desktop-gallery-return { padding: 6px 10px; }
+  .desktop-gallery-guide { padding: 6px 12px; }
+}
+
+.desktop-gallery-guide { opacity: 1; visibility: visible; transition: opacity 500ms ease-out, visibility 500ms; }
+.desktop-gallery-guide--hidden { opacity: 0; visibility: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  .desktop-gallery-guide { transition: none; }
+}

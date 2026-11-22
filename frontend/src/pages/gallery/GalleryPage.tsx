@@ -1,3 +1,4 @@
+import { GalleryViewFloatingButton } from '../../components/atoms/button/GalleryViewFloatingButton'
 import { useEffect, useRef, useState } from 'react'
 import { GalleryBanner } from '../../components/molecules/gallery/GalleryBanner'
 import { GalleryToolbar } from '../../components/molecules/gallery/GalleryToolbar'
@@ -137,6 +138,7 @@ export function GalleryPage() {
           )}
         </div>
       </section>
+      <GalleryViewFloatingButton />
       {hideDialogOpen && (
         <ConfirmDialog
           title="미술관에서 이미지를 숨길까요?"
