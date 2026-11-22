@@ -10,8 +10,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -64,7 +64,7 @@ class EmailVerificationServiceIntegrationTests {
         }
     }
 
-    @Configuration(proxyBeanMethods = false)
+    @TestConfiguration(proxyBeanMethods = false)
     @Import({RedisAutoConfiguration.class, EmailVerificationService.class})
     static class TestConfig {
 
