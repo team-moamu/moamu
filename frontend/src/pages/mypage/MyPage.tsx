@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import defaultProfileMu from '../../assets/images/default_profile_mu.png'
-import { getLoginEmail } from '../../auth/authStorage'
+import { getLoginEmail } from '../../auth/AuthStorage'
 
 const activityCounts = [
   { label: '진행 중', count: 2 },

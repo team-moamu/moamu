@@ -1,4 +1,4 @@
-import type { ScheduleStatus } from "./schedule"
+import type { ScheduleStatus } from "./Schedule"
 
 // 도전 전체 완료 결과. 일일 인증 성공 응답과 구분
 export type ChallengeCompletionResponse = {

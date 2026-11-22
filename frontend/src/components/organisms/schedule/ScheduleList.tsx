@@ -1,5 +1,5 @@
 import { ScheduleDetail } from '../../molecules/card/ScheduleDetail'
-import type { Schedule } from '../../../types/schedule'
+import type { Schedule } from '../../../types/Schedule'
 
 type ScheduleListProps = {
   schedules: Schedule[]

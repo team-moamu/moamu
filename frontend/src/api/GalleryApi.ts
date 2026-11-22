@@ -1,7 +1,6 @@
-import { authenticatedFetch } from './authenticatedFetch'
+import { authenticatedFetch } from './AuthenticatedFetch'
 import type { ApiResponse } from '../types/ApiResponse'
-import type { CollectionSort } from '../types/Collection'
-import type { GalleryResponse, GalleryExhibitionResponse } from '../types/Gallery'
+import type { GalleryResponse, GalleryExhibitionResponse, GallerySort, GallerySortDirection } from '../types/Gallery'
 
 export async function hideGalleryArtwork(challengeId: number): Promise<GalleryExhibitionResponse> {
   const response = await authenticatedFetch(`/api/galleries/${challengeId}/exhibition`, { method: 'PATCH' })
@@ -15,8 +14,8 @@ export async function hideGalleryArtwork(challengeId: number): Promise<GalleryEx
   return body.data
 }
 
-export async function getGalleries(sort: CollectionSort = 'latest', signal?: AbortSignal): Promise<GalleryResponse[]> {
-  const params = new URLSearchParams({ sort })
+export async function getGalleries(sort: GallerySort = 'endDate', direction: GallerySortDirection = 'desc', signal?: AbortSignal): Promise<GalleryResponse[]> {
+  const params = new URLSearchParams({ sort, direction })
   const response = await authenticatedFetch(`/api/galleries?${params}`, { signal })
   const body: ApiResponse<GalleryResponse[]> | null = await response.json().catch(() => null)
   if (!response.ok || !body?.success) {

@@ -133,3 +133,11 @@
 @media (prefers-reduced-motion: reduce) {
   .verification-loading__spinner { animation: none; }
 }
+
+.verification-loading--dialog {
+  max-width: min(100%, 430px);
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}

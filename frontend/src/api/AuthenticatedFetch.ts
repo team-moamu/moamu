@@ -2,7 +2,7 @@ import {
   clearAccessToken,
   getAccessToken,
   saveAccessToken,
-} from '../auth/authStorage.ts'
+} from '../auth/AuthStorage.ts'
 import type { ApiResponse } from '../types/ApiResponse'
 import type { LoginResponse } from '../types/Auth'
 

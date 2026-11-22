@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { logout } from '../../api/AuthApi'
-import { clearAccessToken, getLoginEmail } from '../../auth/authStorage'
+import { clearAccessToken, getLoginEmail } from '../../auth/AuthStorage'
 
 export function AccountSecurityPage() {
   const loginEmail = getLoginEmail()

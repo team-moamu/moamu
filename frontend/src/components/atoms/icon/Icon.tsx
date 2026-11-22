@@ -19,6 +19,8 @@ export const iconMap = {
   calendar: 'icon-[lucide--calendar]',
   folder: 'icon-[lucide--folder]',
   alphabetical: 'icon-[lucide--spell-check]',
+  sortAscending: 'icon-[lucide--arrow-up-narrow-wide]',
+  sortDescending: 'icon-[lucide--arrow-down-wide-narrow]',
   moreVertical: 'icon-[lucide--ellipsis-vertical]',
 
   // 목표 카드 아이콘

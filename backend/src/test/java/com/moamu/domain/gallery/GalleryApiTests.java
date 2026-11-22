@@ -92,7 +92,7 @@ class GalleryApiTests {
     void returnsExhibitedGalleryWithLatestSortByDefault() throws Exception {
         authenticate();
         doReturn(List.of(challenge(10, 7)))
-            .when(galleries).findExhibited(1L, "latest");
+            .when(galleries).findExhibited(1L, "endDate", "desc");
         when(verifications.findRevealed(10L, Status.SUCCESS)).thenReturn(List.of(0, 2, 6));
         artwork(60L);
 
@@ -128,26 +128,27 @@ class GalleryApiTests {
             .andExpect(jsonPath("$.data[0].puzzle.earnedPieceCount").value(3))
             .andExpect(jsonPath("$.data[0].puzzle.totalPieceCount").value(7));
 
-        verify(galleries).findExhibited(1L, "latest");
+        verify(galleries).findExhibited(1L, "endDate", "desc");
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"latest", "name", "successRate"})
-    void supportsGallerySorts(String sort) throws Exception {
+    @CsvSource({"endDate,asc", "endDate,desc", "name,asc", "name,desc", "successRate,asc", "successRate,desc"})
+    void supportsGallerySorts(String sort, String direction) throws Exception {
         authenticate();
-        when(galleries.findExhibited(1L, sort)).thenReturn(List.of());
+        when(galleries.findExhibited(1L, sort, direction)).thenReturn(List.of());
 
         mvc.perform(get("/api/galleries")
                 .param("sort", sort)
+                .param("direction", direction)
                 .header("Authorization", "Bearer owner-token"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data").isEmpty());
 
-        verify(galleries).findExhibited(1L, sort);
+        verify(galleries).findExhibited(1L, sort, direction);
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"oldest", "NAME", "invalid"})
+    @ValueSource(strings = {"latest", "oldest", "NAME", "invalid"})
     void rejectsInvalidSortBeforeRepositoryAccess(String sort) throws Exception {
         authenticate();
 
@@ -161,10 +162,22 @@ class GalleryApiTests {
         verifyNoInteractions(galleries, verifications, artworks, media);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"ascending", "DESC", "invalid"})
+    void rejectsInvalidDirection(String direction) throws Exception {
+        authenticate();
+        mvc.perform(get("/api/galleries")
+                .param("direction", direction)
+                .header("Authorization", "Bearer owner-token"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.error.code").value("INVALID_REQUEST"));
+        verifyNoInteractions(galleries, verifications, artworks, media);
+    }
+
     @Test
     void ignoresSpoofedUserIdAndUsesAuthenticatedOwner() throws Exception {
         authenticate();
-        when(galleries.findExhibited(1L, "latest")).thenReturn(List.of());
+        when(galleries.findExhibited(1L, "endDate", "desc")).thenReturn(List.of());
 
         mvc.perform(get("/api/galleries")
                 .param("userId", "99")
@@ -172,8 +185,8 @@ class GalleryApiTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data").isEmpty());
 
-        verify(galleries).findExhibited(1L, "latest");
-        verify(galleries, never()).findExhibited(99L, "latest");
+        verify(galleries).findExhibited(1L, "endDate", "desc");
+        verify(galleries, never()).findExhibited(99L, "endDate", "desc");
     }
 
     @Test
@@ -191,7 +204,7 @@ class GalleryApiTests {
     void calculatesProgress(int duration, int earned, int percent) throws Exception {
         authenticate();
         doReturn(List.of(challenge(10, duration)))
-            .when(galleries).findExhibited(1L, "latest");
+            .when(galleries).findExhibited(1L, "endDate", "desc");
         when(verifications.findRevealed(10L, Status.SUCCESS))
             .thenReturn(IntStream.range(0, earned).boxed().toList());
         artwork(null);
@@ -209,7 +222,7 @@ class GalleryApiTests {
     void returnsNotFoundWhenArtworkIsMissingOrDeleted() throws Exception {
         authenticate();
         doReturn(List.of(challenge(10, 7)))
-            .when(galleries).findExhibited(1L, "latest");
+            .when(galleries).findExhibited(1L, "endDate", "desc");
         when(verifications.findRevealed(10L, Status.SUCCESS)).thenReturn(List.of());
         when(artworks.findByArtworkIdAndDelYn(30L, "N")).thenReturn(Optional.empty());
 
@@ -224,7 +237,7 @@ class GalleryApiTests {
     @NullSource
     @ValueSource(longs = {0, -1})
     void serviceRejectsInvalidUserBeforeRepositoryAccess(Long userId) {
-        assertThatThrownBy(() -> service.getGalleries(userId, "latest"))
+        assertThatThrownBy(() -> service.getGalleries(userId, "endDate", "desc"))
             .isInstanceOfSatisfying(BusinessException.class,
                 error -> assertThat(error.getErrorCode()).isEqualTo(CommonErrorCode.UNAUTHORIZED));
 

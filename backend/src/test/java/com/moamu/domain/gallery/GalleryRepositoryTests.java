@@ -37,7 +37,7 @@ class GalleryRepositoryTests {
         assertThat(repository.findOwnedForExhibition(2L, id)).isEmpty();
         repository.findOwnedForExhibition(1L, id).orElseThrow().setIsExhibited('N');
         flush();
-        assertThat(repository.findExhibited(1L, "latest")).isEmpty();
+        assertThat(repository.findExhibited(1L, "endDate", "desc")).isEmpty();
         assertThat(repository.findOwnedForExhibition(1L, id)).isPresent();
         assertThat(repository.findById(id).orElseThrow().getIsExhibited()).isEqualTo('N');
         em.createQuery("UPDATE Challenge c SET c.delYn = 'Y' WHERE c.challengeId = :id")
@@ -53,7 +53,7 @@ class GalleryRepositoryTests {
         challenge("Other owner", 7, 7, 'Y', 2L, 3);
         flush();
 
-        assertThat(repository.findExhibited(1L, "latest"))
+        assertThat(repository.findExhibited(1L, "endDate", "desc"))
             .extracting(Challenge::getChallengeId)
             .containsExactly(exhibited.getChallengeId());
     }
@@ -65,17 +65,39 @@ class GalleryRepositoryTests {
         Challenge gamma = challenge("Gamma", 7, 0, 'Y', 1L, 1);
         flush();
 
-        assertThat(repository.findExhibited(1L, "latest"))
+        assertThat(repository.findExhibited(1L, "endDate", "desc"))
             .extracting(Challenge::getChallengeId)
             .containsExactly(beta.getChallengeId(), alpha.getChallengeId(), gamma.getChallengeId());
 
-        assertThat(repository.findExhibited(1L, "name"))
+        assertThat(repository.findExhibited(1L, "name", "asc"))
             .extracting(Challenge::getChallengeId)
             .containsExactly(alpha.getChallengeId(), beta.getChallengeId(), gamma.getChallengeId());
 
-        assertThat(repository.findExhibited(1L, "successRate"))
+        assertThat(repository.findExhibited(1L, "successRate", "desc"))
             .extracting(Challenge::getChallengeId)
             .containsExactly(alpha.getChallengeId(), beta.getChallengeId(), gamma.getChallengeId());
+    }
+
+    @Test
+    void supportsReverseDirectionsAndStableTies() {
+        Challenge alpha = challenge("Alpha", 7, 5, 'Y', 1L, 2);
+        Challenge beta = challenge("Beta", 30, 20, 'Y', 1L, 3);
+        Challenge gamma = challenge("Gamma", 7, 0, 'Y', 1L, 1);
+        flush();
+        assertThat(repository.findExhibited(1L, "endDate", "asc"))
+            .extracting(Challenge::getChallengeId)
+            .containsExactly(gamma.getChallengeId(), alpha.getChallengeId(), beta.getChallengeId());
+        assertThat(repository.findExhibited(1L, "name", "desc"))
+            .extracting(Challenge::getChallengeId)
+            .containsExactly(gamma.getChallengeId(), beta.getChallengeId(), alpha.getChallengeId());
+        assertThat(repository.findExhibited(1L, "successRate", "asc"))
+            .extracting(Challenge::getChallengeId)
+            .containsExactly(gamma.getChallengeId(), beta.getChallengeId(), alpha.getChallengeId());
+        Challenge tied = challenge("Alpha", 7, 5, 'Y', 1L, 2);
+        flush();
+        assertThat(repository.findExhibited(1L, "name", "asc"))
+            .extracting(Challenge::getChallengeId)
+            .containsExactly(tied.getChallengeId(), alpha.getChallengeId(), beta.getChallengeId(), gamma.getChallengeId());
     }
 
     private Challenge challenge(

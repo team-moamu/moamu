@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Badge } from '../../atoms/badge/Badge'
-import { scheduleStatusMap } from '../../../utils/scheduleStatus'
-import type { ScheduleStatus } from '../../../types/schedule'
+import { scheduleStatusMap } from '../../../utils/ScheduleStatus'
+import type { ScheduleStatus } from '../../../types/Schedule'
 
 type ScheduleDetailProps = {
   dayNo: number

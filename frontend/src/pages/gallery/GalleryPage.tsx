@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { GalleryBanner } from '../../components/molecules/gallery/GalleryBanner'
 import { GalleryToolbar } from '../../components/molecules/gallery/GalleryToolbar'
-import type { CollectionSort } from '../../types/Collection'
-import type { GalleryResponse } from '../../types/Gallery'
+import type { GalleryResponse, GallerySortSelection } from '../../types/Gallery'
 import { getGalleries, hideGalleryArtwork } from '../../api/GalleryApi'
 import { GalleryArtworkCard } from '../../components/molecules/card/GalleryArtworkCard'
 import { ConfirmDialog } from '../../components/molecules/modal/ConfirmDialog'
@@ -10,7 +9,7 @@ import { ErrorDialog } from '../../components/molecules/modal/ErrorDialog'
 import { CollectionEmptyState } from '../../components/molecules/feedback/CollectionEmptyState'
 
 export function GalleryPage() {
-  const [sort, setSort] = useState<CollectionSort>('latest')
+  const [sort, setSort] = useState<GallerySortSelection>({ sort: 'endDate', direction: 'desc' })
   const [artworks, setArtworks] = useState<GalleryResponse[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -27,7 +26,7 @@ export function GalleryPage() {
     setError(null)
     setSelectedIds(new Set())
     setSelectionMode(false)
-    setSort('latest')
+    setSort({ sort: 'endDate', direction: 'desc' })
     setRetry((value) => value + 1)
   }
 
@@ -80,7 +79,7 @@ export function GalleryPage() {
     const controller = new AbortController()
     async function loadArtworks() {
       try {
-        const data = await getGalleries(sort, controller.signal)
+        const data = await getGalleries(sort.sort, sort.direction, controller.signal)
         if (!controller.signal.aborted) setArtworks(data)
       } catch (cause) {
         if (!controller.signal.aborted) {
@@ -101,7 +100,7 @@ export function GalleryPage() {
         <GalleryToolbar
           sort={sort}
           onSortChange={(value) => {
-            if (value !== sort) {
+            if (value.sort !== sort.sort || value.direction !== sort.direction) {
               setLoading(true)
               setError(null)
             }
