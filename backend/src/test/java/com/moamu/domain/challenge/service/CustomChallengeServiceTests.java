@@ -1,6 +1,7 @@
 package com.moamu.domain.challenge.service;
 
 import java.time.LocalDate;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
@@ -21,8 +22,9 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.support.SimpleTransactionStatus;
 
-import com.moamu.domain.artwork.entity.Artwork;
-import com.moamu.domain.artwork.repository.ArtworkRepository;
+import com.moamu.domain.aitask.entity.AiTask;
+import com.moamu.domain.aitask.enums.AiTaskType;
+import com.moamu.domain.aitask.repository.AiTaskRepository;
 import com.moamu.domain.challenge.dto.CustomChallengeCreateRequest;
 import com.moamu.domain.challenge.entity.Challenge;
 import com.moamu.domain.challenge.entity.ChallengeCondition;
@@ -38,6 +40,7 @@ import com.moamu.domain.goal.enums.Status;
 import com.moamu.domain.goal.repository.GoalAnalysisStore;
 import com.moamu.domain.goal.repository.GoalAnalysisStore.CustomReceipt;
 import com.moamu.domain.goal.repository.GoalCategoryRepository;
+import com.moamu.domain.goal.repository.GoalCategoryRepository.CategoryNames;
 import com.moamu.domain.goal.repository.GoalTemplateArtworkRepository;
 import com.moamu.domain.goal.repository.GoalTemplateConditionRepository;
 import com.moamu.domain.goal.repository.GoalTemplateRepository;
@@ -64,7 +67,8 @@ class CustomChallengeServiceTests {
     @Mock private GoalTemplateRepository goalTemplateRepository;
     @Mock private GoalTemplateConditionRepository goalTemplateConditionRepository;
     @Mock private GoalTemplateArtworkRepository goalTemplateArtworkRepository;
-    @Mock private ArtworkRepository artworkRepository;
+    @Mock private AiTaskRepository aiTaskRepository;
+    @Mock private ReusableArtworkService reusableArtworkService;
     @Mock private ChallengeRepository challengeRepository;
     @Mock private ChallengeConditionRepository challengeConditionRepository;
     @Mock private ScheduleRepository scheduleRepository;
@@ -183,7 +187,7 @@ class CustomChallengeServiceTests {
 
         verify(transactionManager).rollback(any());
         verify(goalAnalysisStore, never()).finishConfirmation(ANALYSIS_ID, "lock-token");
-        verifyNoInteractions(goalTemplateRepository, artworkRepository);
+        verifyNoInteractions(goalTemplateRepository, aiTaskRepository);
     }
 
     @Test
@@ -278,7 +282,7 @@ class CustomChallengeServiceTests {
 
         assertThat(service.createCustomChallenge(1L, request(7)).challengeId()).isEqualTo(100L);
 
-        verifyNoInteractions(goalCategoryRepository, goalTemplateRepository, artworkRepository);
+        verifyNoInteractions(goalCategoryRepository, goalTemplateRepository, aiTaskRepository);
         verify(challengeRepository, never()).save(any());
     }
 
@@ -312,6 +316,7 @@ class CustomChallengeServiceTests {
 
     private void stubConfirmation(GoalAnalysisSnapshot snapshot) {
         when(goalAnalysisStore.findByAnalysisId(ANALYSIS_ID)).thenReturn(Optional.of(snapshot));
+        when(reusableArtworkService.chooseArtwork(snapshot)).thenReturn(Optional.of(30L));
         when(goalAnalysisStore.acquireConfirmation(eq(ANALYSIS_ID), eq(snapshot), eq(START_DATE), any(), any())).thenReturn(Optional.of("lock-token"));
         when(transactionManager.getTransaction(any())).thenAnswer(invocation -> {
             TransactionDefinition definition = invocation.getArgument(0);
@@ -319,6 +324,60 @@ class CustomChallengeServiceTests {
             assertThat(definition.getIsolationLevel()).isEqualTo(TransactionDefinition.ISOLATION_SERIALIZABLE);
             return new SimpleTransactionStatus();
         });
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void usesTheSameRepresentativeKeyForExistingAndNewCategoryPaths(boolean existingCategory) {
+        var snapshot = new GoalAnalysisSnapshot(1L, SNAPSHOT.goal(), SNAPSHOT.normalizedGoal(),
+                existingCategory ? 3L : null, SNAPSHOT.categoryPath(), SNAPSHOT.conditions(),
+                SNAPSHOT.photoGuide(), SNAPSHOT.verificationScope());
+        when(goalAnalysisStore.findByAnalysisId(ANALYSIS_ID)).thenReturn(Optional.of(snapshot));
+        when(goalAnalysisStore.acquireConfirmation(eq(ANALYSIS_ID), eq(snapshot), eq(START_DATE), any(), any()))
+            .thenReturn(Optional.of("lock-token"));
+        when(goalCategoryRepository.findActiveMinorId("건강", "운동", "산책")).thenReturn(Optional.of(3L));
+        CategoryNames names = mock(CategoryNames.class);
+        when(names.getMajorName()).thenReturn("Health");
+        when(names.getMiddleName()).thenReturn("Exercise");
+        when(names.getMinorName()).thenReturn("Walking");
+        when(goalCategoryRepository.findCategoryNames(3L)).thenReturn(Optional.of(names));
+        when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
+        when(aiTaskRepository.save(any(AiTask.class))).thenAnswer(invocation -> {
+            AiTask task = invocation.getArgument(0);
+            assertThat(task.getTaskType()).isEqualTo(AiTaskType.GENERATE_ARTWORK);
+            ReflectionTestUtils.setField(task, "aiTaskId", 91L);
+            return task;
+        });
+        when(goalAnalysisStore.registerArtworkTask(eq(ANALYSIS_ID), eq("lock-token"), eq("6:health8:exercise7:walking"),
+                eq(91L), eq(1), any())).thenAnswer(invocation -> {
+            Instant acceptedAt = invocation.getArgument(5);
+            return new GoalAnalysisStore.PendingArtworkTask(91L, 1, 90L, 1, acceptedAt,
+                    acceptedAt.plusSeconds(120));
+        });
+
+        var response = service.createCustomChallenge(1L, request(7));
+
+        assertThat(response.taskId()).isEqualTo(91L);
+        assertThat(response.status()).isEqualTo("PENDING");
+        assertThat(response.expiresAt()).isEqualTo(response.acceptedAt().plusSeconds(120));
+        verify(challengeRepository, never()).save(any());
+    }
+
+    @Test
+    void returnsSameTaskForExistingReceiptWithoutReadingExpiredAnalysis() {
+        var acceptedAt = Instant.parse("2026-11-23T00:00:00Z");
+        when(goalAnalysisStore.findCustomReceipt(ANALYSIS_ID))
+            .thenReturn(Optional.of(new CustomReceipt(1L, START_DATE, START_DATE.plusDays(6))));
+        when(goalAnalysisStore.findArtworkTask(ANALYSIS_ID))
+            .thenReturn(Optional.of(new GoalAnalysisStore.PendingArtworkTask(91L, 1, 90L, 1,
+                    acceptedAt, acceptedAt.plusSeconds(120))));
+
+        var response = service.createCustomChallenge(1L, request(7));
+
+        assertThat(response.taskId()).isEqualTo(91L);
+        assertThat(response.challengeId()).isNull();
+        verify(goalAnalysisStore, never()).findByAnalysisId(ANALYSIS_ID);
+        verifyNoInteractions(aiTaskRepository);
     }
 
     @Test
@@ -384,9 +443,6 @@ class CustomChallengeServiceTests {
     }
 
     private void stubArtworkAndChallenge() {
-        Artwork artwork = mock(Artwork.class);
-        when(artwork.getArtworkId()).thenReturn(30L);
-        when(artworkRepository.findReadyArtworks()).thenReturn(List.of(artwork));
         when(challengeRepository.save(any())).thenAnswer(invocation -> {
             Challenge challenge = invocation.getArgument(0);
             ReflectionTestUtils.setField(challenge, "challengeId", 100L);

@@ -3,6 +3,9 @@ package com.moamu.domain.challenge.service;
 import com.moamu.domain.schedule.repository.ScheduleRepository;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.text.Normalizer;
+import java.util.Locale;
 import java.time.ZoneId;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -23,6 +26,8 @@ import org.springframework.transaction.TransactionException;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.moamu.domain.artwork.repository.ArtworkRepository;
+import com.moamu.domain.aitask.entity.AiTask;
+import com.moamu.domain.aitask.repository.AiTaskRepository;
 import com.moamu.domain.artwork.entity.Artwork;
 import com.moamu.domain.challenge.dto.ChallengeCreateRequest;
 import com.moamu.domain.challenge.dto.CustomChallengeCreateRequest;
@@ -82,6 +87,8 @@ public class ChallengeService {
     private final GoalAnalysisStore goalAnalysisStore;
     private final GoalCategoryRepository goalCategoryRepository;
     private final PlatformTransactionManager transactionManager;
+    private final AiTaskRepository aiTaskRepository;
+    private final ReusableArtworkService reusableArtworkService;
 
     // 최종 공개 상태와 집계를 동일한 시점으로 조회하며 인증·회차·전시 상태는 변경하지 않음
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
@@ -445,6 +452,10 @@ public class ChallengeService {
             throw new BusinessException(ChallengeErrorCode.ANALYSIS_STALE);
         }
 
+        // 재사용할 작품이 있는지 먼저 확인하고, 없을 때만 대표 작업을 찾는 데 필요한 Redis 키를 만드는 코드
+        Optional<Long> reusableArtworkId = reusableArtworkService.chooseArtwork(snapshot);
+        String categoryKey = reusableArtworkId.isEmpty() ? generationKey(snapshot) : null;
+        
         Optional<String> lockToken = goalAnalysisStore.acquireConfirmation(
                 analysisId, snapshot, request.startDate(), request.endDate(), acceptedAt);
         if (lockToken.isEmpty()) {
@@ -459,6 +470,10 @@ public class ChallengeService {
             throw new BusinessException(ChallengeErrorCode.ARTWORK_TASK_UNAVAILABLE);
         }
 
+        if (reusableArtworkId.isEmpty()) {
+            return acceptArtworkTask(analysisId, lockToken.get(), categoryKey, acceptedAt);
+        }
+
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
         transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         // 여러 요청이 동시에 들어와도 같은 분류나 템플릿이 중복 생성되지 않도록 함.
@@ -469,7 +484,7 @@ public class ChallengeService {
                 var response = transaction.execute(status -> {
                     try {
                         return confirmCustomChallenge(userId, analysisId, lockToken.get(), request, snapshot,
-                                durationDays);
+                                durationDays, reusableArtworkId.get());
                     } catch (DataIntegrityViolationException | TransientDataAccessException exception) {
                         throw new CustomChallengeWriteConflict(exception);
                     }
@@ -491,6 +506,50 @@ public class ChallengeService {
         throw new IllegalStateException("자유목표 도전을 확정하지 못했습니다.");
     }
 
+    private CustomChallengeCreateResponse acceptArtworkTask(
+            String analysisId, String lockToken, String categoryKey, Instant acceptedAt) {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        AiTask task;
+        try {
+            task = transaction.execute(status -> aiTaskRepository.save(AiTask.pendingArtworkGeneration(
+                    LocalDateTime.ofInstant(acceptedAt, ZoneId.of("Asia/Seoul")))));
+        } catch (TransactionException | DataAccessException exception) {
+            throw new BusinessException(ChallengeErrorCode.ARTWORK_TASK_UNAVAILABLE, exception);
+        }
+
+        // DB에 저장된 작업 번호로만 대표 작업을 정한다.
+        var pending = goalAnalysisStore.registerArtworkTask(
+                analysisId, lockToken, categoryKey, task.getAiTaskId(), task.getTaskVersion(), acceptedAt);
+        return pendingResponse(pending);
+    }
+
+    private String generationKey(GoalAnalysisSnapshot snapshot) {
+        CategoryPath path = snapshot.categoryPath();
+        var activeId = goalCategoryRepository.findActiveMinorId(
+                path.major().strip(), path.middle().strip(), path.minor().strip());
+        if (snapshot.categoryId() != null && !snapshot.categoryId().equals(activeId.orElse(null))) {
+            throw new BusinessException(ChallengeErrorCode.ANALYSIS_STALE);
+        }
+        if (activeId.isPresent()) {
+            // 이미 등록된 분류는 DB에 저장된 이름을 기준으로 같은 경로를 만든다.
+            var names = goalCategoryRepository.findCategoryNames(activeId.get())
+                    .orElseThrow(() -> new BusinessException(ChallengeErrorCode.ANALYSIS_STALE));
+            path = new CategoryPath(names.getMajorName(), names.getMiddleName(), names.getMinorName());
+        }
+        return categoryKeyPart(path.major()) + categoryKeyPart(path.middle()) + categoryKeyPart(path.minor());
+    }
+
+    private String categoryKeyPart(String name) {
+        String normalized = Normalizer.normalize(name, Normalizer.Form.NFKC).strip().toLowerCase(Locale.ROOT);
+        return normalized.length() + ":" + normalized;
+    }
+
+    private CustomChallengeCreateResponse pendingResponse(GoalAnalysisStore.PendingArtworkTask task) {
+        return CustomChallengeCreateResponse.pending(
+                task.taskId(), task.taskVersion(), task.acceptedAt(), task.expiresAt());
+    }
+
     // 저장 중 충돌이 나고 DB 변경이 취소된 경우에만 다시 시도.
     private static final class CustomChallengeWriteConflict extends RuntimeException {
         private CustomChallengeWriteConflict(DataAccessException cause) {
@@ -510,6 +569,12 @@ public class ChallengeService {
             }
         });
         var confirmed = findConfirmation(analysisId, userId, request, false);
+        if (confirmed.isEmpty() && receipt.isPresent()) {
+            var task = goalAnalysisStore.findArtworkTask(analysisId);
+            if (task.isPresent()) {
+                return task.map(this::pendingResponse);
+            }
+        }
         // 기존 도전이 저장됐는지 알 수 없으면 새 도전을 만들지 않음.
         if (receipt.isPresent() && confirmed.isEmpty()) {
             throw new BusinessException(ChallengeErrorCode.ARTWORK_TASK_UNAVAILABLE);
@@ -550,7 +615,7 @@ public class ChallengeService {
     // 자유목표 도전 생성
     private CustomChallengeCreateResponse confirmCustomChallenge(
             Long userId, String analysisId, String lockToken, CustomChallengeCreateRequest request,
-            GoalAnalysisSnapshot snapshot, int durationDays) {
+            GoalAnalysisSnapshot snapshot, int durationDays, Long artworkId) {
         Optional<CustomChallengeCreateResponse> confirmed = findConfirmation(analysisId, userId, request, true);
         if (confirmed.isPresent()) {
             return confirmed.get();
@@ -575,16 +640,10 @@ public class ChallengeService {
         }
         GoalTemplate template = resolveCustomTemplate(minor.getCateId(), snapshot);
 
-        // 준비된 명화 중 무작위 배정
-        List<Artwork> artworks = artworkRepository.findReadyArtworks();
-        if (artworks.isEmpty()) {
-            throw new BusinessException(CommonErrorCode.INTERNAL_SERVER_ERROR);
-        }
-        Artwork artwork = artworks.get(ThreadLocalRandom.current().nextInt(artworks.size()));
         // 기본 목표로도 선택할 수 있도록 작품 연결
         if (!goalTemplateArtworkRepository.existsByGoalTemplateIdAndDelYn(template.getGoalTemplateId(), "N")) {
             goalTemplateArtworkRepository
-                    .save(GoalTemplateArtwork.create(template.getGoalTemplateId(), artwork.getArtworkId()));
+                    .save(GoalTemplateArtwork.create(template.getGoalTemplateId(), artworkId));
         }
 
         int[] gridSize = calculateGridSize(durationDays);
@@ -592,7 +651,7 @@ public class ChallengeService {
                 userId,
                 minor.getCateId(),
                 template.getGoalTemplateId(),
-                artwork.getArtworkId(),
+                artworkId,
                 snapshot.normalizedGoal(),
                 snapshot.normalizedGoal(),
                 snapshot.goal(),

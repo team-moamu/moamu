@@ -98,4 +98,13 @@ public class AiTask {
         lastError = "AI request failed";
         finishedAt = LocalDateTime.now();
     }
+
+    // AI 명화 생성 작업을 PENDING 상태로 만드는 메서드
+    public static AiTask pendingArtworkGeneration(LocalDateTime now) {
+        AiTask task = new AiTask();
+        task.taskType = AiTaskType.GENERATE_ARTWORK;
+        task.taskVersion = 1;
+        task.frstRegDt = now;
+        return task;
+    }
 }

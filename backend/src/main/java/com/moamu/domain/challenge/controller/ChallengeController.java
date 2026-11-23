@@ -16,6 +16,8 @@ import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -64,12 +66,14 @@ public class ChallengeController {
         return ApiResponse.success(challenges);
     }
     
-    // 분석 결과를 사용해 자유목표 도전 확정
+    // 재사용할 작품이 있으면 도전을 만들고, 없으면 생성 작업을 접수.
     @PostMapping("/custom")
-    public ApiResponse<CustomChallengeCreateResponse> createCustomChallenge(
+    public ResponseEntity<ApiResponse<CustomChallengeCreateResponse>> createCustomChallenge(
         @AuthenticationPrincipal Long userId,
         @Valid @RequestBody CustomChallengeCreateRequest request
     ) {
-        return ApiResponse.success(challengeService.createCustomChallenge(userId, request));
+        var response = challengeService.createCustomChallenge(userId, request);
+        HttpStatus status = response.taskId() == null ? HttpStatus.OK : HttpStatus.ACCEPTED;
+        return ResponseEntity.status(status).body(ApiResponse.success(response));
     }
 }

@@ -30,6 +30,8 @@ public class GoalAnalysisStore {
     private static final String LEGACY_LOCK_PREFIX = "goal:confirmation:";
     private static final String RECEIPT_PREFIX = "goal:custom-receipt:";
     private static final String RESULT_PREFIX = "goal:confirmation-result:";
+    private static final String ARTWORK_TASK_PREFIX = "goal:artwork-task:";
+    private static final String ARTWORK_REPRESENTATIVE_PREFIX = "goal:artwork-representative:";
     private static final Duration CONFIRMATION_TTL = Duration.ofDays(7);
     private static final Duration GENERATION_TIMEOUT = Duration.ofSeconds(120);
 
@@ -55,6 +57,26 @@ public class GoalAnalysisStore {
             return 1
             """, Long.class);
 
+    // 대표 작업을 고르고 대기 관계와 작업 번호를 한 번에 저장한다.
+    private static final DefaultRedisScript<Long> REGISTER_ARTWORK_TASK = new DefaultRedisScript<>("""
+            if redis.call('hget', KEYS[1], 'token') ~= ARGV[1] then return 0 end
+            if redis.call('hexists', KEYS[1], 'taskId') == 1 then return 0 end
+            local now = redis.call('time')
+            local nowMillis = tonumber(now[1]) * 1000 + math.floor(tonumber(now[2]) / 1000)
+            if tonumber(ARGV[5]) <= nowMillis then return 0 end
+            local representative = redis.call('hmget', KEYS[2], 'taskId', 'version')
+            if not representative[1] then
+                representative = {ARGV[3], ARGV[4]}
+                redis.call('hset', KEYS[2], 'taskId', ARGV[3], 'version', ARGV[4])
+                redis.call('pexpireat', KEYS[2], ARGV[5])
+            end
+            redis.call('hset', KEYS[1], 'taskId', ARGV[3], 'taskVersion', ARGV[4],
+                    'representativeTaskId', representative[1], 'representativeVersion', representative[2],
+                    'representativeKey', KEYS[2])
+            redis.call('set', KEYS[3], ARGV[2])
+            return 1
+            """, Long.class);
+
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
 
@@ -75,7 +97,39 @@ public class GoalAnalysisStore {
         }
     }
 
-    public record CustomReceipt(Long userId, LocalDate startDate, LocalDate endDate) {}
+    public record CustomReceipt(Long userId, LocalDate startDate, LocalDate endDate) {
+    }
+
+    public record PendingArtworkTask(Long taskId, int taskVersion, Long representativeTaskId,
+            int representativeVersion, Instant acceptedAt, Instant expiresAt) {
+    }
+
+    public Optional<PendingArtworkTask> findArtworkTask(String analysisId) {
+        List<Object> fields = redisTemplate.opsForHash().multiGet(RECEIPT_PREFIX + analysisId,
+                List.of("taskId", "taskVersion", "representativeTaskId", "representativeVersion",
+                        "acceptedAt", "expiresAt"));
+        if (fields.getFirst() == null) {
+            return Optional.empty();
+        }
+        return Optional.of(new PendingArtworkTask(Long.valueOf((String) fields.get(0)),
+                Integer.parseInt((String) fields.get(1)), Long.valueOf((String) fields.get(2)),
+                Integer.parseInt((String) fields.get(3)), Instant.parse((String) fields.get(4)),
+                Instant.parse((String) fields.get(5))));
+    }
+
+    public PendingArtworkTask registerArtworkTask(String analysisId, String token, String categoryKey,
+            Long taskId, int taskVersion, Instant acceptedAt) {
+        Long registered = redisTemplate.execute(REGISTER_ARTWORK_TASK,
+                List.of(RECEIPT_PREFIX + analysisId, ARTWORK_REPRESENTATIVE_PREFIX + categoryKey,
+                        ARTWORK_TASK_PREFIX + taskId),
+                token, analysisId, taskId.toString(), Integer.toString(taskVersion),
+                Long.toString(acceptedAt.plus(GENERATION_TIMEOUT).toEpochMilli()));
+        if (!Long.valueOf(1).equals(registered)) {
+            throw new BusinessException(ChallengeErrorCode.ARTWORK_TASK_UNAVAILABLE);
+        }
+        return findArtworkTask(analysisId)
+                .orElseThrow(() -> new BusinessException(ChallengeErrorCode.ARTWORK_TASK_UNAVAILABLE));
+    }
 
     public Optional<CustomReceipt> findCustomReceipt(String analysisId) {
         List<Object> fields = redisTemplate.opsForHash().multiGet(RECEIPT_PREFIX + analysisId,
