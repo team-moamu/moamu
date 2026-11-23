@@ -13,6 +13,7 @@ import { HomePage } from '../pages/home/HomePage'
 import { ChallengeCompletionPage } from '../pages/challenge/ChallengeCompletionPage'
 import { GoalVerificationConditionsPage } from '../pages/challenge/GoalVerificationConditionsPage'
 import { GoalVerificationUnavailablePage } from '../pages/challenge/GoalVerificationUnavailablePage'
+import { GalleryDesktopPage } from '../pages/gallery/GalleryDesktopPage'
 import { GalleryPage } from '../pages/gallery/GalleryPage'
 import { GalleryDetailPage } from '../pages/gallery/GalleryDetailPage'
 import { CollectionPage } from '../pages/collection/CollectionPage'
@@ -51,6 +52,7 @@ export default function AppRoutes() {
 
   return (
     <Routes>
+      <Route path="/museum/desktop" element={<GalleryDesktopPage />} />
       {/* 
         - element에 showBottomNav 추가하면 네비게이션바가 생깁니다. 
         - headerType: MainLayout.tsx에 있는 헤더 타입
