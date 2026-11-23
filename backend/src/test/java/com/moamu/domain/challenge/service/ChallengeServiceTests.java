@@ -1,6 +1,5 @@
 package com.moamu.domain.challenge.service;
 
-import com.moamu.domain.artwork.entity.Artwork;
 import com.moamu.domain.artwork.repository.ArtworkRepository;
 import com.moamu.domain.challenge.dto.ChallengeCreateRequest;
 import com.moamu.domain.challenge.entity.Challenge;
@@ -10,7 +9,6 @@ import com.moamu.domain.goal.entity.GoalTemplateCondition;
 import com.moamu.domain.goal.repository.GoalTemplateConditionRepository;
 import com.moamu.domain.challenge.repository.ChallengeRepository;
 import com.moamu.domain.goal.entity.GoalTemplate;
-import com.moamu.domain.goal.entity.GoalTemplateArtwork;
 import com.moamu.domain.goal.repository.GoalTemplateArtworkRepository;
 import com.moamu.domain.goal.repository.GoalTemplateRepository;
 import com.moamu.domain.schedule.entity.Schedule;
@@ -70,7 +68,6 @@ class ChallengeServiceTests {
         when(secondCondition.getDescription()).thenReturn("Practice for 10 minutes");
         when(goalTemplateConditionRepository.findByGoalTemplateIdAndDelYn(10L, "N"))
                 .thenReturn(List.of(firstCondition, secondCondition));
-        when(artworkRepository.findByArtworkIdAndDelYn(30L, "N")).thenReturn(Optional.of(mock(Artwork.class)));
         // JPA IDENTITY 저장 시 원본 엔티티에 ID가 할당되는 동작을 재현합니다.
         when(challengeRepository.save(any(Challenge.class))).thenAnswer(invocation -> {
             Challenge challenge = invocation.getArgument(0);
@@ -154,8 +151,7 @@ class ChallengeServiceTests {
     @Test
     void rejectsMissingMappingWithoutSaving() {
         when(goalTemplateRepository.findByGoalTemplateIdAndDelYn(10L, "N")).thenReturn(Optional.of(mock(GoalTemplate.class)));
-        when(goalTemplateArtworkRepository.findByGoalTemplateIdAndDelYn(10L, "N"))
-                .thenReturn(Optional.empty());
+        when(goalTemplateArtworkRepository.findActiveArtworkIds(10L)).thenReturn(List.of());
 
         assertThatThrownBy(() -> challengeService.createChallenge(1L, request(7)))
                 .isInstanceOfSatisfying(BusinessException.class, exception ->
@@ -164,18 +160,15 @@ class ChallengeServiceTests {
         verifyNoInteractions(challengeRepository, scheduleRepository, artworkRepository);
     }
 
-    // 연결 정보는 있지만 실제 작품이 없으면 예외를 발생시키고, 도전·회차를 저장하지 않는지 검증합니다.
     @Test
-    void rejectsMissingArtworkWithoutSaving() {
-        when(goalTemplateRepository.findByGoalTemplateIdAndDelYn(10L, "N")).thenReturn(Optional.of(mock(GoalTemplate.class)));
-        stubMapping();
-        when(artworkRepository.findByArtworkIdAndDelYn(30L, "N")).thenReturn(Optional.empty());
+    void assignsOneOfSeveralActiveArtworks() {
+        stubTemplate();
+        when(goalTemplateArtworkRepository.findActiveArtworkIds(10L)).thenReturn(List.of(30L, 31L));
 
-        assertThatThrownBy(() -> challengeService.createChallenge(1L, request(7)))
-                .isInstanceOfSatisfying(BusinessException.class, exception ->
-                        assertThat(exception.getErrorCode()).isEqualTo(CommonErrorCode.RESOURCE_NOT_FOUND));
+        challengeService.createChallenge(1L, request(7));
 
-        verifyNoInteractions(challengeRepository, scheduleRepository);
+        verify(challengeRepository).save(challengeCaptor.capture());
+        assertThat(challengeCaptor.getValue().getArtworkId()).isIn(30L, 31L);
     }
 
     // 기간만 바꿔 동일한 템플릿과 시작일로 테스트 요청을 만듭니다.
@@ -197,9 +190,6 @@ class ChallengeServiceTests {
 
     // 템플릿 10번에 삭제되지 않은 작품 30번 연결이 존재하는 상황을 재현합니다.
     private void stubMapping() {
-        GoalTemplateArtwork mapping = mock(GoalTemplateArtwork.class);
-        when(mapping.getArtworkId()).thenReturn(30L);
-        when(goalTemplateArtworkRepository.findByGoalTemplateIdAndDelYn(10L, "N"))
-                .thenReturn(Optional.of(mapping));
+        when(goalTemplateArtworkRepository.findActiveArtworkIds(10L)).thenReturn(List.of(30L));
     }
 }

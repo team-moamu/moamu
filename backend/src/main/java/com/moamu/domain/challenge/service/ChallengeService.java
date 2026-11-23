@@ -172,17 +172,11 @@ public class ChallengeService {
         LocalDate endDate = request.endDate();
         int durationDays = calculateDurationDays(startDate, endDate);
 
-        // 선택한 목표에 연결된 작품 조회
-        GoalTemplateArtwork goalTemplateArtwork = goalTemplateArtworkRepository
-                .findByGoalTemplateIdAndDelYn(request.goalTemplateId(), "N")
-                .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
-
-        // 연결된 작품 ID 가져오기
-        Long artworkId = goalTemplateArtwork.getArtworkId();
-
-        // 작품 존재 여부 확인
-        artworkRepository.findByArtworkIdAndDelYn(artworkId, "N")
-                .orElseThrow(() -> new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND));
+        List<Long> artworkIds = goalTemplateArtworkRepository.findActiveArtworkIds(request.goalTemplateId());
+        if (artworkIds.isEmpty()) {
+            throw new BusinessException(CommonErrorCode.RESOURCE_NOT_FOUND);
+        }
+        Long artworkId = artworkIds.get(ThreadLocalRandom.current().nextInt(artworkIds.size()));
 
         // 퍼즐 그리드
         int[] gridSize = calculateGridSize(durationDays);
@@ -588,7 +582,7 @@ public class ChallengeService {
         }
         Artwork artwork = artworks.get(ThreadLocalRandom.current().nextInt(artworks.size()));
         // 기본 목표로도 선택할 수 있도록 작품 연결
-        if (goalTemplateArtworkRepository.findByGoalTemplateIdAndDelYn(template.getGoalTemplateId(), "N").isEmpty()) {
+        if (!goalTemplateArtworkRepository.existsByGoalTemplateIdAndDelYn(template.getGoalTemplateId(), "N")) {
             goalTemplateArtworkRepository
                     .save(GoalTemplateArtwork.create(template.getGoalTemplateId(), artwork.getArtworkId()));
         }
