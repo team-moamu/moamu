@@ -93,15 +93,19 @@ export default function AppRoutes() {
 
       {/* 마이페이지 헤더 + 하단 내비게이션 */}
       <Route
-        path="/mypage"
-        element={
-          <MyPage
-            nickname={nickname || '회원'}
-            email={email}
-            profilePhotoUrl={profilePhotoUrl}
-          />
-        }
-      />
+        element={<MainLayout showBottomNav headerType="back" title="마이페이지" />}
+      >
+        <Route
+          path="/mypage"
+          element={
+            <MyPage
+              nickname={nickname || '회원'}
+              email={email}
+              profilePhotoUrl={profilePhotoUrl}
+            />
+          }
+        />
+      </Route>
 
       <Route element={<MainLayout headerType="back" title="계정 및 보안" />}>
         <Route path="/mypage/account-security" element={<AccountSecurityPage email={email} />} />
