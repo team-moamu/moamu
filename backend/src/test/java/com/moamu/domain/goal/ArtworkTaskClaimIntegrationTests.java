@@ -2,6 +2,7 @@ package com.moamu.domain.goal;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -22,6 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moamu.domain.goal.dto.GoalAnalysisSnapshot;
 import com.moamu.domain.goal.dto.GoalEvaluationRequest.CategoryPath;
 import com.moamu.domain.goal.repository.GoalAnalysisStore;
+import com.moamu.domain.goal.repository.ArtworkGenerationWorkStore;
 
 @Testcontainers(disabledWithoutDocker = true)
 class ArtworkTaskClaimIntegrationTests {
@@ -35,7 +37,10 @@ class ArtworkTaskClaimIntegrationTests {
         var connection = new LettuceConnectionFactory(redis.getHost(), redis.getMappedPort(6379));
         connection.afterPropertiesSet();
         try (var executor = Executors.newFixedThreadPool(2)) {
-            var store = new GoalAnalysisStore(new StringRedisTemplate(connection), new ObjectMapper());
+            var redisTemplate = new StringRedisTemplate(connection);
+            var objectMapper = new ObjectMapper();
+            var store = new GoalAnalysisStore(redisTemplate, objectMapper);
+            var workStore = new ArtworkGenerationWorkStore(redisTemplate, objectMapper, store);
             var firstAnalysis = snapshot(1L);
             var secondAnalysis = snapshot(2L);
             String firstId = store.save(firstAnalysis);
@@ -70,6 +75,11 @@ class ArtworkTaskClaimIntegrationTests {
             assertThat(firstTask.expiresAt()).isEqualTo(firstAccepted.plusSeconds(120));
             assertThat(secondTask.expiresAt()).isEqualTo(secondAccepted.plusSeconds(120));
             assertThat(store.findCustomReceipt(secondId).orElseThrow().startDate()).isEqualTo(start.plusDays(1));
+
+            var claimed = workStore.claimNext(Instant.now(), Duration.ofSeconds(10)).orElseThrow();
+            assertThat(claimed.taskId()).isEqualTo(firstTask.representativeTaskId());
+            assertThat(workStore.claimNext(Instant.now(), Duration.ofSeconds(10))).isEmpty();
+            assertThat(workStore.beforeSubmit(claimed, "{\"taskId\":" + claimed.taskId() + "}")).isTrue();
         } finally {
             connection.destroy();
         }

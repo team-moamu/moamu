@@ -28,7 +28,7 @@ public class GoalAnalysisStore {
     private static final String KEY_PREFIX = "goal:analysis:";
     private static final Duration TTL = Duration.ofMinutes(30);
     private static final String LEGACY_LOCK_PREFIX = "goal:confirmation:";
-    private static final String RECEIPT_PREFIX = "goal:custom-receipt:";
+    static final String RECEIPT_PREFIX = "goal:custom-receipt:";
     private static final String RESULT_PREFIX = "goal:confirmation-result:";
     private static final String ARTWORK_TASK_PREFIX = "goal:artwork-task:";
     private static final String ARTWORK_REPRESENTATIVE_PREFIX = "goal:artwork-representative:";
@@ -57,7 +57,7 @@ public class GoalAnalysisStore {
             return 1
             """, Long.class);
 
-    // 대표 작업을 고르고 대기 관계와 작업 번호를 한 번에 저장한다.
+    // 대표 작업을 고르고 대기 관계와 작업 번호를 한 번에 저장.
     private static final DefaultRedisScript<Long> REGISTER_ARTWORK_TASK = new DefaultRedisScript<>("""
             if redis.call('hget', KEYS[1], 'token') ~= ARGV[1] then return 0 end
             if redis.call('hexists', KEYS[1], 'taskId') == 1 then return 0 end
@@ -72,8 +72,11 @@ public class GoalAnalysisStore {
             end
             redis.call('hset', KEYS[1], 'taskId', ARGV[3], 'taskVersion', ARGV[4],
                     'representativeTaskId', representative[1], 'representativeVersion', representative[2],
-                    'representativeKey', KEYS[2])
+                    'representativeKey', KEYS[2], 'expiresAtMillis', ARGV[5])
             redis.call('set', KEYS[3], ARGV[2])
+            if representative[1] == ARGV[3] and representative[2] == ARGV[4] then
+                redis.call('zadd', KEYS[4], nowMillis, ARGV[2])
+            end
             return 1
             """, Long.class);
 
@@ -121,7 +124,7 @@ public class GoalAnalysisStore {
             Long taskId, int taskVersion, Instant acceptedAt) {
         Long registered = redisTemplate.execute(REGISTER_ARTWORK_TASK,
                 List.of(RECEIPT_PREFIX + analysisId, ARTWORK_REPRESENTATIVE_PREFIX + categoryKey,
-                        ARTWORK_TASK_PREFIX + taskId),
+                        ARTWORK_TASK_PREFIX + taskId, ArtworkGenerationWorkStore.QUEUE_KEY),
                 token, analysisId, taskId.toString(), Integer.toString(taskVersion),
                 Long.toString(acceptedAt.plus(GENERATION_TIMEOUT).toEpochMilli()));
         if (!Long.valueOf(1).equals(registered)) {
@@ -184,7 +187,7 @@ public class GoalAnalysisStore {
         return Optional.ofNullable(analysisJson).map(this::readAnalysis);
     }
 
-    private GoalAnalysisSnapshot readAnalysis(String analysisJson) {
+    GoalAnalysisSnapshot readAnalysis(String analysisJson) {
         try {
             GoalAnalysisSnapshot snapshot = objectMapper.readValue(analysisJson, GoalAnalysisSnapshot.class);
             if (snapshot == null) {
