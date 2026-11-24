@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 type ProfileEditPageProps = {
   nickname: string
   profilePhoto: File | null
-  onSave: (nickname: string, photo: File | null) => void
+  onSave: (nickname: string, photo: File | null) => Promise<void>
 }
 
 export function ProfileEditPage({
@@ -19,6 +19,8 @@ export function ProfileEditPage({
   const [photo, setPhoto] = useState<File | null>(profilePhoto)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [isPhotoMenuOpen, setIsPhotoMenuOpen] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
 
   useEffect(() => {
     if (!photo) {
@@ -35,16 +37,28 @@ export function ProfileEditPage({
   return (
     <form
       className="space-y-6 px-6 pt-6 pb-28"
-      onSubmit={(event) => {
+      onSubmit={async (event) => {
         event.preventDefault()
 
-        if (!trimmedNickname) return
+        if (!trimmedNickname || isSaving) return
 
-        onSave(trimmedNickname, photo)
-        navigate('/mypage', {
-          replace: true,
-          state: { profileSaved: true },
-        })
+        setIsSaving(true)
+        setSaveError('')
+
+        try {
+          await onSave(trimmedNickname, photo)
+
+          navigate('/mypage', {
+            replace: true,
+            state: { profileSaved: true },
+          })
+        } catch (error) {
+          setSaveError(
+            error instanceof Error ? error.message : '닉네임을 저장하지 못했어요.',
+          )
+        } finally {
+          setIsSaving(false)
+        }
       }}
     >
       <div className="relative mx-auto w-fit">
@@ -92,10 +106,10 @@ export function ProfileEditPage({
       <div className="fixed inset-x-0 bottom-0 z-10 mx-auto w-full max-w-[430px] px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         <button
           type="submit"
-          disabled={!trimmedNickname}
+          disabled={!trimmedNickname || isSaving}
           className="button button--primary button--full h-[52px]"
         >
-          변경사항 저장
+          {isSaving ? '저장 중…' : '변경사항 저장'}
         </button>
       </div>
 

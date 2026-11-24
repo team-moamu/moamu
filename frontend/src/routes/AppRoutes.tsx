@@ -28,6 +28,7 @@ import { WithdrawalPage } from '../pages/mypage/WithdrawalPage'
 import { WithdrawalConfirmPage } from '../pages/mypage/WithdrawalConfirmPage'
 import { WithdrawalCompletePage } from '../pages/mypage/WithdrawalCompletePage'
 import { PasswordResetCompletePage } from '../pages/mypage/PasswordResetCompletePage'
+import { getMe, updateMyName } from '../api/AuthApi'
 
 function ChallengePage() {
   return <h1>도전하기 화면</h1>
@@ -178,8 +179,11 @@ export default function AppRoutes() {
             <ProfileEditPage
               nickname={nickname}
               profilePhoto={profilePhoto}
-              onSave={(nextNickname, nextPhoto) => {
-                setNickname(nextNickname)
+              onSave={async (nextNickname, nextPhoto) => {
+                const user = await updateMyName(nextNickname)
+
+                setNickname(user.name)
+                setEmail(user.email)
                 setProfilePhoto(nextPhoto)
               }}
             />

@@ -249,3 +249,24 @@ export async function getMe(signal?: AbortSignal): Promise<UserMeResponse> {
 
   return body.data
 }
+
+export async function updateMyName(name: string): Promise<UserMeResponse> {
+  const response = await authenticatedFetch('/api/users/me', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  })
+
+  const body: ApiResponse<UserMeResponse> | null =
+    await response.json().catch(() => null)
+
+  if (!response.ok || !body?.success) {
+    throw new Error(
+      body?.success === false
+        ? body.error.message
+        : '닉네임을 저장하지 못했어요.',
+    )
+  }
+
+  return body.data
+}
