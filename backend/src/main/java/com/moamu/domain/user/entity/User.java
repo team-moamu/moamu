@@ -15,42 +15,46 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "user_id")
-    private Long userId;
+  @Id
+  @GeneratedValue(strategy = GenerationType.IDENTITY)
+  @Column(name = "user_id")
+  private Long userId;
 
-    @Column(name = "login_id", length = 50)
-    private String loginId;
+  @Column(name = "login_id", length = 50)
+  private String loginId;
 
-    @Column(name = "password", length = 255)
-    private String password;
+  @Column(name = "password", length = 255)
+  private String password;
 
-    @Column(name = "name", nullable = false, length = 100)
-    private String name;
+  @Column(name = "name", nullable = false, length = 100)
+  private String name;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
-    private UserStatus status = UserStatus.ACTIVE;
+  @Enumerated(EnumType.STRING)
+  @Column(name = "status", nullable = false, length = 20)
+  private UserStatus status = UserStatus.ACTIVE;
 
-    @Column(name = "withdrawn_at")
-    private LocalDateTime withdrawnAt;
+  @Column(name = "withdrawn_at")
+  private LocalDateTime withdrawnAt;
 
-    @Column(name = "profile_media_id")
-    private Long profileMediaId;
+  @Column(name = "profile_media_id")
+  private Long profileMediaId;
 
-    public static User createLocal(
-            String loginId,
-            String encodePassword,
-            String name) {
-        User user = new User();
-        user.loginId = loginId;
-        user.password = encodePassword;
-        user.name = name;
-        return user;
-    }
+  public static User createLocal(
+      String loginId,
+      String encodePassword,
+      String name) {
+    User user = new User();
+    user.loginId = loginId;
+    user.password = encodePassword;
+    user.name = name;
+    return user;
+  }
 
-    public void changeName(String name) {
-        this.name = name;
-    }
+  public void changeName(String name) {
+    this.name = name;
+  }
+
+  public void changeProfilePhoto(Long mediaId) {
+    this.profileMediaId = mediaId;
+  }
 }
