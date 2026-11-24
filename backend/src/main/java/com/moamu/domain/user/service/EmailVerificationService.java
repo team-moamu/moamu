@@ -84,13 +84,24 @@ public class EmailVerificationService {
     if (!userService.isEmailAvailable(email)) {
       throw new BusinessException(UserErrorCode.DUPLICATE_LOGIN_ID);
     }
+    sendVerificationCode(email, "auth:signup:", "[모아뮤] 회원가입 인증번호");
+  }
+
+  void sendPasswordResetCode(String email) {
+    sendVerificationCode(
+        email,
+        "auth:password-reset:",
+        "[모아뮤] 비밀번호 재설정 인증번호");
+  }
+
+  private void sendVerificationCode(String email, String keyPrefix, String subject) {
 
     JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
     if (mailSender == null || fromAddress.isBlank()) {
       throw new BusinessException(UserErrorCode.VERIFICATION_MAIL_FAILED);
     }
 
-    String cooldownKey = "auth:signup:cooldown:" + email.toLowerCase(Locale.ROOT);
+    String cooldownKey = keyPrefix + "cooldown:" + email.toLowerCase(Locale.ROOT);
     Boolean canSend = redisTemplate.opsForValue()
         .setIfAbsent(cooldownKey, "1", RESEND_INTERVAL);
 
@@ -101,13 +112,13 @@ public class EmailVerificationService {
     String code = String.format(Locale.ROOT, "%06d", RANDOM.nextInt(1_000_000));
     String encodedCode = passwordEncoder.encode(code);
 
-    String codeKey = "auth:signup:code:" + email;
+    String codeKey = keyPrefix + "code:" + email;
     redisTemplate.opsForValue().set(codeKey, encodedCode, CODE_TTL);
 
     SimpleMailMessage message = new SimpleMailMessage();
     message.setFrom(fromAddress);
     message.setTo(email);
-    message.setSubject("[모아뮤] 회원가입 인증번호");
+    message.setSubject(subject);
     message.setText("인증번호는 " + code + "입니다.\n5분 안에 입력해 주세요.");
 
     try {

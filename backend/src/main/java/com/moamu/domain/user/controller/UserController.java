@@ -34,6 +34,7 @@ import com.moamu.global.security.JwtTokenProvider;
 import com.moamu.global.security.RefreshTokenService;
 import com.moamu.domain.user.dto.UserMeResponse;
 import com.moamu.domain.user.dto.UpdateMyNameRequest;
+import com.moamu.domain.user.service.PasswordResetService;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
@@ -57,6 +58,8 @@ public class UserController {
   private final UserRepository userRepository;
 
   private final EmailVerificationService emailVerificationService;
+
+  private final PasswordResetService passwordResetService;
 
   @Value("${auth.refresh-cookie-secure:true}")
   private boolean refreshCookieSecure;
@@ -211,5 +214,12 @@ public class UserController {
 
     var response = new EmailVerificationVerifyResponse(token);
     return ResponseEntity.ok(ApiResponse.success(response));
+  }
+
+  @PostMapping("/password-resets")
+  public ResponseEntity<Void> sendPasswordResetCode(
+      @Valid @RequestBody EmailVerificationSendRequest request) {
+    passwordResetService.sendCode(request.email());
+    return ResponseEntity.noContent().build();
   }
 }

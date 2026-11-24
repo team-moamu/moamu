@@ -65,6 +65,7 @@ public class SecurityConfig {
 								HttpMethod.POST,
 								"/api/users/signup",
 								"/api/users/email-verifications",
+								"/api/users/password-resets",
 								"/api/users/login",
 								"/api/users/refresh",
 								"/api/users/logout",
