@@ -39,7 +39,7 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 @ExtendWith(MockitoExtension.class)
 class GeneratedArtworkValidatorTests {
 
-    private static final String KEY = "generated-artworks/91/2/result.webp";
+    private static final String KEY = "generated_test/91/2/result.webp";
     private static final Source SOURCE = new Source("catalog-123", "Painting", "https://example.org/work",
             "PUBLIC_DOMAIN", "https://example.org/rights", Instant.parse("2026-01-01T00:00:00Z"));
 
@@ -55,7 +55,8 @@ class GeneratedArtworkValidatorTests {
         System.arraycopy("RIFF0000WEBP".getBytes(StandardCharsets.US_ASCII), 0, content, 0, 12);
         hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content));
         validator = new GeneratedArtworkValidator(clients,
-                new MockEnvironment().withProperty("app.storage.s3.bucket", "private-artworks"), 10000,
+                new MockEnvironment().withProperty("app.storage.s3.bucket", "private-artworks"),
+                "generated_test/", 10000,
                 Duration.ofSeconds(30));
     }
 
@@ -97,8 +98,8 @@ class GeneratedArtworkValidatorTests {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"generated-artworks/91/1/result.webp", "generated-artworks/92/2/result.webp",
-            "generated-artworks/91/2/../result.webp"})
+    @ValueSource(strings = {"generated_test/91/1/result.webp", "generated_test/92/2/result.webp",
+            "generated_test/91/2/../result.webp", "generated-artworks/91/2/result.webp"})
     void rejectsAnObjectFromADifferentAttemptBeforeReadingS3(String key) {
         assertInvalid(() -> validate(image(key, content.length), SOURCE));
         verifyNoInteractions(s3);

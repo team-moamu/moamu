@@ -32,14 +32,17 @@ public class GeneratedArtworkValidator {
     private static final Set<String> CONTENT_TYPES = Set.of("image/webp", "image/png", "image/jpeg");
     private final ObjectProvider<S3Client> s3Clients;
     private final Environment environment;
+    private final String generatedArtworkPrefix;
     private final long maxBytes;
     private final Duration readTimeout;
 
     public GeneratedArtworkValidator(ObjectProvider<S3Client> s3Clients, Environment environment,
+            @Value("${app.storage.s3.generated-artwork-prefix}") String generatedArtworkPrefix,
             @Value("${app.artwork-generation.max-image-bytes:10485760}") long maxBytes,
             @Value("${app.ai.read-timeout}") Duration readTimeout) {
         this.s3Clients = s3Clients;
         this.environment = environment;
+        this.generatedArtworkPrefix = generatedArtworkPrefix;
         this.maxBytes = maxBytes;
         this.readTimeout = readTimeout;
     }
@@ -50,7 +53,7 @@ public class GeneratedArtworkValidator {
             throw invalid();
         }
         var image = result.image();
-        String prefix = "generated-artworks/" + taskId + "/" + taskVersion + "/";
+        String prefix = generatedArtworkPrefix + taskId + "/" + taskVersion + "/";
         if (image == null || image.key() == null || image.key().length() > 500 || !image.key().startsWith(prefix)
                 || !image.key().substring(prefix.length()).matches("[A-Za-z0-9][A-Za-z0-9._-]*")
                 || image.sizeBytes() == null || image.sizeBytes() <= 0 || image.sizeBytes() > maxBytes
