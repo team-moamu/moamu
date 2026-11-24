@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -30,6 +32,8 @@ import com.moamu.domain.goal.dto.GoalAnalysisSnapshot;
 import com.moamu.domain.goal.dto.GoalEvaluationRequest.CategoryPath;
 import com.moamu.domain.goal.repository.ArtworkGenerationWorkStore;
 import com.moamu.domain.goal.repository.ArtworkGenerationWorkStore.ClaimedTask;
+import com.moamu.domain.goal.repository.ArtworkGenerationWorkStore.RepresentativeOutcome;
+import com.moamu.domain.goal.repository.ArtworkGenerationWorkStore.RepresentativeState;
 
 @ExtendWith(MockitoExtension.class)
 class ArtworkGenerationWorkerTests {
@@ -62,8 +66,8 @@ class ArtworkGenerationWorkerTests {
 
     @Test
     void checksTheExistingVersionAfterRestartAndReusesTheExactBodyIfMissing() {
-        var previous = new ClaimedTask("analysis", "token", 91L, 1, EXPIRES_AT, "{}", BODY, false, null, false);
-        var again = new ClaimedTask("analysis", "new-token", 91L, 1, EXPIRES_AT, "{}", BODY, true, null, false);
+        var previous = new ClaimedTask("analysis", "token", 91L, 1, EXPIRES_AT, "{}", BODY, false, null, false, 91L, 1, null);
+        var again = new ClaimedTask("analysis", "new-token", 91L, 1, EXPIRES_AT, "{}", BODY, true, null, false, 91L, 1, null);
         when(store.claimNext(any(), eq(Duration.ofSeconds(38))))
                 .thenReturn(Optional.of(previous), Optional.of(again));
         when(client.getStatus(91L, 1)).thenThrow(new ArtworkGenerationClientException(Reason.TASK_NOT_FOUND, 404, null));
@@ -131,13 +135,27 @@ class ArtworkGenerationWorkerTests {
     }
 
     private ClaimedTask claimResult() {
-        var task = new ClaimedTask("analysis", "token", 91L, 1, EXPIRES_AT, "{}", BODY, false, "{}", false);
+        var task = new ClaimedTask("analysis", "token", 91L, 1, EXPIRES_AT, "{}", BODY, false, "{}", false, 91L, 1, null);
         when(store.claimNext(any(), eq(Duration.ofSeconds(38)))).thenReturn(Optional.of(task));
         return task;
     }
 
+    @ParameterizedTest
+    @CsvSource({"FAILED,ARTWORK_REPRESENTATIVE_FAILED", "REUSE_DENIED,ARTWORK_REUSE_NOT_ALLOWED"})
+    void failsWaitingRequestWithoutCallingFastApi(RepresentativeState state, String errorCode) {
+        var waiter = new ClaimedTask("analysis", "token", 92L, 1, EXPIRES_AT, "{}", null, false,
+                null, false, 91L, 1, null);
+        when(store.claimNext(any(), eq(Duration.ofSeconds(38)))).thenReturn(Optional.of(waiter));
+        when(store.findRepresentative(eq(waiter), any())).thenReturn(new RepresentativeOutcome(state, null));
+
+        worker().runNext();
+
+        verify(store).fail(waiter, errorCode, true);
+        verifyNoInteractions(client, validator, challengeService);
+    }
+
     private ClaimedTask claim(String body, boolean submitAgain) {
-        var task = new ClaimedTask("analysis", "token", 91L, 1, EXPIRES_AT, "{}", body, submitAgain, null, false);
+        var task = new ClaimedTask("analysis", "token", 91L, 1, EXPIRES_AT, "{}", body, submitAgain, null, false, 91L, 1, null);
         when(store.claimNext(any(), eq(Duration.ofSeconds(38)))).thenReturn(Optional.of(task));
         return task;
     }

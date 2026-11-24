@@ -11,7 +11,8 @@ import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.testcontainers.containers.GenericContainer;
@@ -26,6 +27,7 @@ import com.moamu.domain.goal.dto.GoalConfirmationSnapshot;
 import com.moamu.domain.goal.dto.GoalEvaluationRequest.CategoryPath;
 import com.moamu.domain.goal.repository.GoalAnalysisStore;
 import com.moamu.domain.goal.repository.ArtworkGenerationWorkStore;
+import com.moamu.domain.goal.repository.ArtworkGenerationWorkStore.RepresentativeState;
 
 @Testcontainers(disabledWithoutDocker = true)
 class ArtworkTaskClaimIntegrationTests {
@@ -34,8 +36,9 @@ class ArtworkTaskClaimIntegrationTests {
     private static final GenericContainer<?> redis = new GenericContainer<>(DockerImageName.parse("redis:8.2"))
             .withExposedPorts(6379);
 
-    @Test
-    void concurrentRequestsKeepTheirOwnTasksAndShareOneRepresentative() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = {"REUSABLE", "PRIVATE", "FAILED", "EXPIRED", "STALE"})
+    void concurrentRequestsRespectTheRepresentativeOutcome(String outcome) throws Exception {
         var connection = new LettuceConnectionFactory(redis.getHost(), redis.getMappedPort(6379));
         connection.afterPropertiesSet();
         try (var executor = Executors.newFixedThreadPool(2)) {
@@ -78,13 +81,33 @@ class ArtworkTaskClaimIntegrationTests {
             assertThat(secondTask.expiresAt()).isEqualTo(secondAccepted.plusSeconds(120));
             assertThat(store.findCustomReceipt(secondId).orElseThrow().startDate()).isEqualTo(start.plusDays(1));
 
-            var claimed = workStore.claimNext(Instant.now(), Duration.ofSeconds(10)).orElseThrow();
+            var one = workStore.claimNext(Instant.now(), Duration.ofSeconds(10)).orElseThrow();
+            var two = workStore.claimNext(Instant.now(), Duration.ofSeconds(10)).orElseThrow();
+            var claimed = one.isRepresentative() ? one : two;
+            var waiting = one.isRepresentative() ? two : one;
             assertThat(claimed.taskId()).isEqualTo(firstTask.representativeTaskId());
+            assertThat(waiting.isRepresentative()).isFalse();
             assertThat(workStore.claimNext(Instant.now(), Duration.ofSeconds(10))).isEmpty();
+            assertThat(workStore.beforeSubmit(waiting, "{}")).isFalse();
+            assertThat(workStore.findRepresentative(waiting, Instant.now()).state()).isEqualTo(RepresentativeState.WAITING);
+            if ("FAILED".equals(outcome) || "EXPIRED".equals(outcome)) {
+                if ("FAILED".equals(outcome)) {
+                    workStore.fail(claimed, "TEST_FAILURE", false);
+                }
+                Instant checkTime = "EXPIRED".equals(outcome) ? claimed.expiresAt() : Instant.now();
+                assertThat(workStore.findRepresentative(waiting, checkTime).state()).isEqualTo(RepresentativeState.FAILED);
+                workStore.fail(waiting, "ARTWORK_REPRESENTATIVE_FAILED", true);
+                assertThat(workStore.findFailure(waiting.analysisId(), waiting.taskId(), waiting.taskVersion()))
+                        .contains(new ArtworkGenerationWorkStore.FailedTask("ARTWORK_REPRESENTATIVE_FAILED", true));
+                if ("EXPIRED".equals(outcome)) {
+                    workStore.fail(claimed, "TEST_CLEANUP", false);
+                }
+                return;
+            }
             assertThat(workStore.beforeSubmit(claimed, "{\"taskId\":" + claimed.taskId() + "}")).isTrue();
 
             var result = new ArtworkGenerationResult(claimed.taskId(), claimed.taskVersion(),
-                    ArtworkGenerationResult.Status.SUCCEEDED, null, null, null, null, true);
+                    ArtworkGenerationResult.Status.SUCCEEDED, null, null, null, null, !"PRIVATE".equals(outcome));
             workStore.saveResult(claimed, result);
             var validation = workStore.claimNext(Instant.now(), Duration.ofSeconds(10)).orElseThrow();
             assertThat(workStore.readResult(validation)).isEqualTo(result);
@@ -93,7 +116,30 @@ class ArtworkTaskClaimIntegrationTests {
             assertThat(finalization.verified()).isTrue();
             assertThat(workStore.beforeCommit(finalization, new GoalConfirmationSnapshot(1L, 100L))).isTrue();
             workStore.markSucceeded(finalization, 200L);
-            assertThat(workStore.claimNext(Instant.now(), Duration.ofSeconds(10))).isEmpty();
+            var representative = workStore.findRepresentative(waiting, Instant.now());
+            workStore.markWaiterReady(waiting, 200L);
+            if ("PRIVATE".equals(outcome)) {
+                assertThat(representative.state()).isEqualTo(RepresentativeState.REUSE_DENIED);
+                assertThat(workStore.claimNext(Instant.now(), Duration.ofSeconds(10))).isEmpty();
+                workStore.fail(waiting, "ARTWORK_REUSE_NOT_ALLOWED", true);
+                assertThat(workStore.findFailure(waiting.analysisId(), waiting.taskId(), waiting.taskVersion()))
+                        .contains(new ArtworkGenerationWorkStore.FailedTask("ARTWORK_REUSE_NOT_ALLOWED", true));
+                return;
+            }
+            assertThat(representative.state()).isEqualTo(RepresentativeState.SUCCEEDED);
+            var waitingFinalization = workStore.claimNext(Instant.now(), Duration.ofSeconds(10)).orElseThrow();
+            assertThat(waitingFinalization.taskId()).isEqualTo(waiting.taskId());
+            assertThat(waitingFinalization.reusableArtworkId()).isEqualTo(200L);
+            assertThat(waitingFinalization.verified()).isTrue();
+            if ("STALE".equals(outcome)) {
+                redisTemplate.opsForHash().put("goal:custom-receipt:" + finalization.analysisId(), "taskVersion", "2");
+                assertThat(workStore.beforeCommit(waitingFinalization, new GoalConfirmationSnapshot(1L, 101L)))
+                        .isFalse();
+                workStore.fail(waitingFinalization, "TEST_STALE", false);
+                return;
+            }
+            assertThat(workStore.beforeCommit(waitingFinalization, new GoalConfirmationSnapshot(1L, 101L))).isTrue();
+            workStore.markSucceeded(waitingFinalization, 200L);
             assertThat(redisTemplate.opsForHash().get("goal:custom-receipt:" + finalization.analysisId(), "generationState"))
                     .isEqualTo("SUCCEEDED");
         } finally {

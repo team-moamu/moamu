@@ -73,7 +73,7 @@ public class ChallengeController {
         @Valid @RequestBody CustomChallengeCreateRequest request
     ) {
         var response = challengeService.createCustomChallenge(userId, request);
-        HttpStatus status = response.taskId() == null ? HttpStatus.OK : HttpStatus.ACCEPTED;
+        HttpStatus status = "PENDING".equals(response.status()) ? HttpStatus.ACCEPTED : HttpStatus.OK;
         return ResponseEntity.status(status).body(ApiResponse.success(response));
     }
 }

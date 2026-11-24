@@ -528,18 +528,18 @@ public class ChallengeService {
     }
 
     // S3 검증을 마친 대표 작업으로 실제 도전을 만드는 메서드
-    public void confirmGeneratedArtwork(ClaimedTask work) {
+    public void confirmArtworkChallenge(ClaimedTask work) {
         var receipt = goalAnalysisStore.findCustomReceipt(work.analysisId())
                 .orElseThrow(() -> new BusinessException(ChallengeErrorCode.ARTWORK_TASK_UNAVAILABLE));
         var request = new CustomChallengeCreateRequest(work.analysisId(), receipt.startDate(), receipt.endDate());
         var snapshot = artworkWorkStore.readAnalysis(work);
-        var result = artworkWorkStore.readResult(work);
+        var result = work.isRepresentative() ? artworkWorkStore.readResult(work) : null;
         Long artworkId = confirmationTransaction(work.expiresAt()).execute(status ->
                 saveGeneratedChallenge(work, receipt.userId(), request, snapshot, result));
         artworkWorkStore.markSucceeded(work, artworkId);
     }
 
-    // confirmGeneratedArtwork()가 시작한 DB 트랜잭션 안에서 미디어, 작품, 도전을 실제로 저장하는 내부 메서드
+    // 대표와 대기 요청 모두 작품을 연결하고 도전과 회차를 한 번에 저장.
     private Long saveGeneratedChallenge(ClaimedTask work, Long userId, CustomChallengeCreateRequest request,
             GoalAnalysisSnapshot snapshot, ArtworkGenerationResult result) {
         // 같은 작업의 이전 저장이 끝날 때까지 기다린 뒤 DB 상태를 다시 확인.
@@ -547,8 +547,6 @@ public class ChallengeService {
                 .orElseThrow(() -> new BusinessException(ChallengeErrorCode.ARTWORK_TASK_UNAVAILABLE));
         requireTime(work.expiresAt());
         if (!work.verified() || task.getTaskVersion() != work.taskVersion()
-                || result == null || result.status() != ArtworkGenerationResult.Status.SUCCEEDED
-                || !Objects.equals(result.taskId(), work.taskId()) || !Objects.equals(result.taskVersion(), work.taskVersion())
                 || !userId.equals(snapshot.userId())) {
             throw new BusinessException(ChallengeErrorCode.ARTWORK_TASK_UNAVAILABLE);
         }
@@ -559,6 +557,37 @@ public class ChallengeService {
             throw new BusinessException(ChallengeErrorCode.ARTWORK_TASK_UNAVAILABLE);
         }
 
+        Long artworkId = work.isRepresentative() ? createGeneratedArtwork(work, result) : findWaitingArtwork(work);
+        int durationDays = calculateDurationDays(request.startDate(), request.endDate());
+        Long challengeId = saveCustomChallenge(userId, request, snapshot, durationDays, artworkId);
+        task.completeArtworkGeneration(artworkId);
+        challengeRepository.flush();
+        if (!artworkWorkStore.beforeCommit(work, new GoalConfirmationSnapshot(userId, challengeId))) {
+            throw new BusinessException(ChallengeErrorCode.ARTWORK_TASK_UNAVAILABLE);
+        }
+        checkBeforeCommit(work.expiresAt());
+        return artworkId;
+    }
+
+    // 대기 요청에 배정된 대표 작품을 DB에서 찾음 -> 작품이 삭제되지 않았고 상태가 READY이면 기존 작품 ID를 반환
+    // 작품을 찾을 수 없거나 준비 상태가 아니면 도전 확정을 중단
+    private Long findWaitingArtwork(ClaimedTask work) {
+        if (work.reusableArtworkId() == null) {
+            throw new BusinessException(ChallengeErrorCode.ARTWORK_TASK_UNAVAILABLE);
+        }
+        return artworkRepository.findByArtworkIdAndDelYn(work.reusableArtworkId(), "N")
+                .filter(artwork -> artwork.getStatus() == com.moamu.domain.artwork.enums.Status.READY)
+                .map(Artwork::getArtworkId)
+                .orElseThrow(() -> new BusinessException(ChallengeErrorCode.ARTWORK_TASK_UNAVAILABLE));
+    }
+
+    // 대표 작업의 검증된 결과로 새 작품을 만듦.
+    // 결과의 작업 ID와 버전을 다시 확인하고 S3 파일 정보를 media에 저장하고 artwork를 생성
+    private Long createGeneratedArtwork(ClaimedTask work, ArtworkGenerationResult result) {
+        if (result == null || result.status() != ArtworkGenerationResult.Status.SUCCEEDED
+                || !Objects.equals(result.taskId(), work.taskId()) || !Objects.equals(result.taskVersion(), work.taskVersion())) {
+            throw new BusinessException(ChallengeErrorCode.ARTWORK_TASK_UNAVAILABLE);
+        }
         var image = result.image();
         var source = result.source();
         var media = mediaRepository.save(Media.createGeneratedArtwork(
@@ -568,17 +597,9 @@ public class ChallengeService {
         Artwork artwork = artworkRepository.save(Artwork.createGenerated(media.getMediaId(),
                 title.substring(0, title.offsetByCodePoints(0, titleLength)), work.taskVersion(),
                 LocalDateTime.now(ZoneId.of("Asia/Seoul"))));
-        int durationDays = calculateDurationDays(request.startDate(), request.endDate());
-        Long challengeId = saveCustomChallenge(userId, request, snapshot, durationDays, artwork.getArtworkId());
-        task.completeArtworkGeneration(artwork.getArtworkId());
-        challengeRepository.flush();
         artworkMetadataStore.save(artwork.getArtworkId(), new GeneratedArtworkMetadata(source.workId(), source.title(),
                 URI.create(source.sourceUrl()), source.rightsCode(), URI.create(source.rightsUrl()),
                 source.checkedAt(), result.reuseAllowed()));
-        if (!artworkWorkStore.beforeCommit(work, new GoalConfirmationSnapshot(userId, challengeId))) {
-            throw new BusinessException(ChallengeErrorCode.ARTWORK_TASK_UNAVAILABLE);
-        }
-        checkBeforeCommit(work.expiresAt());
         return artwork.getArtworkId();
     }
 
@@ -666,6 +687,7 @@ public class ChallengeService {
         }
     }
 
+    // 같은 분석 ID로 이미 접수한 요청이 있는지 확인하고, 기존 결과를 돌려주는 메서드
     private Optional<CustomChallengeCreateResponse> findReceivedChallenge(
             String analysisId, Long userId, CustomChallengeCreateRequest request) {
         var receipt = goalAnalysisStore.findCustomReceipt(analysisId);
@@ -681,7 +703,11 @@ public class ChallengeService {
         if (confirmed.isEmpty() && receipt.isPresent()) {
             var task = goalAnalysisStore.findArtworkTask(analysisId);
             if (task.isPresent()) {
-                return task.map(this::pendingResponse);
+                var pending = task.get();
+                var failure = artworkWorkStore.findFailure(analysisId, pending.taskId(), pending.taskVersion());
+                return Optional.of(failure.map(error -> CustomChallengeCreateResponse.failed(
+                        pending.taskId(), pending.taskVersion(), error.errorCode(), error.retryable()))
+                        .orElseGet(() -> pendingResponse(pending)));
             }
         }
         // 기존 도전이 저장됐는지 알 수 없으면 새 도전을 만들지 않음.

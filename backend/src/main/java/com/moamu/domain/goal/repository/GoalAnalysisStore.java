@@ -83,9 +83,7 @@ public class GoalAnalysisStore {
                     'representativeTaskId', representative[1], 'representativeVersion', representative[2],
                     'representativeKey', KEYS[2], 'expiresAtMillis', ARGV[5])
             redis.call('set', KEYS[3], ARGV[2])
-            if representative[1] == ARGV[3] and representative[2] == ARGV[4] then
-                redis.call('zadd', KEYS[4], nowMillis, ARGV[2])
-            end
+            redis.call('zadd', KEYS[4], nowMillis, ARGV[2])
             return 1
             """, Long.class);
 

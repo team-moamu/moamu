@@ -358,7 +358,7 @@ class CustomChallengeServiceTests {
         });
         when(artworkWorkStore.beforeCommit(work, new GoalConfirmationSnapshot(1L, 100L))).thenReturn(true);
 
-        service.confirmGeneratedArtwork(work);
+        service.confirmArtworkChallenge(work);
 
         assertThat(task.getStatus()).isEqualTo(AiTaskStatus.SUCCEEDED);
         assertThat(task.getArtworkId()).isEqualTo(30L);
@@ -377,7 +377,7 @@ class CustomChallengeServiceTests {
         when(aiTaskRepository.findByAiTaskIdAndTaskType(91L, AiTaskType.GENERATE_ARTWORK))
                 .thenReturn(Optional.of(task));
 
-        assertCode(() -> service.confirmGeneratedArtwork(work), "ARTWORK_TASK_UNAVAILABLE");
+        assertCode(() -> service.confirmArtworkChallenge(work), "ARTWORK_TASK_UNAVAILABLE");
 
         verify(transactionManager).rollback(any());
         verifyNoInteractions(mediaRepository, artworkRepository, challengeRepository);
@@ -386,7 +386,7 @@ class CustomChallengeServiceTests {
 
     private ClaimedTask stubVerifiedWork(int version) {
         var work = new ClaimedTask(ANALYSIS_ID, "worker", 91L, version, Instant.now().plusSeconds(30),
-                "{}", "{}", false, "{}", true);
+                "{}", "{}", false, "{}", true, 91L, version, null);
         when(goalAnalysisStore.findCustomReceipt(ANALYSIS_ID))
                 .thenReturn(Optional.of(new CustomReceipt(1L, START_DATE, START_DATE.plusDays(6))));
         when(artworkWorkStore.readAnalysis(work)).thenReturn(SNAPSHOT);

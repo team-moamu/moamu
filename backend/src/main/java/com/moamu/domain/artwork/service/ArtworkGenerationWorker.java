@@ -39,7 +39,11 @@ public class ArtworkGenerationWorker {
 
     private void process(ClaimedTask task) {
         if (task.verified()) {
-            challengeService.confirmGeneratedArtwork(task);
+            challengeService.confirmArtworkChallenge(task);
+            return;
+        }
+        if (!task.isRepresentative()) {
+            checkRepresentative(task);
             return;
         }
         // 저장된 생성 결과가 있으면 FastAPI를 다시 부르지 않고 S3를 확인.
@@ -65,6 +69,17 @@ public class ArtworkGenerationWorker {
                 case PAYLOAD_CONFLICT -> workStore.fail(task, "ARTWORK_GENERATION_PAYLOAD_CONFLICT", false);
                 default -> workStore.pollAgain(task);
             }
+        }
+    }
+
+    // 대기 요청은 대표 작업의 결과만 확인.
+    private void checkRepresentative(ClaimedTask task) {
+        var outcome = workStore.findRepresentative(task, Instant.now());
+        switch (outcome.state()) {
+            case WAITING -> workStore.pollAgain(task);
+            case SUCCEEDED -> workStore.markWaiterReady(task, outcome.artworkId());
+            case FAILED -> workStore.fail(task, "ARTWORK_REPRESENTATIVE_FAILED", true);
+            case REUSE_DENIED -> workStore.fail(task, "ARTWORK_REUSE_NOT_ALLOWED", true);
         }
     }
 

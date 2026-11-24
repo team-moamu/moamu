@@ -143,7 +143,7 @@ class ChallengeCreationIntegrationTests {
                 + "VALUES (91, 'GENERATE_ARTWORK', 1, 'PENDING')");
         LocalDate yesterday = LocalDate.now(ZoneId.of("Asia/Seoul")).minusDays(1);
         var task = new ClaimedTask("analysis", "token", 91L, 1, Instant.now().plusSeconds(60),
-                "{}", "{}", false, "{}", true);
+                "{}", "{}", false, "{}", true, 91L, 1, null);
         when(goalAnalysisStore.findCustomReceipt("analysis"))
                 .thenReturn(Optional.of(new CustomReceipt(1L, yesterday, yesterday.plusDays(6))));
         when(artworkWorkStore.readAnalysis(task)).thenReturn(new GoalAnalysisSnapshot(1L, "Walk", "Walk daily",
@@ -157,7 +157,7 @@ class ChallengeCreationIntegrationTests {
         when(artworkWorkStore.beforeCommit(eq(task), any(GoalConfirmationSnapshot.class))).thenReturn(withinDeadline);
 
         if (!withinDeadline) {
-            assertThatThrownBy(() -> challengeService.confirmGeneratedArtwork(task)).isInstanceOf(BusinessException.class);
+            assertThatThrownBy(() -> challengeService.confirmArtworkChallenge(task)).isInstanceOf(BusinessException.class);
             assertThat(count("challenge")).isZero();
             assertThat(count("schedule")).isZero();
             assertThat(count("challenge_condition")).isZero();
@@ -169,8 +169,8 @@ class ChallengeCreationIntegrationTests {
             return;
         }
 
-        challengeService.confirmGeneratedArtwork(task);
-        challengeService.confirmGeneratedArtwork(task);
+        challengeService.confirmArtworkChallenge(task);
+        challengeService.confirmArtworkChallenge(task);
 
         assertThat(count("challenge")).isEqualTo(1);
         assertThat(count("challenge_condition")).isEqualTo(1);
@@ -183,6 +183,27 @@ class ChallengeCreationIntegrationTests {
                 .isEqualTo("FAILED");
         assertThat(jdbc.queryForObject("SELECT schedule_date FROM schedule WHERE day_no = 1", LocalDate.class))
                 .isEqualTo(yesterday);
+
+        Long artworkId = jdbc.queryForObject("SELECT artwork_id FROM ai_task WHERE ai_task_id = 91", Long.class);
+        jdbc.update("INSERT INTO ai_task (ai_task_id, task_type, task_version, status) "
+                + "VALUES (92, 'GENERATE_ARTWORK', 1, 'PENDING')");
+        LocalDate waiterStart = yesterday.plusDays(2);
+        var waiter = new ClaimedTask("waiting", "worker", 92L, 1, Instant.now().plusSeconds(60),
+                "{}", null, false, null, true, 91L, 1, artworkId);
+        when(goalAnalysisStore.findCustomReceipt("waiting"))
+                .thenReturn(Optional.of(new CustomReceipt(1L, waiterStart, waiterStart.plusDays(7))));
+        when(artworkWorkStore.readAnalysis(waiter)).thenReturn(new GoalAnalysisSnapshot(1L, "Walk", "Walk daily",
+                null, new CategoryPath("Health", "Exercise", "Walking"), List.of("Shoes"), "Show shoes", "Outdoor"));
+        when(artworkWorkStore.beforeCommit(eq(waiter), any(GoalConfirmationSnapshot.class))).thenReturn(true);
+
+        challengeService.confirmArtworkChallenge(waiter);
+        challengeService.confirmArtworkChallenge(waiter);
+
+        assertThat(count("challenge")).isEqualTo(2);
+        assertThat(count("artwork")).isEqualTo(2);
+        assertThat(count("media")).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM challenge WHERE artwork_id = ? AND start_date = ?",
+                Integer.class, artworkId, waiterStart)).isEqualTo(1);
     }
 
     private org.springframework.test.web.servlet.MvcResult postChallenge(int days, int expectedStatus)
