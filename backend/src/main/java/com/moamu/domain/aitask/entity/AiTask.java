@@ -29,6 +29,9 @@ public class AiTask {
     @Column(name = "verification_id")
     private Long verificationId;
 
+    @Column(name = "artwork_id")
+    private Long artworkId;
+
     // 작업 요청 버전
     @Column(name = "task_version", nullable = false)
     private int taskVersion;
@@ -92,10 +95,34 @@ public class AiTask {
         finishedAt = LocalDateTime.now();
     }
 
+    public void completeArtworkGeneration(Long artworkId) {
+        this.artworkId = artworkId;
+        complete();
+    }
+
     // AI 호출 또는 결과 저장 중 기술 오류 기록
     public void fail() {
         status = AiTaskStatus.FAILED_FINAL;
         lastError = "AI request failed";
         finishedAt = LocalDateTime.now();
+    }
+
+    // AI 명화 생성 작업을 PENDING 상태로 만드는 메서드
+    public static AiTask pendingArtworkGeneration(LocalDateTime now) {
+        AiTask task = new AiTask();
+        task.taskType = AiTaskType.GENERATE_ARTWORK;
+        task.taskVersion = 1;
+        task.frstRegDt = now;
+        return task;
+    }
+
+    // 재시도 요청 시 기존 AI 명화 생성 작업을 새 버전으로 다시 시작할 수 있게 초기화하는 메서드
+    public void restartArtworkGeneration() {
+        taskVersion++;
+        status = AiTaskStatus.PENDING;
+        artworkId = null;
+        startedAt = null;
+        finishedAt = null;
+        lastError = null;
     }
 }

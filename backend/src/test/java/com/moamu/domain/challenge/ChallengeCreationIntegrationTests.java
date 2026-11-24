@@ -1,10 +1,27 @@
 package com.moamu.domain.challenge;
 
 import com.moamu.BackendApplicationTests;
+import com.moamu.domain.artwork.dto.ArtworkGenerationResult;
+import com.moamu.domain.artwork.repository.GeneratedArtworkMetadataStore;
+import com.moamu.domain.challenge.service.ChallengeService;
+import com.moamu.domain.challenge.dto.CustomChallengeCreateResponse;
+import com.moamu.domain.goal.dto.GoalAnalysisSnapshot;
+import com.moamu.domain.goal.dto.GoalConfirmationSnapshot;
+import com.moamu.domain.goal.dto.GoalEvaluationRequest.CategoryPath;
+import com.moamu.domain.goal.repository.ArtworkGenerationWorkStore;
+import com.moamu.domain.goal.repository.ArtworkGenerationWorkStore.ClaimedTask;
+import com.moamu.domain.goal.repository.GoalAnalysisStore;
+import com.moamu.domain.goal.repository.GoalAnalysisStore.CustomReceipt;
+import com.moamu.global.exception.BusinessException;
+import com.moamu.global.security.JwtTokenProvider;
 
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,17 +34,20 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 // MockMvc에서 실제 Controller·Service·Repository를 거쳐 격리된 MySQL에 저장합니다.
 // 테스트 자체는 트랜잭션으로 감싸지 않고 API 종료 후 커밋·롤백 결과를 확인합니다.
-@SpringBootTest
+@SpringBootTest(properties = "jwt.secret=bW9hbXUtdGVzdC1vbmx5LWtleS0zMi1ieXRlcy1sb25nIQ==")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Import(BackendApplicationTests.ContainerConfiguration.class)
@@ -37,12 +57,17 @@ class ChallengeCreationIntegrationTests {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private JdbcTemplate jdbc;
+    @Autowired private ChallengeService challengeService;
+    @Autowired private JwtTokenProvider tokens;
+    @MockitoBean private GoalAnalysisStore goalAnalysisStore;
+    @MockitoBean private ArtworkGenerationWorkStore artworkWorkStore;
+    @MockitoBean private GeneratedArtworkMetadataStore artworkMetadataStore;
     private boolean failureConstraintAdded;
 
     @BeforeEach
     void setUp() {
         cleanRows();
-        // 현재 컨트롤러의 임시 사용자 ID(1L)에 맞춰 외래 키가 유효한 데이터를 준비합니다.
+        // JWT로 인증할 사용자와 도전 생성에 필요한 데이터를 준비합니다.
         jdbc.update("INSERT INTO users (user_id, name) VALUES (1, 'Test user')");
         jdbc.update("INSERT INTO goal_category (cate_id, cate_code, cate_name) VALUES (10, 'TEST', 'Test')");
         jdbc.update("""
@@ -113,10 +138,115 @@ class ChallengeCreationIntegrationTests {
         assertThat(count("goal_template")).isEqualTo(1);
     }
 
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void finalDeadlineCheckControlsWhetherTheVerifiedGenerationCommits(boolean withinDeadline) {
+        jdbc.update("INSERT INTO ai_task (ai_task_id, task_type, task_version, status) "
+                + "VALUES (91, 'GENERATE_ARTWORK', 1, 'PENDING')");
+        LocalDate yesterday = LocalDate.now(ZoneId.of("Asia/Seoul")).minusDays(1);
+        var task = new ClaimedTask("analysis", "token", 91L, 1, Instant.now().plusSeconds(60),
+                "{}", "{}", false, "{}", true, 91L, 1, null);
+        when(goalAnalysisStore.findCustomReceipt("analysis"))
+                .thenReturn(Optional.of(new CustomReceipt(1L, yesterday, yesterday.plusDays(6))));
+        when(artworkWorkStore.readAnalysis(task)).thenReturn(new GoalAnalysisSnapshot(1L, "Walk", "Walk daily",
+                null, new CategoryPath("Health", "Exercise", "Walking"), List.of("Shoes"), "Show shoes", "Outdoor"));
+        var image = new ArtworkGenerationResult.Image("generated-artworks/91/1/result.webp",
+                "image/webp", 100L, "0".repeat(64));
+        var source = new ArtworkGenerationResult.Source("work-1", "Painting", "https://example.org/work",
+                "PUBLIC_DOMAIN", "https://example.org/rights", Instant.EPOCH);
+        when(artworkWorkStore.readResult(task)).thenReturn(new ArtworkGenerationResult(91L, 1,
+                ArtworkGenerationResult.Status.SUCCEEDED, null, null, image, source, true));
+        when(artworkWorkStore.beforeCommit(eq(task), any(GoalConfirmationSnapshot.class))).thenReturn(withinDeadline);
+
+        if (!withinDeadline) {
+            assertThatThrownBy(() -> challengeService.confirmArtworkChallenge(task)).isInstanceOf(BusinessException.class);
+            assertThat(count("challenge")).isZero();
+            assertThat(count("schedule")).isZero();
+            assertThat(count("challenge_condition")).isZero();
+            assertThat(count("goal_template_artwork")).isEqualTo(1);
+            assertThat(count("artwork")).isEqualTo(1);
+            assertThat(count("media")).isZero();
+            assertThat(jdbc.queryForObject("SELECT status FROM ai_task WHERE ai_task_id = 91", String.class))
+                    .isEqualTo("PENDING");
+            return;
+        }
+
+        challengeService.confirmArtworkChallenge(task);
+        challengeService.confirmArtworkChallenge(task);
+
+        assertThat(count("challenge")).isEqualTo(1);
+        assertThat(count("challenge_condition")).isEqualTo(1);
+        assertThat(count("schedule")).isEqualTo(7);
+        assertThat(count("artwork")).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT purpose FROM media", String.class)).isEqualTo("GENERATED_ARTWORK");
+        assertThat(jdbc.queryForObject("SELECT status FROM ai_task WHERE ai_task_id = 91", String.class))
+                .isEqualTo("SUCCEEDED");
+        assertThat(jdbc.queryForObject("SELECT status FROM schedule WHERE day_no = 1", String.class))
+                .isEqualTo("FAILED");
+        assertThat(jdbc.queryForObject("SELECT schedule_date FROM schedule WHERE day_no = 1", LocalDate.class))
+                .isEqualTo(yesterday);
+
+        Long artworkId = jdbc.queryForObject("SELECT artwork_id FROM ai_task WHERE ai_task_id = 91", Long.class);
+        jdbc.update("INSERT INTO ai_task (ai_task_id, task_type, task_version, status) "
+                + "VALUES (92, 'GENERATE_ARTWORK', 1, 'PENDING')");
+        LocalDate waiterStart = yesterday.plusDays(2);
+        var waiter = new ClaimedTask("waiting", "worker", 92L, 1, Instant.now().plusSeconds(60),
+                "{}", null, false, null, true, 91L, 1, artworkId);
+        when(goalAnalysisStore.findCustomReceipt("waiting"))
+                .thenReturn(Optional.of(new CustomReceipt(1L, waiterStart, waiterStart.plusDays(7))));
+        when(artworkWorkStore.readAnalysis(waiter)).thenReturn(new GoalAnalysisSnapshot(1L, "Walk", "Walk daily",
+                null, new CategoryPath("Health", "Exercise", "Walking"), List.of("Shoes"), "Show shoes", "Outdoor"));
+        when(artworkWorkStore.beforeCommit(eq(waiter), any(GoalConfirmationSnapshot.class))).thenReturn(true);
+
+        challengeService.confirmArtworkChallenge(waiter);
+        challengeService.confirmArtworkChallenge(waiter);
+
+        assertThat(count("challenge")).isEqualTo(2);
+        assertThat(count("artwork")).isEqualTo(2);
+        assertThat(count("media")).isEqualTo(1);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM challenge WHERE artwork_id = ? AND start_date = ?",
+                Integer.class, artworkId, waiterStart)).isEqualTo(1);
+    }
+
+    @Test
+    void duplicateExplicitRetryDoesNotIncrementTheDatabaseVersionTwice() {
+        jdbc.update("INSERT INTO ai_task (ai_task_id, task_type, task_version, status) "
+                + "VALUES (91, 'GENERATE_ARTWORK', 1, 'PENDING')");
+        var accepted = Instant.now().minusSeconds(121);
+        when(goalAnalysisStore.findTaskAnalysisId(91L)).thenReturn(Optional.of("analysis"));
+        when(goalAnalysisStore.findCustomReceipt("analysis"))
+                .thenReturn(Optional.of(new CustomReceipt(1L, START_DATE, START_DATE.plusDays(6))));
+        when(goalAnalysisStore.findArtworkTask("analysis")).thenReturn(Optional.of(
+                new GoalAnalysisStore.PendingArtworkTask(91L, 1, 91L, 1, accepted, accepted.plusSeconds(120))));
+        when(goalAnalysisStore.readReceiptAnalysis("analysis")).thenReturn(new GoalAnalysisSnapshot(1L, "Walk",
+                "Walk daily", null, new CategoryPath("Health", "Exercise", "Walking"), List.of("Shoes"),
+                "Show shoes", "Outdoor"));
+        when(artworkWorkStore.findFailure("analysis", 91L, 1))
+                .thenReturn(Optional.of(new ArtworkGenerationWorkStore.FailedTask("ARTWORK_GENERATION_TIMEOUT", true)));
+        var savedResponse = new AtomicReference<CustomChallengeCreateResponse>();
+        when(goalAnalysisStore.findRetryResult("analysis", 1))
+                .thenAnswer(invocation -> Optional.ofNullable(savedResponse.get()));
+        when(goalAnalysisStore.publishRetry(eq("analysis"), eq(91L), eq(1), any(), any()))
+                .thenAnswer(invocation -> {
+                    CustomChallengeCreateResponse response = invocation.getArgument(4);
+                    savedResponse.set(response);
+                    return response;
+                });
+
+        var response = challengeService.retryArtworkTask(1L, 91L, 1);
+
+        assertThat(challengeService.retryArtworkTask(1L, 91L, 1)).isEqualTo(response);
+        assertThat(response.taskVersion()).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT task_version FROM ai_task WHERE ai_task_id = 91", Integer.class))
+                .isEqualTo(2);
+        assertThat(count("ai_task")).isEqualTo(1);
+        assertThat(count("challenge")).isZero();
+    }
+
     private org.springframework.test.web.servlet.MvcResult postChallenge(int days, int expectedStatus)
             throws Exception {
-        // 실제 보안 필터를 유지하며 테스트용 인증 정보와 CSRF 토큰을 전달합니다.
-        return mockMvc.perform(post("/api/challenges").with(user("test")).with(csrf())
+        return mockMvc.perform(post("/api/challenges")
+                .header("Authorization", "Bearer " + tokens.createAccessToken(1L))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
                         {"goalTemplateId":20,"startDate":"%s","endDate":"%s"}
@@ -129,11 +259,16 @@ class ChallengeCreationIntegrationTests {
     }
 
     private void cleanRows() {
+        jdbc.update("DELETE FROM ai_task");
         jdbc.update("DELETE FROM schedule");
+        jdbc.update("DELETE FROM challenge_condition");
         jdbc.update("DELETE FROM challenge");
         jdbc.update("DELETE FROM goal_template_artwork");
+        jdbc.update("DELETE FROM goal_template_condition");
         jdbc.update("DELETE FROM goal_template");
         jdbc.update("DELETE FROM artwork");
+        jdbc.update("DELETE FROM media");
+        jdbc.update("UPDATE goal_category SET parent_cate_id = NULL WHERE parent_cate_id IS NOT NULL");
         jdbc.update("DELETE FROM goal_category");
         jdbc.update("DELETE FROM users");
     }

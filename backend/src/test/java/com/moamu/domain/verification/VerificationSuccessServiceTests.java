@@ -28,7 +28,7 @@ class VerificationSuccessServiceTests {
     void setUp() {
         repository = mock(VerificationSuccessRepository.class);
         images = mock(ArtworkImageUrlService.class);
-        service = new VerificationSuccessService(repository, images);
+        service = new VerificationSuccessService(repository, images, "generated_test/");
     }
 
     private VerificationSuccessSnapshot snapshot(String status, String scheduleStatus) {
@@ -40,7 +40,7 @@ class VerificationSuccessServiceTests {
     @ParameterizedTest
     @ValueSource(ints = {7, 14, 30})
     void returnsAssignedPieceAndCurrentProgressWithScheduleCount(int total) {
-        when(repository.findOwned(1, 101)).thenReturn(Optional.of(snapshot("SUCCESS", "SUCCESS")));
+        when(repository.findOwned(1, 101, "generated_test/")).thenReturn(Optional.of(snapshot("SUCCESS", "SUCCESS")));
         when(repository.findRevealed(10, Status.SUCCESS)).thenReturn(List.of(0, 1));
         when(repository.countPieces(10)).thenReturn((long) total);
         var check = new Check(50, "C1", "Show book", CheckStatus.MET, "Book found");
@@ -58,7 +58,7 @@ class VerificationSuccessServiceTests {
 
     @Test
     void verificationSuccessIsTheOnlyEntryCondition() {
-        when(repository.findOwned(1, 101)).thenReturn(Optional.of(snapshot("SUCCESS", "PROGRESSING")));
+        when(repository.findOwned(1, 101, "generated_test/")).thenReturn(Optional.of(snapshot("SUCCESS", "PROGRESSING")));
         when(repository.findRevealed(10, Status.SUCCESS)).thenReturn(List.of());
         when(repository.countPieces(10)).thenReturn(7L);
         when(repository.findChecks(101)).thenReturn(List.of());
@@ -71,7 +71,7 @@ class VerificationSuccessServiceTests {
     @ParameterizedTest
     @ValueSource(strings = {"SUBMITTED", "ANALYZING", "FAILED", "REVIEW_REQUIRED", "TECH_ERROR"})
     void rejectsUnsuccessfulVerification(String status) {
-        when(repository.findOwned(1, 101)).thenReturn(Optional.of(snapshot(status, "OPEN")));
+        when(repository.findOwned(1, 101, "generated_test/")).thenReturn(Optional.of(snapshot(status, "OPEN")));
         assertThatThrownBy(() -> service.getSuccess(1L, 101)).isInstanceOfSatisfying(BusinessException.class,
                 error -> assertThat(error.getErrorCode()).isEqualTo(CommonErrorCode.INVALID_REQUEST));
         verifyNoInteractions(images);
@@ -80,7 +80,7 @@ class VerificationSuccessServiceTests {
 
     @Test
     void rejectsMissingOrOtherOwnersVerification() {
-        when(repository.findOwned(2, 101)).thenReturn(Optional.empty());
+        when(repository.findOwned(2, 101, "generated_test/")).thenReturn(Optional.empty());
         assertThatThrownBy(() -> service.getSuccess(2L, 101)).isInstanceOfSatisfying(BusinessException.class,
                 error -> assertThat(error.getErrorCode()).isEqualTo(CommonErrorCode.RESOURCE_NOT_FOUND));
     }

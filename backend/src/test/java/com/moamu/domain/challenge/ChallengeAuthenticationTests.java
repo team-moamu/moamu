@@ -3,9 +3,12 @@ package com.moamu.domain.challenge;
 import com.moamu.domain.challenge.controller.ChallengeController;
 import com.moamu.domain.challenge.service.ChallengeService;
 import com.moamu.domain.challenge.dto.CustomChallengeCreateResponse;
+import com.moamu.domain.challenge.dto.TodayChallengeResponse;
 import com.moamu.domain.challenge.exception.ChallengeErrorCode;
 import com.moamu.global.exception.BusinessException;
 import com.moamu.domain.schedule.controller.ScheduleController;
+import com.moamu.domain.schedule.dto.ScheduleDetailResponse;
+import com.moamu.domain.schedule.enums.Status;
 import com.moamu.domain.schedule.service.ScheduleService;
 import com.moamu.domain.user.entity.User;
 import com.moamu.domain.user.enums.UserStatus;
@@ -56,14 +59,18 @@ class ChallengeAuthenticationTests {
     void dailyChallengesUseAuthenticatedUserAndSelectedDate() throws Exception {
         authenticateSecondUser();
         LocalDate day = LocalDate.of(2026, 11, 7);
-        when(challengeService.getTodayChallenges(2L, day, null)).thenReturn(List.of());
+        when(challengeService.getTodayChallenges(2L, day, null)).thenReturn(List.of(new TodayChallengeResponse(
+                10L, "Walk", day, day.plusDays(6), 30L, 1, Status.OPEN, 0, null, 20L,
+                com.moamu.domain.challenge.enums.Status.IN_PROGRESS)));
 
         mockMvc.perform(get("/api/challenges/today")
                 .header("Authorization", "Bearer user-two-token")
                 .param("day", "2026-11-07").param("userId", "99"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.data").isEmpty());
+            .andExpect(jsonPath("$.data[0].challengeId").value(10))
+            .andExpect(jsonPath("$..imageUrl").isEmpty())
+            .andExpect(jsonPath("$..thumbnail").isEmpty());
 
         verify(challengeService).getTodayChallenges(2L, day, null);
         verifyNoMoreInteractions(challengeService);
@@ -72,12 +79,16 @@ class ChallengeAuthenticationTests {
     @Test
     void scheduleHistoryUsesAuthenticatedUser() throws Exception {
         authenticateSecondUser();
-        when(scheduleService.getScheduleDetail(2L, 10L)).thenReturn(List.of());
+        when(scheduleService.getScheduleDetail(2L, 10L)).thenReturn(List.of(new ScheduleDetailResponse(
+                10L, "Walk", 30L, 1, LocalDate.of(2026, 11, 7), Status.OPEN)));
 
         mockMvc.perform(get("/api/schedule/detail")
                 .header("Authorization", "Bearer user-two-token")
                 .param("challengeId", "10").param("userId", "99"))
-            .andExpect(status().isOk());
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data[0].scheduleId").value(30))
+            .andExpect(jsonPath("$..imageUrl").isEmpty())
+            .andExpect(jsonPath("$..thumbnail").isEmpty());
 
         verify(scheduleService).getScheduleDetail(2L, 10L);
         verifyNoMoreInteractions(scheduleService);
@@ -111,6 +122,34 @@ class ChallengeAuthenticationTests {
             .andExpect(jsonPath("$.data.challengeId").value(100));
 
         verify(challengeService).createCustomChallenge(eq(2L), any());
+    }
+
+    @Test
+    void generatedTaskLookupUsesTheAuthenticatedOwner() throws Exception {
+        authenticateSecondUser();
+        when(challengeService.getArtworkTask(2L, 91L)).thenReturn(new CustomChallengeCreateResponse(100L));
+
+        mockMvc.perform(get("/api/challenges/custom/tasks/91").header("Authorization", "Bearer user-two-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("SUCCEEDED"))
+                .andExpect(jsonPath("$.data.challengeId").value(100))
+                .andExpect(jsonPath("$.data.artworkId").doesNotExist())
+                .andExpect(jsonPath("$.data.imageKey").doesNotExist());
+    }
+
+    @Test
+    void retryReturnsAcceptedAndUsesTheRequestedVersion() throws Exception {
+        authenticateSecondUser();
+        var accepted = java.time.Instant.parse("2026-11-24T04:00:00Z");
+        when(challengeService.retryArtworkTask(2L, 91L, 1))
+                .thenReturn(CustomChallengeCreateResponse.pending(91L, 2, accepted, accepted.plusSeconds(120)));
+
+        mockMvc.perform(post("/api/challenges/custom/tasks/91/retry")
+                .header("Authorization", "Bearer user-two-token")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"expectedTaskVersion\":1}"))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.data.taskVersion").value(2))
+                .andExpect(jsonPath("$.data.status").value("PENDING"));
     }
 
     @ParameterizedTest

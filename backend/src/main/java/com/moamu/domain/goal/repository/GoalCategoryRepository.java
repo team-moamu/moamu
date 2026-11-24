@@ -49,4 +49,23 @@ public interface GoalCategoryRepository extends JpaRepository<GoalCategory, Long
                 AND TRIM(c.cateName) = :name
             """)
     Optional<GoalCategory> findForConfirmation(@Param("parentId") Long parentId, @Param("name") String name);
+
+    // 분류 ID로 DB에 저장된 대·중·소분류 이름을 한 번에 가져오는 조회
+    interface CategoryNames {
+        String getMajorName();
+
+        String getMiddleName();
+
+        String getMinorName();
+    }
+
+    @Query("""
+            SELECT major.cateName AS majorName, middle.cateName AS middleName, minor.cateName AS minorName
+            FROM GoalCategory minor
+            JOIN GoalCategory middle ON minor.parentCateId = middle.cateId
+            JOIN GoalCategory major ON middle.parentCateId = major.cateId
+            WHERE minor.cateId = :categoryId AND major.parentCateId IS NULL
+                AND major.delYn = 'N' AND middle.delYn = 'N' AND minor.delYn = 'N'
+            """)
+    Optional<CategoryNames> findCategoryNames(@Param("categoryId") Long categoryId);
 }

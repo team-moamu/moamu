@@ -31,7 +31,8 @@ import static org.mockito.Mockito.*;
 
 // 외부 JWT_SECRET 설정 없이 실행할 수 있도록 테스트 전용 서명 키 지정
 @SpringBootTest(properties = {
-    "jwt.secret=bW9hbXUtdGVzdC1vbmx5LWtleS0zMi1ieXRlcy1sb25nIQ=="
+    "jwt.secret=bW9hbXUtdGVzdC1vbmx5LWtleS0zMi1ieXRlcy1sb25nIQ==",
+    "app.storage.s3.generated-artwork-prefix=generated_test/"
 })
 @ActiveProfiles("test")
 @Import(BackendApplicationTests.ContainerConfiguration.class)
@@ -41,6 +42,7 @@ class VerificationSubmissionIntegrationTests {
     @Autowired private VerificationSubmissionService service;
     @Autowired private VerificationSuccessService successService;
     @MockitoBean private PhotoVerificationService ai;
+    @MockitoBean private ArtworkImageUrlService artworkImages;
     private long challengeId;
     private long scheduleId;
     private long mediaId;
@@ -175,7 +177,7 @@ class VerificationSubmissionIntegrationTests {
     }
 
     private void respond(VerificationResult result, CheckStatus check) {
-        when(ai.verify(any())).thenAnswer(invocation -> {
+        doAnswer(invocation -> {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
             PhotoVerificationRequest request = invocation.getArgument(0);
             assertThat(request.imageKey()).isEqualTo("verification/book.png");
@@ -183,7 +185,47 @@ class VerificationSubmissionIntegrationTests {
             return new PhotoVerificationService.Result(result, new PhotoVerificationResponse(
                     request.aiTaskId(), request.verificationId(), "SUCCEEDED",
                     List.of(new PhotoVerificationResponse.Check("C1", check, "Checked")), "test-model"));
-        });
+        }).when(ai).verify(any());
+    }
+
+    @ParameterizedTest
+    @CsvSource({"GENERATED_ARTWORK,artworks/result.webp", "VERIFICATION,generated_test/91/1/result.webp"})
+    void hidesAnAiArtworkForTheIncompleteChallengeEvenWhenAnotherChallengeSharesIt(String purpose, String key) {
+        jdbc.update("INSERT INTO media (image_key, purpose) VALUES (?, ?)", key, purpose);
+        Long artworkMediaId = jdbc.queryForObject("SELECT media_id FROM media WHERE image_key = ?", Long.class, key);
+        jdbc.update("UPDATE artwork SET artwork_title='Painting', media_id=? WHERE artwork_id=30", artworkMediaId);
+        respond(VerificationResult.SUCCESS, CheckStatus.MET);
+        var openVerification = service.submit(1L, request());
+
+        LocalDate past = LocalDate.now(ZoneId.of("Asia/Seoul")).minusDays(7);
+        challengeService.createChallenge(1L, new ChallengeCreateRequest(20L, past, past.plusDays(6)));
+        Long completedId = jdbc.queryForObject("SELECT challenge_id FROM challenge WHERE challenge_id <> ?",
+                Long.class, challengeId);
+        jdbc.update("UPDATE challenge SET status='COMPLETED' WHERE challenge_id=?", completedId);
+        jdbc.update("UPDATE schedule SET status='SUCCESS' WHERE challenge_id=?", completedId);
+        Long completedSchedule = jdbc.queryForObject(
+                "SELECT schedule_id FROM schedule WHERE challenge_id=? AND day_no=1", Long.class, completedId);
+        jdbc.update("""
+                INSERT INTO verification (schedule_id, attempt_no, idempotency_key, file_hash, status, submitted_at, media_id)
+                VALUES (?, 1, ?, ?, 'SUCCESS', NOW(), ?)
+                """, completedSchedule, UUID.randomUUID().toString(), "b".repeat(64), mediaId);
+        Long completedVerification = jdbc.queryForObject(
+                "SELECT verification_id FROM verification WHERE schedule_id=?", Long.class, completedSchedule);
+        when(artworkImages.resolve(key)).thenReturn("https://example.org/signed-artwork");
+
+        assertThat(successService.getSuccess(1L, completedVerification).artwork().imageUrl())
+                .isEqualTo("https://example.org/signed-artwork");
+        assertThat(challengeService.getCompletion(1L, completedId).artwork().imageUrl())
+                .isEqualTo("https://example.org/signed-artwork");
+        clearInvocations(artworkImages);
+
+        var result = successService.getSuccess(1L, openVerification.verificationId());
+        assertThat(result.artwork().artworkId()).isEqualTo(30L);
+        assertThat(result.artwork().imageUrl()).isNull();
+        assertThat(result.earnedPieceCount()).isEqualTo(1);
+        assertThat(result.checks()).hasSize(1);
+        assertThatThrownBy(() -> challengeService.getCompletion(1L, challengeId)).isInstanceOf(BusinessException.class);
+        verifyNoInteractions(artworkImages);
     }
 
     @Test

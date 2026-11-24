@@ -15,12 +15,15 @@ import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import java.util.List;
 import java.util.Optional;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 // 테스트 전용 서명 키로 발급한 JWT를 실제 보안 필터 체인에 전달합니다.
@@ -62,6 +65,17 @@ class MediaControllerTests {
                         .header("userId", "1").requestAttr("userId", 1L))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("error.code").value("AUTHENTICATION_REQUIRED"));
+        verifyNoInteractions(mediaService);
+    }
+
+    @Test
+    void thereIsNoDirectMediaReadEndpoint() throws Exception {
+        var user = mock(User.class);
+        when(user.getStatus()).thenReturn(UserStatus.ACTIVE);
+        when(users.findById(1L)).thenReturn(Optional.of(user));
+
+        mockMvc.perform(get("/api/media/30").header("Authorization", "Bearer " + tokens.createAccessToken(1L)))
+                .andExpect(result -> assertThat(result.getResolvedException()).isInstanceOf(NoResourceFoundException.class));
         verifyNoInteractions(mediaService);
     }
 

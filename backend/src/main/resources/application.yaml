@@ -41,6 +41,7 @@ app:
       bucket: ${S3_BUCKET}
       region: ${AWS_REGION}
       artwork-prefix: ${S3_ARTWORK_PREFIX}
+      generated-artwork-prefix: ${S3_GENERATED_ARTWORK_PREFIX}
       profile-prefix: ${S3_PROFILE_PREFIX}
       verification-prefix: ${S3_VERIFICATION_PREFIX}
 
