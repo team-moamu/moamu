@@ -149,9 +149,10 @@ export function ProfileEditPage({
 
             <button
               type="button"
-              className="rounded-xl border border-[#E8CFAC] px-4 py-3"
+              className="cursor-pointer rounded-xl border border-[#E8CFAC] px-4 py-3"
               onClick={() => {
                 setPhoto(null)
+                setUseDefaultPhoto(true)
                 setIsPhotoMenuOpen(false)
               }}
             >
@@ -163,7 +164,6 @@ export function ProfileEditPage({
               className="rounded-xl px-4 py-3 text-neutral-600"
               onClick={() => {
                 setIsPhotoMenuOpen(false)
-                setUseDefaultPhoto(true)
               }}
             >
               취소
