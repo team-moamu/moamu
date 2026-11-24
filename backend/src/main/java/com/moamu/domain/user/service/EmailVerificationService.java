@@ -84,17 +84,23 @@ public class EmailVerificationService {
     if (!userService.isEmailAvailable(email)) {
       throw new BusinessException(UserErrorCode.DUPLICATE_LOGIN_ID);
     }
-    sendVerificationCode(email, "auth:signup:", "[모아뮤] 회원가입 인증번호");
+
+    sendVerificationCode(
+        email,
+        "auth:signup:",
+        "[모아뮤] 회원가입 인증번호",
+        email);
   }
 
-  void sendPasswordResetCode(String email) {
+  void sendPasswordResetCode(String email, Long userId) {
     sendVerificationCode(
         email,
         "auth:password-reset:",
-        "[모아뮤] 비밀번호 재설정 인증번호");
+        "[모아뮤] 비밀번호 재설정 인증번호",
+        userId.toString());
   }
 
-  private void sendVerificationCode(String email, String keyPrefix, String subject) {
+  private void sendVerificationCode(String email, String keyPrefix, String subject, String accountKey) {
 
     JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
     if (mailSender == null || fromAddress.isBlank()) {
@@ -112,7 +118,7 @@ public class EmailVerificationService {
     String code = String.format(Locale.ROOT, "%06d", RANDOM.nextInt(1_000_000));
     String encodedCode = passwordEncoder.encode(code);
 
-    String codeKey = keyPrefix + "code:" + email;
+    String codeKey = keyPrefix + "code:" + accountKey;
     redisTemplate.opsForValue().set(codeKey, encodedCode, CODE_TTL);
 
     SimpleMailMessage message = new SimpleMailMessage();

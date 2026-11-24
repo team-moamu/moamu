@@ -32,7 +32,8 @@ public class PasswordResetService {
       return;
     }
 
-    emailVerificationService.sendPasswordResetCode(user.getLoginId());
+    emailVerificationService.sendPasswordResetCode(
+        user.getLoginId(), user.getUserId());
   }
 
   public String verifyCode(String email, String code) {
@@ -44,7 +45,7 @@ public class PasswordResetService {
     }
 
     return emailVerificationService.verifyPasswordResetCode(
-        user.getLoginId(), code, user.getUserId());
+        code, user.getUserId());
   }
 
   @Transactional

@@ -1,5 +1,6 @@
 package com.moamu.domain.user.entity;
 
+import org.hibernate.annotations.DynamicUpdate;
 import com.moamu.domain.user.enums.UserStatus;
 import com.moamu.global.entity.BaseEntity;
 import jakarta.persistence.*;
@@ -10,6 +11,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
+@DynamicUpdate
 @Table(name = "users")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
