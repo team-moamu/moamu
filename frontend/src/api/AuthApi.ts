@@ -223,6 +223,86 @@ export async function verifyEmailCode(
   return body.data.verificationToken
 }
 
+export async function sendPasswordResetCode(email: string): Promise<void> {
+  const response = await fetch('/api/users/password-resets', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  })
+
+  if (!response.ok) {
+    const body: ApiResponse<never> | null =
+      await response.json().catch(() => null)
+
+    throw new Error(
+      body?.success === false
+        ? body.error.message
+        : '인증번호를 요청하지 못했어요. 다시 시도해 주세요.',
+    )
+  }
+}
+
+export async function verifyPasswordResetCode(
+  email: string,
+  code: string,
+): Promise<string> {
+  const response = await fetch('/api/users/password-resets/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, code }),
+  })
+
+  const body: ApiResponse<{ resetToken: string }> | null =
+    await response.json().catch(() => null)
+
+  if (
+    !response.ok ||
+    body?.success !== true ||
+    typeof body.data?.resetToken !== 'string' ||
+    !/^[A-Za-z0-9_-]{43}$/.test(body.data.resetToken)
+  ) {
+    throw new Error(
+      body?.success === false
+        ? body.error.message
+        : '인증번호를 확인하지 못했어요. 다시 시도해 주세요.',
+    )
+  }
+
+  return body.data.resetToken
+}
+
+export class PasswordResetError extends Error {
+  readonly code: string
+
+  constructor(code: string, message: string) {
+    super(message)
+    this.name = 'PasswordResetError'
+    this.code = code
+  }
+}
+
+export async function confirmPasswordReset(
+  resetToken: string,
+  newPassword: string,
+): Promise<void> {
+  const response = await fetch('/api/users/password-resets/confirm', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ resetToken, newPassword }),
+  })
+
+  if (response.status === 204) return
+
+  const body: ApiResponse<never> | null =
+    await response.json().catch(() => null)
+
+  if (body?.success === false) {
+    throw new PasswordResetError(body.error.code, body.error.message)
+  }
+
+  throw new Error('비밀번호를 저장하지 못했어요. 다시 시도해 주세요.')
+}
+
 export async function logout(): Promise<void> {
   const response = await fetch('/api/users/logout', {
     method: 'POST',

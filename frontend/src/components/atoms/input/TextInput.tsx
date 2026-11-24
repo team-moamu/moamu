@@ -11,11 +11,12 @@ export type TextInputProps = {
   maxLength?: number
   describedBy?: string
   multiline?: boolean
+  disabled?: boolean
 }
 
 export function TextInput({
   id, value, onChange, type = 'text', placeholder, autoComplete,
-  inputMode, maxLength, describedBy, multiline = false,
+  inputMode, maxLength, describedBy, multiline = false, disabled,
 }: TextInputProps) {
   if (multiline) {
     return (
@@ -40,6 +41,7 @@ export function TextInput({
       name={id}
       type={type}
       value={value}
+      disabled={disabled}
       onChange={(event) => onChange(event.target.value)}
       placeholder={placeholder}
       autoComplete={autoComplete}

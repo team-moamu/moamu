@@ -1,6 +1,12 @@
-import { Link } from 'react-router'
+import { Link, Navigate, useLocation } from 'react-router'
 
 export function PasswordResetCompletePage() {
+  
+  const { state } = useLocation()
+
+  if (state?.resetCompleted !== true) {
+    return <Navigate to="/login" replace />
+  }
   return (
     <div className="flex flex-1 flex-col px-6 pb-28 text-[#493725]">
       <section className="flex flex-col items-center pt-[160px] text-center">

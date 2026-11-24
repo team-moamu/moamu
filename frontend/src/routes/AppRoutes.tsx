@@ -140,7 +140,7 @@ export default function AppRoutes() {
           />
         }
       >
-        <Route path="/mypage/password-reset" element={<PasswordResetPage />} />
+        <Route path="/password-reset" element={<PasswordResetPage />} />
       </Route>
 
       <Route
@@ -152,7 +152,7 @@ export default function AppRoutes() {
           />
         }
       >
-        <Route path="/mypage/password-reset/new" element={<NewPasswordPage />} />
+        <Route path="/password-reset/new" element={<NewPasswordPage />} />
       </Route>
 
       <Route
@@ -165,7 +165,7 @@ export default function AppRoutes() {
         }
       >
         <Route
-          path="/mypage/password-reset/complete"
+          path="/password-reset/complete"
           element={<PasswordResetCompletePage />}
         />
       </Route>
