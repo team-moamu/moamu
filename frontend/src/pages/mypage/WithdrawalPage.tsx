@@ -11,7 +11,7 @@ export function WithdrawalPage() {
         떠나기 전에 확인해 주세요.
       </h2>
       <p className="mt-2 text-[12px] leading-[18px]">
-        소중한 기록이 삭제되기 전에 확인해 주세요.
+        탈퇴 후에는 이 계정과 도전 기록을 다시 이용할 수 없어요.
       </p>
 
       <section
