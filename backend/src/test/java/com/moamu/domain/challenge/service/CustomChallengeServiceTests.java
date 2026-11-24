@@ -31,6 +31,7 @@ import com.moamu.domain.artwork.entity.Artwork;
 import com.moamu.domain.artwork.repository.ArtworkRepository;
 import com.moamu.domain.artwork.repository.GeneratedArtworkMetadataStore;
 import com.moamu.domain.challenge.dto.CustomChallengeCreateRequest;
+import com.moamu.domain.challenge.dto.CustomChallengeCreateResponse;
 import com.moamu.domain.challenge.entity.Challenge;
 import com.moamu.domain.challenge.entity.ChallengeCondition;
 import com.moamu.domain.challenge.repository.ChallengeConditionRepository;
@@ -439,7 +440,7 @@ class CustomChallengeServiceTests {
 
     @Test
     void returnsSameTaskForExistingReceiptWithoutReadingExpiredAnalysis() {
-        var acceptedAt = Instant.parse("2026-11-23T00:00:00Z");
+        var acceptedAt = Instant.now().minusSeconds(1);
         when(goalAnalysisStore.findCustomReceipt(ANALYSIS_ID))
             .thenReturn(Optional.of(new CustomReceipt(1L, START_DATE, START_DATE.plusDays(6))));
         when(goalAnalysisStore.findArtworkTask(ANALYSIS_ID))
@@ -465,6 +466,110 @@ class CustomChallengeServiceTests {
         assertThat(service.createCustomChallenge(1L, request(7)).challengeId()).isEqualTo(100L);
         verify(goalAnalysisStore, never()).findByAnalysisId(ANALYSIS_ID);
         verifyNoInteractions(transactionManager);
+    }
+
+    @Test
+    void taskLookupHidesAnotherOwnersReceipt() {
+        when(goalAnalysisStore.findTaskAnalysisId(91L)).thenReturn(Optional.of(ANALYSIS_ID));
+        when(goalAnalysisStore.findCustomReceipt(ANALYSIS_ID))
+                .thenReturn(Optional.of(new CustomReceipt(1L, START_DATE, START_DATE.plusDays(6))));
+
+        assertCode(() -> service.getArtworkTask(2L, 91L), "ARTWORK_TASK_NOT_FOUND");
+        assertCode(() -> service.retryArtworkTask(2L, 91L, 1), "ARTWORK_TASK_NOT_FOUND");
+        verifyNoInteractions(aiTaskRepository);
+    }
+
+    @Test
+    void retriesWithTheSameIdAndOnlyIncrementsTheVersionOnce() {
+        stubOwnedTask();
+        var task = stubRetryRow();
+        when(artworkWorkStore.findFailure(ANALYSIS_ID, 91L, 1))
+                .thenReturn(Optional.of(new ArtworkGenerationWorkStore.FailedTask("TEST_FAILURE", true)));
+        when(goalAnalysisStore.readReceiptAnalysis(ANALYSIS_ID)).thenReturn(SNAPSHOT);
+        when(goalAnalysisStore.publishRetry(eq(ANALYSIS_ID), eq(91L), eq(1), any(), any()))
+                .thenAnswer(invocation -> invocation.getArgument(4));
+
+        var response = service.retryArtworkTask(1L, 91L, 1);
+        when(goalAnalysisStore.findRetryResult(ANALYSIS_ID, 1)).thenReturn(Optional.of(response));
+
+        assertThat(service.retryArtworkTask(1L, 91L, 1)).isEqualTo(response);
+        assertThat(response.taskId()).isEqualTo(91L);
+        assertThat(response.taskVersion()).isEqualTo(2);
+        assertThat(response.expiresAt()).isEqualTo(response.acceptedAt().plusSeconds(120));
+        assertThat(task.getTaskVersion()).isEqualTo(2);
+        verify(goalAnalysisStore).prepareRetry(eq(ANALYSIS_ID), eq(91L), eq(1), isNull(), any());
+        verify(goalAnalysisStore).publishRetry(eq(ANALYSIS_ID), eq(91L), eq(1), any(), eq(response));
+        verify(goalAnalysisStore, never()).findByAnalysisId(ANALYSIS_ID);
+    }
+
+    @Test
+    void recoversTheStoredRetryPlanAfterTheDatabaseCommits() {
+        stubOwnedTask();
+        var task = stubRetryRow();
+        task.restartArtworkGeneration();
+        var plan = new GoalAnalysisStore.RetryPlan(Instant.now().minusSeconds(1), "walking", null);
+        when(goalAnalysisStore.findRetryPlan(ANALYSIS_ID)).thenReturn(Optional.of(plan));
+        when(goalAnalysisStore.publishRetry(eq(ANALYSIS_ID), eq(91L), eq(1), eq(plan), any()))
+                .thenAnswer(invocation -> invocation.getArgument(4));
+
+        var response = service.retryArtworkTask(1L, 91L, 1);
+
+        assertThat(response.acceptedAt()).isEqualTo(plan.acceptedAt());
+        assertThat(task.getTaskVersion()).isEqualTo(2);
+        verifyNoInteractions(reusableArtworkService);
+        verify(goalAnalysisStore, never()).prepareRetry(any(), anyLong(), anyInt(), any(), any());
+    }
+
+    @Test
+    void rejectsRetryWhenTheFailureIsNotRetryable() {
+        stubOwnedTask();
+        stubRetryRow();
+        when(artworkWorkStore.findFailure(ANALYSIS_ID, 91L, 1))
+                .thenReturn(Optional.of(new ArtworkGenerationWorkStore.FailedTask("TEST_FAILURE", false)));
+
+        assertCode(() -> service.retryArtworkTask(1L, 91L, 1), "ARTWORK_TASK_RETRY_CONFLICT");
+        verifyNoInteractions(reusableArtworkService);
+    }
+
+    @Test
+    void immediatelyConfirmsARetryWhenAnArtworkCanBeReused() {
+        stubOwnedTask();
+        var task = stubRetryRow();
+        stubCreation();
+        when(artworkWorkStore.findFailure(ANALYSIS_ID, 91L, 1))
+                .thenReturn(Optional.of(new ArtworkGenerationWorkStore.FailedTask("TEST_FAILURE", true)));
+        when(goalAnalysisStore.readReceiptAnalysis(ANALYSIS_ID)).thenReturn(SNAPSHOT);
+        when(reusableArtworkService.chooseArtwork(SNAPSHOT)).thenReturn(Optional.of(30L));
+        when(goalAnalysisStore.publishRetry(eq(ANALYSIS_ID), eq(91L), eq(1), any(), any()))
+                .thenAnswer(invocation -> invocation.getArgument(4));
+
+        assertThat(service.retryArtworkTask(1L, 91L, 1)).isEqualTo(new CustomChallengeCreateResponse(100L));
+        assertThat(task.getTaskVersion()).isEqualTo(2);
+        assertThat(task.getStatus()).isEqualTo(AiTaskStatus.SUCCEEDED);
+        var order = inOrder(goalAnalysisStore, transactionManager);
+        order.verify(goalAnalysisStore).saveRetryChallenge(eq(ANALYSIS_ID), eq(1), any(),
+                eq(new GoalConfirmationSnapshot(1L, 100L)));
+        order.verify(transactionManager).commit(any());
+        order.verify(goalAnalysisStore).publishRetry(eq(ANALYSIS_ID), eq(91L), eq(1), any(),
+                eq(new CustomChallengeCreateResponse(100L)));
+    }
+
+    private void stubOwnedTask() {
+        when(goalAnalysisStore.findTaskAnalysisId(91L)).thenReturn(Optional.of(ANALYSIS_ID));
+        when(goalAnalysisStore.findCustomReceipt(ANALYSIS_ID))
+                .thenReturn(Optional.of(new CustomReceipt(1L, START_DATE, START_DATE.plusDays(6))));
+        var accepted = Instant.now().minusSeconds(1);
+        when(goalAnalysisStore.findArtworkTask(ANALYSIS_ID)).thenReturn(Optional.of(
+                new GoalAnalysisStore.PendingArtworkTask(91L, 1, 91L, 1, accepted, accepted.plusSeconds(120))));
+    }
+
+    private AiTask stubRetryRow() {
+        var task = AiTask.pendingArtworkGeneration(START_DATE.atStartOfDay());
+        ReflectionTestUtils.setField(task, "aiTaskId", 91L);
+        when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
+        when(aiTaskRepository.findByAiTaskIdAndTaskType(91L, AiTaskType.GENERATE_ARTWORK))
+                .thenReturn(Optional.of(task));
+        return task;
     }
 
     @Test

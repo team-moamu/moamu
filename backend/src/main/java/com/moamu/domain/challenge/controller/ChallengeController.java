@@ -6,6 +6,7 @@ import com.moamu.domain.challenge.dto.ChallengeSettlementResponse;
 import com.moamu.domain.challenge.dto.TodayChallengeResponse;
 import com.moamu.domain.challenge.dto.CustomChallengeCreateRequest;
 import com.moamu.domain.challenge.dto.CustomChallengeCreateResponse;
+import com.moamu.domain.challenge.dto.ArtworkTaskRetryRequest;
 import com.moamu.domain.challenge.service.ChallengeService;
 import com.moamu.global.response.ApiResponse;
 
@@ -73,7 +74,34 @@ public class ChallengeController {
         @Valid @RequestBody CustomChallengeCreateRequest request
     ) {
         var response = challengeService.createCustomChallenge(userId, request);
-        HttpStatus status = "PENDING".equals(response.status()) ? HttpStatus.ACCEPTED : HttpStatus.OK;
+        return artworkSubmissionResponse(response);
+    }
+
+    // 성공이면 challengeId
+    // 진행 중이면 작업 ID, 버전, 기한
+    // 실패면 오류 코드와 재시도 가능 여부 반환
+    @GetMapping("/custom/tasks/{taskId}")
+    public ApiResponse<CustomChallengeCreateResponse> getArtworkTask(
+            @AuthenticationPrincipal Long userId, @PathVariable("taskId") long taskId) {
+        return ApiResponse.success(challengeService.getArtworkTask(userId, taskId));
+    }
+
+    // 재시도 가능한 실패 작업이고 expectedTaskVersion이 맞으면 같은 작업 ID에서 버전을 반환
+    @PostMapping("/custom/tasks/{taskId}/retry")
+    public ResponseEntity<ApiResponse<CustomChallengeCreateResponse>> retryArtworkTask(
+            @AuthenticationPrincipal Long userId, @PathVariable("taskId") long taskId,
+            @Valid @RequestBody ArtworkTaskRetryRequest request) {
+        return artworkSubmissionResponse(
+                challengeService.retryArtworkTask(userId, taskId, request.expectedTaskVersion()));
+    }
+
+    // 최초 접수와 재시도의 HTTP 응답을 만드는 공통 메서드
+    private ResponseEntity<ApiResponse<CustomChallengeCreateResponse>> artworkSubmissionResponse(
+            CustomChallengeCreateResponse response) {
+        HttpStatus status = switch (response.status()) {
+            case "PENDING", "RUNNING" -> HttpStatus.ACCEPTED;
+            default -> HttpStatus.OK;
+        };
         return ResponseEntity.status(status).body(ApiResponse.success(response));
     }
 }

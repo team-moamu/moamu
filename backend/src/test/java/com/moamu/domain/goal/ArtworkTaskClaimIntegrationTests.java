@@ -21,7 +21,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.moamu.domain.artwork.dto.ArtworkGenerationResult;
+import com.moamu.domain.challenge.dto.CustomChallengeCreateResponse;
 import com.moamu.domain.goal.dto.GoalAnalysisSnapshot;
 import com.moamu.domain.goal.dto.GoalConfirmationSnapshot;
 import com.moamu.domain.goal.dto.GoalEvaluationRequest.CategoryPath;
@@ -142,6 +144,61 @@ class ArtworkTaskClaimIntegrationTests {
             workStore.markSucceeded(waitingFinalization, 200L);
             assertThat(redisTemplate.opsForHash().get("goal:custom-receipt:" + finalization.analysisId(), "generationState"))
                     .isEqualTo("SUCCEEDED");
+        } finally {
+            connection.destroy();
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void retryPublishesOnceAndClearsTheOldAttempt(boolean reuseArtwork) {
+        var connection = new LettuceConnectionFactory(redis.getHost(), redis.getMappedPort(6379));
+        connection.afterPropertiesSet();
+        try {
+            var template = new StringRedisTemplate(connection);
+            var mapper = new ObjectMapper().registerModule(new JavaTimeModule());
+            var store = new GoalAnalysisStore(template, mapper);
+            var workStore = new ArtworkGenerationWorkStore(template, mapper, store);
+            var snapshot = snapshot(1L);
+            String analysisId = store.save(snapshot);
+            String categoryKey = UUID.randomUUID().toString();
+            Instant initial = Instant.now().minusSeconds(1);
+            LocalDate start = LocalDate.of(2026, 11, 24);
+            String token = store.acquireConfirmation(analysisId, snapshot, start, start.plusDays(6), initial).orElseThrow();
+            long taskId = reuseArtwork ? 201L : 202L;
+            store.registerArtworkTask(analysisId, token, categoryKey, taskId, 1, initial);
+            var old = workStore.claimNext(Instant.now(), Duration.ofSeconds(10)).orElseThrow();
+            assertThat(workStore.beforeSubmit(old, "old-body")).isTrue();
+            workStore.fail(old, "TEST_FAILURE", true);
+
+            var plan = new GoalAnalysisStore.RetryPlan(Instant.now(), reuseArtwork ? null : categoryKey,
+                    reuseArtwork ? 30L : null);
+            store.prepareRetry(analysisId, taskId, 1, null, plan);
+            assertThat(store.findRetryPlan(analysisId)).contains(plan);
+            if (reuseArtwork) {
+                store.saveRetryChallenge(analysisId, 1, plan, new GoalConfirmationSnapshot(1L, 100L));
+            }
+            var response = reuseArtwork ? new CustomChallengeCreateResponse(100L)
+                    : CustomChallengeCreateResponse.pending(taskId, 2, plan.acceptedAt(), plan.expiresAt());
+
+            assertThat(store.publishRetry(analysisId, taskId, 1, plan, response)).isEqualTo(response);
+            assertThat(store.publishRetry(analysisId, taskId, 1, plan, response)).isEqualTo(response);
+            assertThat(store.findArtworkTask(analysisId)).get().extracting(GoalAnalysisStore.PendingArtworkTask::taskVersion)
+                    .isEqualTo(2);
+            assertThat(store.findRetryPlan(analysisId)).isEmpty();
+            assertThat(workStore.beforeSubmit(old, "old-body")).isFalse();
+            if (reuseArtwork) {
+                assertThat(workStore.claimNext(Instant.now(), Duration.ofSeconds(10))).isEmpty();
+            } else {
+                var next = workStore.claimNext(Instant.now(), Duration.ofSeconds(10)).orElseThrow();
+                assertThat(next).satisfies(task -> {
+                    assertThat(task.taskId()).isEqualTo(taskId);
+                    assertThat(task.taskVersion()).isEqualTo(2);
+                    assertThat(task.requestBody()).isNull();
+                    assertThat(task.isRepresentative()).isTrue();
+                });
+                workStore.fail(next, "TEST_CLEANUP", false);
+            }
         } finally {
             connection.destroy();
         }

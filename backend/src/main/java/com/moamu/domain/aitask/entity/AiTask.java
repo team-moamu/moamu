@@ -115,4 +115,14 @@ public class AiTask {
         task.frstRegDt = now;
         return task;
     }
+
+    // 재시도 요청 시 기존 AI 명화 생성 작업을 새 버전으로 다시 시작할 수 있게 초기화하는 메서드
+    public void restartArtworkGeneration() {
+        taskVersion++;
+        status = AiTaskStatus.PENDING;
+        artworkId = null;
+        startedAt = null;
+        finishedAt = null;
+        lastError = null;
+    }
 }

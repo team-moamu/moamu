@@ -24,10 +24,6 @@ public class ArtworkGenerationWorkStore {
 
     static final String QUEUE_KEY = "goal:artwork-generation-queue";
     private static final Duration POLL_DELAY = Duration.ofSeconds(2);
-    private static final String REDIS_TIME = """
-            local time = redis.call('time')
-            local now = tonumber(time[1]) * 1000 + math.floor(tonumber(time[2]) / 1000)
-            """;
     private static final String EXPIRE_TASK = """
             if redis.call('hget', KEYS[1], 'generationState') ~= 'FINALIZING' then
                 redis.call('hset', KEYS[1], 'generationState', 'FAILED_FINAL',
@@ -41,38 +37,49 @@ public class ArtworkGenerationWorkStore {
             """;
 
     // 작업을 가져가면 잠시 숨긴다. 워커가 멈추면 시간이 지난 뒤 다시 가져갈 수 있음.
-    private static final DefaultRedisScript<Long> CLAIM = new DefaultRedisScript<>(REDIS_TIME + """
+    private static final DefaultRedisScript<Long> CLAIM = new DefaultRedisScript<>(GoalAnalysisStore.REDIS_TIME + """
             local score = redis.call('zscore', KEYS[2], ARGV[1])
-            if not score or tonumber(score) > now then return 0 end
+            if not score or tonumber(score) > nowMillis then return 0 end
             local task = redis.call('hmget', KEYS[1], 'taskId', 'taskVersion',
                     'representativeTaskId', 'representativeVersion', 'expiresAtMillis')
             if not task[1] or not task[2] or not task[3] or not task[4] or not task[5] then
                 redis.call('zrem', KEYS[2], ARGV[1])
                 return 0
             end
-            if tonumber(task[5]) <= now then
+            if tonumber(task[5]) <= nowMillis then
                 local retention = ARGV[4]
                 local taskLookupKey = ARGV[5] .. task[1]
             """ + EXPIRE_TASK + """
             end
-            local leaseUntil = math.min(now + tonumber(ARGV[3]), tonumber(task[5]))
+            local leaseUntil = math.min(nowMillis + tonumber(ARGV[3]), tonumber(task[5]))
             redis.call('hset', KEYS[1], 'workerToken', ARGV[2], 'workerLeaseUntil', leaseUntil)
             redis.call('zadd', KEYS[2], leaseUntil, ARGV[1])
             return 1
             """, Long.class);
 
     // 작업을 넘겨받은 워커만 같은 버전의 다음 상태를 저장할 수 있음.
-    private static final DefaultRedisScript<Long> UPDATE = new DefaultRedisScript<>(REDIS_TIME + """
+    private static final DefaultRedisScript<Long> EXPIRE_IF_DUE = new DefaultRedisScript<>(
+            GoalAnalysisStore.REDIS_TIME + """
+                    local task = redis.call('hmget', KEYS[1], 'taskId', 'taskVersion', 'expiresAtMillis',
+                            'generationState', 'retryPlan')
+                    if task[1] ~= ARGV[2] or task[2] ~= ARGV[3] or not task[3] or task[5]
+                            or task[4] == 'SUCCEEDED' or task[4] == 'FAILED_FINAL' or task[4] == 'FINALIZING'
+                            or tonumber(task[3]) > nowMillis then return 0 end
+                    local retention = ARGV[4]
+                    local taskLookupKey = KEYS[3]
+                    """ + EXPIRE_TASK, Long.class);
+
+    private static final DefaultRedisScript<Long> UPDATE = new DefaultRedisScript<>(GoalAnalysisStore.REDIS_TIME + """
             local task = redis.call('hmget', KEYS[1], 'workerToken', 'workerLeaseUntil',
                     'taskId', 'taskVersion', 'expiresAtMillis', 'representativeKey',
                     'representativeTaskId', 'representativeVersion')
             if task[1] ~= ARGV[2] or task[3] ~= ARGV[3] or task[4] ~= ARGV[4] then return 0 end
-            if tonumber(task[5]) <= now then
+            if tonumber(task[5]) <= nowMillis then
                 local retention = ARGV[9]
                 local taskLookupKey = KEYS[4]
             """ + EXPIRE_TASK + """
             end
-            if tonumber(task[2]) <= now then return 0 end
+            if tonumber(task[2]) <= nowMillis then return 0 end
             local state = redis.call('hget', KEYS[1], 'generationState')
             if ARGV[5] == 'BEFORE_SUBMIT' then
                 if task[3] ~= task[7] or task[4] ~= task[8] then return 0 end
@@ -106,13 +113,13 @@ public class ArtworkGenerationWorkStore {
             redis.call('hdel', KEYS[1], 'workerToken')
             if ARGV[5] == 'VALIDATION_PENDING' then
                 redis.call('hset', KEYS[1], 'generationState', ARGV[5], 'generationResult', ARGV[6])
-                redis.call('zadd', KEYS[2], now, ARGV[1])
+                redis.call('zadd', KEYS[2], nowMillis, ARGV[1])
             elseif ARGV[5] == 'VERIFIED' or ARGV[5] == 'WAITER_READY' then
                 redis.call('hset', KEYS[1], 'generationState', 'VERIFIED')
                 if ARGV[5] == 'WAITER_READY' then
                     redis.call('hset', KEYS[1], 'generationArtworkId', ARGV[6])
                 end
-                redis.call('zadd', KEYS[2], now, ARGV[1])
+                redis.call('zadd', KEYS[2], nowMillis, ARGV[1])
             elseif ARGV[5] == 'FAILED_FINAL' or ARGV[5] == 'SUCCEEDED' then
                 redis.call('hset', KEYS[1], 'generationState', ARGV[5])
                 if ARGV[5] == 'FAILED_FINAL' then
@@ -138,7 +145,7 @@ public class ArtworkGenerationWorkStore {
                 else
                     redis.call('hdel', KEYS[1], 'generationSubmitAgain')
                 end
-                redis.call('zadd', KEYS[2], math.min(now + tonumber(ARGV[8]), tonumber(task[5])), ARGV[1])
+                redis.call('zadd', KEYS[2], math.min(nowMillis + tonumber(ARGV[8]), tonumber(task[5])), ARGV[1])
             end
             return 1
             """, Long.class);
@@ -223,6 +230,18 @@ public class ArtworkGenerationWorkStore {
     }
 
     public record FailedTask(String errorCode, boolean retryable) {
+    }
+
+    public void expireIfDue(String analysisId, long taskId, int taskVersion) {
+        redisTemplate.execute(EXPIRE_IF_DUE, List.of(GoalAnalysisStore.RECEIPT_PREFIX + analysisId, QUEUE_KEY,
+                GoalAnalysisStore.ARTWORK_TASK_PREFIX + taskId), analysisId, Long.toString(taskId),
+                Integer.toString(taskVersion), Long.toString(GoalAnalysisStore.CONFIRMATION_TTL.toMillis()));
+    }
+
+    public boolean hasStarted(String analysisId, int taskVersion) {
+        List<Object> fields = redisTemplate.opsForHash().multiGet(GoalAnalysisStore.RECEIPT_PREFIX + analysisId,
+                List.of("taskVersion", "generationRequestBody", "generationState"));
+        return Integer.toString(taskVersion).equals(fields.get(0)) && (fields.get(1) != null || fields.get(2) != null);
     }
 
     public Optional<FailedTask> findFailure(String analysisId, long taskId, int taskVersion) {

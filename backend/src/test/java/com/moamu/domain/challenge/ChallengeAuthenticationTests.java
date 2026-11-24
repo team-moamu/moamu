@@ -113,6 +113,34 @@ class ChallengeAuthenticationTests {
         verify(challengeService).createCustomChallenge(eq(2L), any());
     }
 
+    @Test
+    void generatedTaskLookupUsesTheAuthenticatedOwner() throws Exception {
+        authenticateSecondUser();
+        when(challengeService.getArtworkTask(2L, 91L)).thenReturn(new CustomChallengeCreateResponse(100L));
+
+        mockMvc.perform(get("/api/challenges/custom/tasks/91").header("Authorization", "Bearer user-two-token"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("SUCCEEDED"))
+                .andExpect(jsonPath("$.data.challengeId").value(100))
+                .andExpect(jsonPath("$.data.artworkId").doesNotExist())
+                .andExpect(jsonPath("$.data.imageKey").doesNotExist());
+    }
+
+    @Test
+    void retryReturnsAcceptedAndUsesTheRequestedVersion() throws Exception {
+        authenticateSecondUser();
+        var accepted = java.time.Instant.parse("2026-11-24T04:00:00Z");
+        when(challengeService.retryArtworkTask(2L, 91L, 1))
+                .thenReturn(CustomChallengeCreateResponse.pending(91L, 2, accepted, accepted.plusSeconds(120)));
+
+        mockMvc.perform(post("/api/challenges/custom/tasks/91/retry")
+                .header("Authorization", "Bearer user-two-token")
+                .contentType(MediaType.APPLICATION_JSON).content("{\"expectedTaskVersion\":1}"))
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.data.taskVersion").value(2))
+                .andExpect(jsonPath("$.data.status").value("PENDING"));
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {
         "{}",

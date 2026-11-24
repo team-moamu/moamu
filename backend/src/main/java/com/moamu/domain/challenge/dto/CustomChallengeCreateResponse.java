@@ -24,6 +24,11 @@ public record CustomChallengeCreateResponse(
         return new CustomChallengeCreateResponse(null, taskId, taskVersion, "PENDING", acceptedAt, expiresAt, null, null);
     }
 
+    public static CustomChallengeCreateResponse running(Long taskId, int taskVersion,
+            Instant acceptedAt, Instant expiresAt) {
+        return new CustomChallengeCreateResponse(null, taskId, taskVersion, "RUNNING", acceptedAt, expiresAt, null, null);
+    }
+
     public static CustomChallengeCreateResponse failed(Long taskId, int taskVersion, String errorCode, boolean retryable) {
         return new CustomChallengeCreateResponse(null, taskId, taskVersion, "FAILED_FINAL", null, null,
                 errorCode, retryable);

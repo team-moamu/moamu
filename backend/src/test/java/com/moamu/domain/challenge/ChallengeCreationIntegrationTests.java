@@ -4,6 +4,7 @@ import com.moamu.BackendApplicationTests;
 import com.moamu.domain.artwork.dto.ArtworkGenerationResult;
 import com.moamu.domain.artwork.repository.GeneratedArtworkMetadataStore;
 import com.moamu.domain.challenge.service.ChallengeService;
+import com.moamu.domain.challenge.dto.CustomChallengeCreateResponse;
 import com.moamu.domain.goal.dto.GoalAnalysisSnapshot;
 import com.moamu.domain.goal.dto.GoalConfirmationSnapshot;
 import com.moamu.domain.goal.dto.GoalEvaluationRequest.CategoryPath;
@@ -20,6 +21,7 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,7 +47,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 // MockMvc에서 실제 Controller·Service·Repository를 거쳐 격리된 MySQL에 저장합니다.
 // 테스트 자체는 트랜잭션으로 감싸지 않고 API 종료 후 커밋·롤백 결과를 확인합니다.
-@SpringBootTest
+@SpringBootTest(properties = "jwt.secret=bW9hbXUtdGVzdC1vbmx5LWtleS0zMi1ieXRlcy1sb25nIQ==")
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Import(BackendApplicationTests.ContainerConfiguration.class)
@@ -204,6 +206,41 @@ class ChallengeCreationIntegrationTests {
         assertThat(count("media")).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM challenge WHERE artwork_id = ? AND start_date = ?",
                 Integer.class, artworkId, waiterStart)).isEqualTo(1);
+    }
+
+    @Test
+    void duplicateExplicitRetryDoesNotIncrementTheDatabaseVersionTwice() {
+        jdbc.update("INSERT INTO ai_task (ai_task_id, task_type, task_version, status) "
+                + "VALUES (91, 'GENERATE_ARTWORK', 1, 'PENDING')");
+        var accepted = Instant.now().minusSeconds(121);
+        when(goalAnalysisStore.findTaskAnalysisId(91L)).thenReturn(Optional.of("analysis"));
+        when(goalAnalysisStore.findCustomReceipt("analysis"))
+                .thenReturn(Optional.of(new CustomReceipt(1L, START_DATE, START_DATE.plusDays(6))));
+        when(goalAnalysisStore.findArtworkTask("analysis")).thenReturn(Optional.of(
+                new GoalAnalysisStore.PendingArtworkTask(91L, 1, 91L, 1, accepted, accepted.plusSeconds(120))));
+        when(goalAnalysisStore.readReceiptAnalysis("analysis")).thenReturn(new GoalAnalysisSnapshot(1L, "Walk",
+                "Walk daily", null, new CategoryPath("Health", "Exercise", "Walking"), List.of("Shoes"),
+                "Show shoes", "Outdoor"));
+        when(artworkWorkStore.findFailure("analysis", 91L, 1))
+                .thenReturn(Optional.of(new ArtworkGenerationWorkStore.FailedTask("ARTWORK_GENERATION_TIMEOUT", true)));
+        var savedResponse = new AtomicReference<CustomChallengeCreateResponse>();
+        when(goalAnalysisStore.findRetryResult("analysis", 1))
+                .thenAnswer(invocation -> Optional.ofNullable(savedResponse.get()));
+        when(goalAnalysisStore.publishRetry(eq("analysis"), eq(91L), eq(1), any(), any()))
+                .thenAnswer(invocation -> {
+                    CustomChallengeCreateResponse response = invocation.getArgument(4);
+                    savedResponse.set(response);
+                    return response;
+                });
+
+        var response = challengeService.retryArtworkTask(1L, 91L, 1);
+
+        assertThat(challengeService.retryArtworkTask(1L, 91L, 1)).isEqualTo(response);
+        assertThat(response.taskVersion()).isEqualTo(2);
+        assertThat(jdbc.queryForObject("SELECT task_version FROM ai_task WHERE ai_task_id = 91", Integer.class))
+                .isEqualTo(2);
+        assertThat(count("ai_task")).isEqualTo(1);
+        assertThat(count("challenge")).isZero();
     }
 
     private org.springframework.test.web.servlet.MvcResult postChallenge(int days, int expectedStatus)
