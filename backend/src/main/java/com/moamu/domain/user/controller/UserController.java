@@ -20,6 +20,8 @@ import com.moamu.domain.user.dto.EmailAvailabilityResponse;
 import com.moamu.domain.user.dto.EmailVerificationSendRequest;
 import com.moamu.domain.user.dto.EmailVerificationVerifyRequest;
 import com.moamu.domain.user.dto.EmailVerificationVerifyResponse;
+import com.moamu.domain.user.dto.PasswordResetConfirmRequest;
+import com.moamu.domain.user.dto.PasswordResetVerifyResponse;
 import com.moamu.domain.user.dto.UserLoginRequest;
 import com.moamu.domain.user.dto.UserLoginResponse;
 import com.moamu.domain.user.dto.UserSignupRequest;
@@ -34,6 +36,7 @@ import com.moamu.global.security.JwtTokenProvider;
 import com.moamu.global.security.RefreshTokenService;
 import com.moamu.domain.user.dto.UserMeResponse;
 import com.moamu.domain.user.dto.UpdateMyNameRequest;
+import com.moamu.domain.user.service.PasswordResetService;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
@@ -57,6 +60,8 @@ public class UserController {
   private final UserRepository userRepository;
 
   private final EmailVerificationService emailVerificationService;
+
+  private final PasswordResetService passwordResetService;
 
   @Value("${auth.refresh-cookie-secure:true}")
   private boolean refreshCookieSecure;
@@ -211,5 +216,29 @@ public class UserController {
 
     var response = new EmailVerificationVerifyResponse(token);
     return ResponseEntity.ok(ApiResponse.success(response));
+  }
+
+  @PostMapping("/password-resets")
+  public ResponseEntity<Void> sendPasswordResetCode(
+      @Valid @RequestBody EmailVerificationSendRequest request) {
+    passwordResetService.sendCode(request.email());
+    return ResponseEntity.noContent().build();
+  }
+
+  @PostMapping("/password-resets/verify")
+  public ResponseEntity<ApiResponse<PasswordResetVerifyResponse>> verifyPasswordResetCode(
+      @Valid @RequestBody EmailVerificationVerifyRequest request) {
+    String resetToken = passwordResetService.verifyCode(request.email(), request.code());
+
+    return ResponseEntity.ok()
+        .header(HttpHeaders.CACHE_CONTROL, "no-store")
+        .body(ApiResponse.success(new PasswordResetVerifyResponse(resetToken)));
+  }
+
+  @PostMapping("/password-resets/confirm")
+  public ResponseEntity<Void> confirmPasswordReset(
+      @Valid @RequestBody PasswordResetConfirmRequest request) {
+    passwordResetService.resetPassword(request.resetToken(), request.newPassword());
+    return ResponseEntity.noContent().build();
   }
 }

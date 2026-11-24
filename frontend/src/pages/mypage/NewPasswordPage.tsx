@@ -1,10 +1,18 @@
 import { useState } from 'react'
 import { SignupField } from '../../components/molecules/form/SignupField'
+import type { FormEvent } from 'react'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router'
+import { confirmPasswordReset, PasswordResetError } from '../../api/AuthApi'
 
 export function NewPasswordPage() {
   const [password, setPassword] = useState('')
   const [passwordConfirm, setPasswordConfirm] = useState('')
   const [message, setMessage] = useState('')
+  const navigate = useNavigate()
+  const { state } = useLocation()
+  const resetToken = state?.resetToken
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [needsReverification, setNeedsReverification] = useState(false)
 
   const isPasswordValid =
     password.length >= 8 &&
@@ -12,17 +20,46 @@ export function NewPasswordPage() {
     /^(?=.*[A-Za-z])(?=.*[0-9])[\x21-\x7E]+$/.test(password)
 
   const passwordsMatch = password === passwordConfirm
-  const canSubmit = isPasswordValid && passwordsMatch
+  const canSubmit =
+    isPasswordValid && passwordsMatch && !isSubmitting && !needsReverification
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!canSubmit || typeof resetToken !== 'string') return
+
+    setIsSubmitting(true)
+    setMessage('')
+
+    try {
+      await confirmPasswordReset(resetToken, password)
+      navigate('/password-reset/complete', {
+        replace: true,
+        state: { resetCompleted: true },
+      })
+    } catch (error) {
+      if (
+        error instanceof PasswordResetError &&
+        error.code === 'INVALID_PASSWORD_RESET_TOKEN'
+      ) {
+        setNeedsReverification(true)
+        setMessage(error.message)
+      } else {
+        setMessage('비밀번호 저장 결과를 확인하지 못했어요. 다시 시도해 주세요.')
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  if (typeof resetToken !== 'string' || !/^[A-Za-z0-9_-]{43}$/.test(resetToken)) {
+    return <Navigate to="/password-reset" replace />
+  }
 
   return (
     <form
       className="space-y-8 px-6 pt-6 pb-28"
-      onSubmit={(event) => {
-        event.preventDefault()
-        if (!canSubmit) return
-
-        setMessage('비밀번호 변경 기능은 준비 중이에요.')
-      }}
+      onSubmit={handleSubmit}
     >
       <h2 className="font-[family-name:var(--font-title)] text-[24px] leading-[36px]">
         새 비밀번호를 설정해 주세요.
@@ -35,6 +72,7 @@ export function NewPasswordPage() {
         autoComplete="new-password"
         placeholder="비밀번호를 입력해 주세요."
         value={password}
+        disabled={isSubmitting || needsReverification}
         onChange={(value) => {
           setPassword(value)
           setMessage('')
@@ -49,6 +87,7 @@ export function NewPasswordPage() {
         autoComplete="new-password"
         placeholder="비밀번호를 한번 더 입력해 주세요."
         value={passwordConfirm}
+        disabled={isSubmitting || needsReverification}
         onChange={(value) => {
           setPasswordConfirm(value)
           setMessage('')
@@ -66,13 +105,19 @@ export function NewPasswordPage() {
         </p>
       )}
 
+      {needsReverification && (
+        <Link to="/password-reset" replace className="text-caption underline">
+          이메일 인증 다시 하기
+        </Link>
+      )}
+
       <div className="fixed inset-x-0 bottom-0 z-10 mx-auto w-full max-w-[430px] px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         <button
           type="submit"
           disabled={!canSubmit}
           className="button button--primary button--full h-[52px]"
         >
-          비밀번호 변경하기
+          {isSubmitting ? '저장 중…' : '비밀번호 변경하기'}
         </button>
       </div>
     </form>

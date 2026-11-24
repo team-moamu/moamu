@@ -21,6 +21,7 @@ import com.moamu.domain.user.controller.UserController;
 import com.moamu.domain.user.entity.User;
 import com.moamu.domain.user.enums.UserStatus;
 import com.moamu.domain.user.repository.UserRepository;
+import com.moamu.domain.user.service.PasswordResetService;
 import com.moamu.domain.user.service.UserService;
 import com.moamu.global.security.JwtTokenProvider;
 
@@ -45,6 +46,9 @@ class SecurityConfigTests {
 
   @MockitoBean
   private UserRepository userRepository;
+
+  @MockitoBean
+  private PasswordResetService passwordResetService;
 
   /**
    * 공개된 이메일 중복 확인 API는 토큰 없이 호출할 수 있는지 확인한다.

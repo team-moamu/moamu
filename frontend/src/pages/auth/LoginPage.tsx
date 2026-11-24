@@ -149,15 +149,12 @@ export function LoginPage() {
       </form>
 
       <div className="mt-3 flex justify-center">
-        <Button
-          disabled
-          className="
-            text-caption text-[var(--color-primary)]
-            disabled:cursor-not-allowed
-          "
+        <Link
+          to="/password-reset"
+          className="text-caption text-[var(--color-primary)]"
         >
           비밀번호 찾기
-        </Button>
+        </Link>
       </div>
 
       <div className="mt-3">
