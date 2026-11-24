@@ -33,6 +33,7 @@ export function LoginPage() {
       const result = await login({
         loginId: email,
         password,
+        autoLogin,
       })
 
       saveAccessToken(result.accessToken)
