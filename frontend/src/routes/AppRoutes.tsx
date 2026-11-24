@@ -1,5 +1,5 @@
 
-import { Route, Routes } from 'react-router'
+import { Route, Routes, useLocation } from 'react-router'
 import { MainLayout } from '../components/layout/MainLayout'
 import { ChallengeCreatePage } from '../pages/challenge/ChallengeCreatePage'
 import { ChallengeListPage } from '../pages/challenge/ChallengeListPage'
@@ -23,32 +23,56 @@ import { ProfileEditPage } from '../pages/mypage/ProfileEditPage'
 import { PasswordResetPage } from '../pages/mypage/PasswordResetPage'
 import { NewPasswordPage } from '../pages/mypage/NewPasswordPage'
 import { useEffect, useState } from 'react'
-import { previewNickname } from '../pages/mypage/profilePreview'
 import { WithdrawalPage } from '../pages/mypage/WithdrawalPage'
 import { WithdrawalConfirmPage } from '../pages/mypage/WithdrawalConfirmPage'
 import { WithdrawalCompletePage } from '../pages/mypage/WithdrawalCompletePage'
 import { PasswordResetCompletePage } from '../pages/mypage/PasswordResetCompletePage'
+import { getMe, resetProfilePhoto, updateMyName, uploadProfilePhoto } from '../api/AuthApi'
+import { getAccessToken } from '../auth/AuthStorage'
 
 function ChallengePage() {
   return <h1>도전하기 화면</h1>
 }
 
 export default function AppRoutes() {
-  const [nickname, setNickname] = useState(previewNickname)
-  const [profilePhoto, setProfilePhoto] = useState<File | null>(null)
+  const { pathname } = useLocation()
+  const isMyPageRoute = pathname === '/mypage' || pathname.startsWith('/mypage/')
+  const shouldLoadProfile =
+    (pathname === '/' || isMyPageRoute) && Boolean(getAccessToken())
+
+  const [nickname, setNickname] = useState('')
+  const [email, setEmail] = useState<string | null>(null)
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null)
+  const [profilePhotoVersion, setProfilePhotoVersion] = useState(0)
 
   useEffect(() => {
-    if (!profilePhoto) {
+    if (!shouldLoadProfile) {
+      setNickname('')
+      setEmail(null)
       setProfilePhotoUrl(null)
       return
     }
 
-    const url = URL.createObjectURL(profilePhoto)
-    setProfilePhotoUrl(url)
+    const controller = new AbortController()
 
-    return () => URL.revokeObjectURL(url)
-  }, [profilePhoto])
+    getMe(controller.signal)
+      .then((user) => {
+        if (controller.signal.aborted) return
+
+        setNickname(user.name)
+        setEmail(user.email)
+        setProfilePhotoUrl(user.profilePhotoUrl)
+      })
+      .catch(() => {
+        if (controller.signal.aborted) return
+
+        setNickname('')
+        setEmail(null)
+        setProfilePhotoUrl(null)
+      })
+
+    return () => controller.abort()
+  }, [shouldLoadProfile, profilePhotoVersion])
 
   return (
     <Routes>
@@ -68,15 +92,23 @@ export default function AppRoutes() {
       </Route>
 
       {/* 마이페이지 헤더 + 하단 내비게이션 */}
-      <Route element={<MainLayout showBottomNav headerType="back" title="마이페이지" />}>
+      <Route
+        element={<MainLayout showBottomNav headerType="back" title="마이페이지" />}
+      >
         <Route
           path="/mypage"
-          element={<MyPage nickname={nickname} profilePhotoUrl={profilePhotoUrl} />}
+          element={
+            <MyPage
+              nickname={nickname || '회원'}
+              email={email}
+              profilePhotoUrl={profilePhotoUrl}
+            />
+          }
         />
       </Route>
 
       <Route element={<MainLayout headerType="back" title="계정 및 보안" />}>
-        <Route path="/mypage/account-security" element={<AccountSecurityPage />} />
+        <Route path="/mypage/account-security" element={<AccountSecurityPage email={email} />} />
       </Route>
 
       <Route
@@ -144,10 +176,23 @@ export default function AppRoutes() {
           element={
             <ProfileEditPage
               nickname={nickname}
-              profilePhoto={profilePhoto}
-              onSave={(nextNickname, nextPhoto) => {
-                setNickname(nextNickname)
-                setProfilePhoto(nextPhoto)
+              profilePhotoUrl={profilePhotoUrl}
+              onSave={async (nextNickname, nextPhoto, useDefaultPhoto) => {
+                if (nextNickname !== nickname) {
+                  const user = await updateMyName(nextNickname)
+                  setNickname(user.name)
+                  setEmail(user.email)
+                  setProfilePhotoUrl(user.profilePhotoUrl)
+                }
+
+                if (useDefaultPhoto) {
+                  await resetProfilePhoto()
+                  setProfilePhotoUrl(null)
+                  setProfilePhotoVersion((version) => version + 1)
+                } else if (nextPhoto) {
+                  await uploadProfilePhoto(nextPhoto)
+                  setProfilePhotoVersion((version) => version + 1)
+                }
               }}
             />
           }

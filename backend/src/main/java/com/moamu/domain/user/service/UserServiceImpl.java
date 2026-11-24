@@ -13,11 +13,15 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.moamu.domain.user.dto.UserLoginRequest;
+import com.moamu.domain.user.dto.UserMeResponse;
 import com.moamu.domain.user.dto.UserSignupRequest;
 import com.moamu.domain.user.entity.User;
 import com.moamu.domain.user.enums.UserStatus;
 import com.moamu.domain.user.exception.UserErrorCode;
 import com.moamu.domain.user.repository.UserRepository;
+import com.moamu.domain.media.enums.MediaPurpose;
+import com.moamu.domain.media.repository.MediaRepository;
+import com.moamu.domain.verification.service.ArtworkImageUrlService;
 import com.moamu.global.exception.BusinessException;
 
 import lombok.RequiredArgsConstructor;
@@ -32,6 +36,8 @@ public class UserServiceImpl implements UserService {
 	private final UserRepository userRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final SignupVerificationTokenStore signupVerificationTokenStore;
+	private final MediaRepository mediaRepository;
+	private final ArtworkImageUrlService artworkImageUrlService;
 
 	@Override
 	@Transactional
@@ -136,5 +142,39 @@ public class UserServiceImpl implements UserService {
 		}
 
 		return user;
+	}
+
+	@Override
+	public UserMeResponse getMe(Long userId) {
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+
+		return toMeResponse(user);
+	}
+
+	@Override
+	@Transactional
+	public UserMeResponse updateMyName(Long userId, String name) {
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+
+		user.changeName(name.strip());
+
+		return toMeResponse(user);
+	}
+
+	private UserMeResponse toMeResponse(User user) {
+		Long profileMediaId = user.getProfileMediaId();
+		String profilePhotoUrl = null;
+
+		if (profileMediaId != null) {
+			profilePhotoUrl = mediaRepository.findById(profileMediaId)
+					.filter(media -> user.getUserId().equals(media.getUserId()))
+					.filter(media -> media.getPurpose() == MediaPurpose.PROFILE)
+					.map(media -> artworkImageUrlService.resolve(media.getImageKey()))
+					.orElse(null);
+		}
+
+		return new UserMeResponse(user.getLoginId(), user.getName(), profilePhotoUrl);
 	}
 }

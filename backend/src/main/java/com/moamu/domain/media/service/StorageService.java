@@ -10,7 +10,12 @@ public interface StorageService {
     // DB 저장 실패 시 파일 삭제
     void delete(String imageKey);
 
+    StoredFile saveProfile(MultipartFile image);
+
+    void deleteProfile(String imageKey);
+
     // 반환값
-    record StoredFile(String imageKey, String fileHash, String contentType, Long fileSize){};
+    record StoredFile(String imageKey, String fileHash, String contentType, Long fileSize) {
+    };
 
 }

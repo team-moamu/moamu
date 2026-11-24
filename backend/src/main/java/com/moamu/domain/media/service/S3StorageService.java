@@ -13,11 +13,12 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 // 개발/배포 환경에서는 실제 S3를 사용
 // 테스트에서는 Mock을 사용하여 S3에 미접근
 @Service
-@Profile({"local", "prod"})
+@Profile({ "local", "prod" })
 public class S3StorageService implements StorageService {
     private final S3Client s3Client;
     private final String bucket;
     private final String verificationPrefix;
+    private final String profilePrefix;
     private final ImageValidator imageValidator = new ImageValidator();
     private final ImagePreprocessor imagePreprocessor;
 
@@ -26,56 +27,84 @@ public class S3StorageService implements StorageService {
             S3Client s3Client,
             @Value("${app.storage.s3.bucket}") String bucket,
             @Value("${app.storage.s3.verification-prefix}") String verificationPrefix,
+            @Value("${app.storage.s3.profile-prefix}") String profilePrefix,
             ImagePreprocessor imagePreprocessor) {
         this.imagePreprocessor = imagePreprocessor;
+
         if (bucket == null || bucket.isBlank()) {
             throw new IllegalArgumentException("S3 버킷 이름이 필요합니다.");
         }
-        if (verificationPrefix == null || verificationPrefix.isBlank()) {
-            throw new IllegalArgumentException("인증 사진 S3 경로가 필요합니다.");
+
+        this.s3Client = s3Client;
+        this.bucket = bucket.trim();
+        this.verificationPrefix = normalizePrefix(verificationPrefix);
+        this.profilePrefix = normalizePrefix(profilePrefix);
+    }
+
+    private static String normalizePrefix(String value) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("사진 저장 경로가 필요합니다.");
         }
-        String prefix = verificationPrefix.trim();
+
+        String prefix = value.trim();
         if (prefix.startsWith("/") || prefix.contains("\\")
                 || java.util.Arrays.stream(prefix.split("/", -1))
                         .anyMatch(part -> part.equals(".") || part.equals(".."))) {
-            throw new IllegalArgumentException("인증 사진 S3 경로가 올바르지 않습니다.");
+            throw new IllegalArgumentException("사진 저장 경로가 올바르지 않습니다.");
         }
-        this.s3Client = s3Client;
-        this.bucket = bucket.trim();
-        this.verificationPrefix = prefix.endsWith("/") ? prefix : prefix + "/";
+
+        return prefix.endsWith("/") ? prefix : prefix + "/";
     }
 
     // ImageValidator 검증 (사진 검증 규칙)
     @Override
     public StoredFile saveVerification(MultipartFile image) {
+        return saveImage(image, verificationPrefix);
+    }
+
+    @Override
+    public StoredFile saveProfile(MultipartFile image) {
+        return saveImage(image, profilePrefix);
+    }
+
+    private StoredFile saveImage(MultipartFile image, String prefix) {
         try (var validated = imageValidator.validate(image)) {
             byte[] processed = imagePreprocessor.process(validated);
-            String imageKey = verificationPrefix + UUID.randomUUID() + "." + validated.extension();
+            String imageKey = prefix + UUID.randomUUID() + "." + validated.extension();
+
             var request = PutObjectRequest.builder()
                     .bucket(bucket)
                     .key(imageKey)
                     .contentType(validated.contentType())
                     .build();
 
-            // 방향 보정, 축소한 이미지를 업로드 (공개 ACL 미설정)
-            // 업로드 실패 시 예외를 전파하여 DB 성공 처리 방지
+            // 방향을 보정하고 크기를 줄인 이미지를 S3에 업로드
             s3Client.putObject(request, RequestBody.fromBytes(processed));
 
-            // S3 객체 키와 파일 정보를 반환 (DB 저장은 MediaService에서 처리)
-            // 재전송 검증에는 원본 해시 유지
-            return new StoredFile(imageKey, validated.fileHash(), validated.contentType(), (long) processed.length);
+            // S3 객체 키와 원본 해시, 처리된 파일 정보를 반환
+            return new StoredFile(
+                    imageKey, validated.fileHash(), validated.contentType(),
+                    (long) processed.length);
         }
     }
 
     @Override
     public void delete(String imageKey) {
+        deleteImage(imageKey, verificationPrefix);
+    }
 
+    @Override
+    public void deleteProfile(String imageKey) {
+        deleteImage(imageKey, profilePrefix);
+    }
+
+    private void deleteImage(String imageKey, String prefix) {
         // 1. 인증 사진 저장 경로에 해당하는지 검증
-        if (imageKey == null || !imageKey.startsWith(verificationPrefix)) {
+        if (imageKey == null || !imageKey.startsWith(prefix)) {
             throw new IllegalArgumentException("허용되지 않은 S3 파일 경로입니다.");
         }
         // 2. 파일명에 잘못된 경로 요소가 포함되어 있는지 검증
-        String filename = imageKey.substring(verificationPrefix.length());
+        String filename = imageKey.substring(prefix.length());
         if (filename.isBlank() || filename.contains("/") || filename.contains("\\")
                 || filename.equals(".") || filename.equals("..")) {
             throw new IllegalArgumentException("허용되지 않은 S3 파일 경로입니다.");

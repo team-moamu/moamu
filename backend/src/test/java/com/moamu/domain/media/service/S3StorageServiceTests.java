@@ -17,7 +17,7 @@ import static org.mockito.Mockito.*;
 
 class S3StorageServiceTests {
     private final S3Client client = mock(S3Client.class);
-    private final S3StorageService storage = new S3StorageService(client, "test-bucket", "verifications", new ImagePreprocessor(1.0f));
+    private final S3StorageService storage = new S3StorageService(client, "test-bucket", "verifications", "profiles/", new ImagePreprocessor(1.0f));
 
     private byte[] png() throws Exception {
         var out = new ByteArrayOutputStream();

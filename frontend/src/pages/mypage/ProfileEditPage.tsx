@@ -4,21 +4,29 @@ import { useEffect, useState } from 'react'
 
 type ProfileEditPageProps = {
   nickname: string
-  profilePhoto: File | null
-  onSave: (nickname: string, photo: File | null) => void
+  profilePhotoUrl: string | null
+  onSave: (
+    nickname: string,
+    photo: File | null,
+    useDefaultPhoto: boolean,
+  ) => Promise<void>
 }
 
 export function ProfileEditPage({
   nickname,
-  profilePhoto,
+  profilePhotoUrl,
   onSave,
 }: ProfileEditPageProps) {
   const navigate = useNavigate()
-  const [draftNickname, setDraftNickname] = useState(nickname)
-  const trimmedNickname = draftNickname.trim()
-  const [photo, setPhoto] = useState<File | null>(profilePhoto)
+  const [draftNickname, setDraftNickname] = useState<string | null>(null)
+  const currentNickname = draftNickname ?? nickname
+  const trimmedNickname = currentNickname.trim()
+  const [photo, setPhoto] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [isPhotoMenuOpen, setIsPhotoMenuOpen] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [useDefaultPhoto, setUseDefaultPhoto] = useState(false)
 
   useEffect(() => {
     if (!photo) {
@@ -35,21 +43,33 @@ export function ProfileEditPage({
   return (
     <form
       className="space-y-6 px-6 pt-6 pb-28"
-      onSubmit={(event) => {
+      onSubmit={async (event) => {
         event.preventDefault()
 
-        if (!trimmedNickname) return
+        if (!trimmedNickname || isSaving) return
 
-        onSave(trimmedNickname, photo)
-        navigate('/mypage', {
-          replace: true,
-          state: { profileSaved: true },
-        })
+        setIsSaving(true)
+        setSaveError('')
+
+        try {
+          await onSave(trimmedNickname, photo, useDefaultPhoto)
+
+          navigate('/mypage', {
+            replace: true,
+            state: { profileSaved: true },
+          })
+        } catch (error) {
+          setSaveError(
+            error instanceof Error ? error.message : '닉네임을 저장하지 못했어요.',
+          )
+        } finally {
+          setIsSaving(false)
+        }
       }}
     >
       <div className="relative mx-auto w-fit">
         <img
-          src={previewUrl ?? defaultProfileMu}
+          src={useDefaultPhoto ? defaultProfileMu : (previewUrl ?? profilePhotoUrl ?? defaultProfileMu)}
           alt="프로필 사진 미리보기"
           className="h-24 w-24 rounded-full object-cover"
         />
@@ -71,7 +91,7 @@ export function ProfileEditPage({
           id="profile-nickname"
           name="nickname"
           type="text"
-          value={draftNickname}
+          value={currentNickname}
           onChange={(event) => setDraftNickname(event.currentTarget.value)}
           aria-describedby="profile-nickname-help"
           className="w-full rounded-xl border border-neutral-200 bg-white px-4 py-3"
@@ -79,6 +99,7 @@ export function ProfileEditPage({
         <p id="profile-nickname-help" className="mt-2 text-sm text-neutral-600">
           다른 사람에게 보이는 이름이에요.
         </p>
+        {saveError && <p role="alert" className="mt-2 text-sm text-red-600">{saveError}</p>}
       </div>
 
       <section className="flex min-h-[80px] flex-col justify-center gap-[8px] rounded-[12px] bg-[rgba(66,107,69,0.2)] px-3 py-3">
@@ -92,10 +113,10 @@ export function ProfileEditPage({
       <div className="fixed inset-x-0 bottom-0 z-10 mx-auto w-full max-w-[430px] px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         <button
           type="submit"
-          disabled={!trimmedNickname}
+          disabled={!trimmedNickname || isSaving}
           className="button button--primary button--full h-[52px]"
         >
-          변경사항 저장
+          {isSaving ? '저장 중…' : '변경사항 저장'}
         </button>
       </div>
 
@@ -121,15 +142,17 @@ export function ProfileEditPage({
 
                   setPhoto(file)
                   setIsPhotoMenuOpen(false)
+                  setUseDefaultPhoto(false)
                 }}
               />
             </label>
 
             <button
               type="button"
-              className="rounded-xl border border-[#E8CFAC] px-4 py-3"
+              className="cursor-pointer rounded-xl border border-[#E8CFAC] px-4 py-3"
               onClick={() => {
                 setPhoto(null)
+                setUseDefaultPhoto(true)
                 setIsPhotoMenuOpen(false)
               }}
             >
@@ -139,7 +162,9 @@ export function ProfileEditPage({
             <button
               type="button"
               className="rounded-xl px-4 py-3 text-neutral-600"
-              onClick={() => setIsPhotoMenuOpen(false)}
+              onClick={() => {
+                setIsPhotoMenuOpen(false)
+              }}
             >
               취소
             </button>

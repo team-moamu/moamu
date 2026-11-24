@@ -1,10 +1,13 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { logout } from '../../api/AuthApi'
-import { clearAccessToken, getLoginEmail } from '../../auth/AuthStorage'
+import { clearAccessToken } from '../../auth/AuthStorage'
 
-export function AccountSecurityPage() {
-  const loginEmail = getLoginEmail()
+type AccountSecurityPageProps = {
+  email: string | null
+}
+
+export function AccountSecurityPage({ email }: AccountSecurityPageProps) {
   const logoutInProgress = useRef(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [logoutError, setLogoutError] = useState('')
@@ -37,7 +40,7 @@ export function AccountSecurityPage() {
             <div className="min-w-0">
               <dt className="font-medium">가입 이메일</dt>
               <dd className="mt-1 break-all text-sm text-neutral-600">
-                {loginEmail ?? '로그인 후 이메일을 확인할 수 있어요.'}
+                {email ?? '이메일 정보를 확인할 수 없어요.'}
               </dd>
             </div>
             <span className="shrink-0 text-xs text-accent">인증 완료</span>
