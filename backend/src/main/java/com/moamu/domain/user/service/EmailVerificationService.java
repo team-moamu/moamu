@@ -138,16 +138,15 @@ public class EmailVerificationService {
   }
 
   public String verifyCode(String email, String code) {
-    return verifyCode(email, code, "auth:signup:", email);
+    return verifyCode(code, "auth:signup:", email);
   }
 
-  String verifyPasswordResetCode(String email, String code, Long userId) {
-    return verifyCode(email, code, "auth:password-reset:", userId.toString());
+  String verifyPasswordResetCode(String code, Long userId) {
+    return verifyCode(code, "auth:password-reset:", userId.toString());
   }
 
-  private String verifyCode(
-      String email, String code, String keyPrefix, String tokenValue) {
-    String codeKey = keyPrefix + "code:" + email;
+  private String verifyCode(String code, String keyPrefix, String accountKey) {
+    String codeKey = keyPrefix + "code:" + accountKey;
     String encodedCode = redisTemplate.opsForValue().get(codeKey);
 
     if (encodedCode == null) {
@@ -166,11 +165,11 @@ public class EmailVerificationService {
         VERIFY_CODE,
         List.of(
             codeKey,
-            keyPrefix + "attempts:" + email + ":" + encodedCode,
+            keyPrefix + "attempts:" + accountKey + ":" + encodedCode,
             keyPrefix + "token:" + token),
         encodedCode,
         Boolean.toString(matches),
-        tokenValue,
+        accountKey,
         Long.toString(VERIFICATION_TOKEN_TTL.toMillis()),
         Integer.toString(MAX_FAILED_ATTEMPTS));
 
