@@ -1,7 +1,10 @@
 package com.moamu.domain.user.service;
 
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.moamu.domain.user.entity.User;
 import com.moamu.domain.user.enums.UserStatus;
@@ -17,6 +20,8 @@ public class PasswordResetService {
 
   private final UserRepository userRepository;
   private final EmailVerificationService emailVerificationService;
+  private final StringRedisTemplate redisTemplate;
+  private final PasswordEncoder passwordEncoder;
 
   @Async
   public void sendCode(String email) {
@@ -40,5 +45,22 @@ public class PasswordResetService {
 
     return emailVerificationService.verifyPasswordResetCode(
         user.getLoginId(), code, user.getUserId());
+  }
+
+  @Transactional
+  public void resetPassword(String resetToken, String newPassword) {
+    String userId = redisTemplate.opsForValue()
+        .getAndDelete("auth:password-reset:token:" + resetToken);
+
+    if (userId == null) {
+      throw new BusinessException(UserErrorCode.INVALID_PASSWORD_RESET_TOKEN);
+    }
+
+    User user = userRepository.findById(Long.valueOf(userId))
+        .filter(member -> member.getStatus() == UserStatus.ACTIVE)
+        .filter(member -> member.getPassword() != null)
+        .orElseThrow(() -> new BusinessException(UserErrorCode.INVALID_PASSWORD_RESET_TOKEN));
+
+    user.changePassword(passwordEncoder.encode(newPassword));
   }
 }

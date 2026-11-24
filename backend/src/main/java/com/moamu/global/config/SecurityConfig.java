@@ -67,6 +67,7 @@ public class SecurityConfig {
 								"/api/users/email-verifications",
 								"/api/users/password-resets",
 								"/api/users/password-resets/verify",
+								"/api/users/password-resets/confirm",
 								"/api/users/login",
 								"/api/users/refresh",
 								"/api/users/logout",

@@ -57,4 +57,8 @@ public class User extends BaseEntity {
   public void changeProfilePhoto(Long mediaId) {
     this.profileMediaId = mediaId;
   }
+
+  public void changePassword(String encodedPassword) {
+    this.password = encodedPassword;
+  }
 }
