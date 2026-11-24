@@ -27,7 +27,7 @@ import { WithdrawalPage } from '../pages/mypage/WithdrawalPage'
 import { WithdrawalConfirmPage } from '../pages/mypage/WithdrawalConfirmPage'
 import { WithdrawalCompletePage } from '../pages/mypage/WithdrawalCompletePage'
 import { PasswordResetCompletePage } from '../pages/mypage/PasswordResetCompletePage'
-import { getMe, updateMyName, uploadProfilePhoto } from '../api/AuthApi'
+import { getMe, resetProfilePhoto, updateMyName, uploadProfilePhoto } from '../api/AuthApi'
 import { getAccessToken } from '../auth/AuthStorage'
 
 function ChallengePage() {
