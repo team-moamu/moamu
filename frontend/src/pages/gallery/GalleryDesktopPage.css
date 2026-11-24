@@ -1,0 +1,102 @@
+.desktop-gallery { position: fixed; inset: 0; width: 100%; height: 100dvh; overflow: hidden; background: #fff8eb; color: #4a382a; }
+.desktop-gallery-viewport { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(100vw, 300dvh); height: min(33.333333vw, 100dvh); max-width: 100%; max-height: 100%; overflow: hidden; outline-offset: -3px; }
+.desktop-gallery-background { position: absolute; top: 0; width: 100%; max-width: none; height: 100%; object-fit: contain; object-position: center; user-select: none; }
+.desktop-gallery-character { width: 160px; max-width: 100%; position: absolute; top: 62%; left: 0; will-change: transform; pointer-events: none; }
+.desktop-gallery-mu { display: block; width: 100%; height: auto; user-select: none; }
+.desktop-gallery-header { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: flex-end; gap: 16px; padding: 20px clamp(16px, 4vw, 64px); pointer-events: none; }
+.desktop-gallery-header h1 { font-size: 24px; font-weight: 600; padding: 8px 16px; background: #fff8ebe6; border-radius: 12px; }
+.desktop-gallery-return { pointer-events: auto; border-radius: 8px; background: #426b45; color: white; padding: 6px 12px; font-size: 12px; line-height: 18px; }
+.desktop-gallery-guide { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); padding: 6px 12px; line-height: 18px; border-radius: 24px; background: #fff8ebe6; white-space: nowrap; pointer-events: none; font-size: 14px; }
+.desktop-gallery a:focus-visible { outline: 3px solid #426b45; outline-offset: 4px; }
+
+/* 데스크톱 미술관에서는 앱 공통 루트의 모바일 폭 제한을 해제한다. */
+#root:has(.desktop-gallery) { max-width: none; width: 100%; margin: 0; }
+body:has(.desktop-gallery) { overflow: hidden; }
+.desktop-gallery-header { padding: clamp(10px, 2.5vh, 20px) clamp(12px, 3vw, 64px); }
+.desktop-gallery-header h1 { font-size: clamp(16px, 2.5vw, 24px); flex-shrink: 0; }
+.desktop-gallery-return { font-size: 12px; text-align: center; }
+.desktop-gallery-guide { max-width: calc(100% - 24px); white-space: normal; text-align: center; bottom: 12%; font-size: 12px; }
+@media (max-height: 450px) {
+  .desktop-gallery-header h1, .desktop-gallery-return { padding: 6px 10px; }
+  .desktop-gallery-guide { padding: 6px 12px; }
+}
+
+.desktop-gallery-guide { opacity: 1; visibility: visible; transition: opacity 500ms ease-out, visibility 500ms; }
+.desktop-gallery-guide--hidden { opacity: 0; visibility: hidden; }
+@media (prefers-reduced-motion: reduce) {
+  .desktop-gallery-guide { transition: none; }
+}
+
+/* 이젤은 보이는 전시 공간을 기준으로 배치한다. */
+.desktop-gallery-exhibits { position: absolute; inset: 0; pointer-events: none; }
+.gallery-easel { position: absolute;  aspect-ratio: 240 / 340; transform: translate(-50%, -50%); display: block; pointer-events: auto; container-type: inline-size; }
+.gallery-easel-decoration { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.gallery-easel-canvas { position: absolute; left: 15%; top: 18%; width: 70%; }
+.gallery-easel:focus-visible { outline: 3px solid #426b45; outline-offset: 4px; }
+.desktop-gallery-header > p, .desktop-gallery-header > div { background: #fff8ebed; padding: 8px 12px; border-radius: 8px; pointer-events: auto; font-size: 14px; }
+.desktop-gallery-header button { cursor: pointer; text-decoration: underline; }
+.desktop-gallery-header button:disabled { opacity: .4; cursor: not-allowed; }
+.desktop-gallery-header { flex-wrap: wrap; }
+
+/* 가까이 다가간 작품만 선택할 수 있다. */
+.gallery-easel { cursor: default; isolation: isolate; }
+.gallery-easel--nearby { cursor: pointer; }
+/* 빛은 이젤 뒤에서 퍼지고 클릭 영역을 가리지 않는다. */
+.gallery-easel--nearby::before {
+  content: '';
+  position: absolute;
+  inset: -30% -65%;
+  z-index: -1;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(ellipse, #fff1a6e6 0%, #ffd23bc7 30%, #f1b1188a 50%, #edaa002b 65%, #edaa0000 76%);
+  filter: blur(4px);
+  animation: gallery-easel-glow 1.8s ease-in-out infinite alternate;
+}
+@keyframes gallery-easel-glow {
+  from { opacity: .78; transform: scale(.94); }
+  to { opacity: 1; transform: scale(1.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gallery-easel--nearby::before { animation: none; opacity: 1; }
+}
+
+.desktop-gallery-rooms { position: absolute; bottom: max(16px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); max-width: calc(100% - 16px); z-index: 2; display: flex; align-items: center; gap: 12px; padding: 6px 12px; border-radius: 8px; background: #fff8ebed; pointer-events: auto; font-size: 12px; line-height: 18px; }
+.desktop-gallery-rooms button { padding: 2px 4px; white-space: nowrap; }
+.desktop-gallery-rooms span { white-space: nowrap; }
+
+/* 공통 글꼴과 여백 규칙에 영향받지 않도록 안내 UI 크기를 명시한다. */
+.desktop-gallery .desktop-gallery-return,
+.desktop-gallery .desktop-gallery-guide {
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 400;
+  padding: 4px 8px;
+  margin: 0;
+  min-height: 0;
+  width: auto;
+}
+.desktop-gallery .desktop-gallery-rooms,
+.desktop-gallery .desktop-gallery-rooms button,
+.desktop-gallery .desktop-gallery-rooms span {
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 400;
+}
+.desktop-gallery-rooms button { cursor: pointer; text-decoration: none; }
+.desktop-gallery-rooms button:disabled { opacity: .4; cursor: not-allowed; }
+
+/* 화면 가장자리가 아니라 실제 배경의 위아래에 이동 UI를 붙인다. */
+.desktop-gallery-header {
+  top: auto;
+  bottom: calc(50% + var(--gallery-scene-height, 33.333vw) / 2 + 8px);
+  left: 50%;
+  right: auto;
+  width: var(--gallery-scene-width, 100%);
+  transform: translateX(-50%);
+  padding: 0 8px;
+}
+.desktop-gallery-rooms {
+  top: calc(50% + var(--gallery-scene-height, 33.333vw) / 2 + 8px);
+  bottom: auto;
+}

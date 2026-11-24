@@ -1,10 +1,13 @@
 import { useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { logout } from '../../api/AuthApi'
-import { clearAccessToken, getLoginEmail } from '../../auth/AuthStorage'
+import { clearAccessToken } from '../../auth/AuthStorage'
 
-export function AccountSecurityPage() {
-  const loginEmail = getLoginEmail()
+type AccountSecurityPageProps = {
+  email: string | null
+}
+
+export function AccountSecurityPage({ email }: AccountSecurityPageProps) {
   const logoutInProgress = useRef(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [logoutError, setLogoutError] = useState('')
@@ -37,7 +40,7 @@ export function AccountSecurityPage() {
             <div className="min-w-0">
               <dt className="font-medium">가입 이메일</dt>
               <dd className="mt-1 break-all text-sm text-neutral-600">
-                {loginEmail ?? '로그인 후 이메일을 확인할 수 있어요.'}
+                {email ?? '이메일 정보를 확인할 수 없어요.'}
               </dd>
             </div>
             <span className="shrink-0 text-xs text-accent">인증 완료</span>
@@ -53,18 +56,24 @@ export function AccountSecurityPage() {
         <h2 id="security-heading" className="mb-3 font-bold">
           보안 설정
         </h2>
-        <Link
-          to="/mypage/password-reset"
+        <div
           className="flex items-center justify-between gap-3 rounded-2xl border border-[#E8CFAC] bg-white px-4 py-4"
         >
           <div>
-            <p className="font-medium">비밀번호 변경</p>
+            <button
+              type="button"
+              disabled
+              className="font-medium"
+            >
+              비밀번호 변경
+              <span>비밀번호 변경 기능은 준비 중이에요.</span>
+            </button>
             <p className="mt-1 text-sm text-neutral-600">
               비밀번호를 새로 설정해요.
             </p>
           </div>
           <span aria-hidden="true">›</span>
-        </Link>
+        </div>
       </section>
 
       <section aria-labelledby="account-management-heading">

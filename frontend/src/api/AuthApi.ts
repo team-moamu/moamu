@@ -6,6 +6,7 @@ import type {
   SignupResponse,
   EmailAvailabilityResponse,
 } from '../types/Auth'
+import { authenticatedFetch } from './AuthenticatedFetch'
 
 export class LoginError extends Error {
   readonly code: string
@@ -222,6 +223,86 @@ export async function verifyEmailCode(
   return body.data.verificationToken
 }
 
+export async function sendPasswordResetCode(email: string): Promise<void> {
+  const response = await fetch('/api/users/password-resets', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  })
+
+  if (!response.ok) {
+    const body: ApiResponse<never> | null =
+      await response.json().catch(() => null)
+
+    throw new Error(
+      body?.success === false
+        ? body.error.message
+        : '인증번호를 요청하지 못했어요. 다시 시도해 주세요.',
+    )
+  }
+}
+
+export async function verifyPasswordResetCode(
+  email: string,
+  code: string,
+): Promise<string> {
+  const response = await fetch('/api/users/password-resets/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, code }),
+  })
+
+  const body: ApiResponse<{ resetToken: string }> | null =
+    await response.json().catch(() => null)
+
+  if (
+    !response.ok ||
+    body?.success !== true ||
+    typeof body.data?.resetToken !== 'string' ||
+    !/^[A-Za-z0-9_-]{43}$/.test(body.data.resetToken)
+  ) {
+    throw new Error(
+      body?.success === false
+        ? body.error.message
+        : '인증번호를 확인하지 못했어요. 다시 시도해 주세요.',
+    )
+  }
+
+  return body.data.resetToken
+}
+
+export class PasswordResetError extends Error {
+  readonly code: string
+
+  constructor(code: string, message: string) {
+    super(message)
+    this.name = 'PasswordResetError'
+    this.code = code
+  }
+}
+
+export async function confirmPasswordReset(
+  resetToken: string,
+  newPassword: string,
+): Promise<void> {
+  const response = await fetch('/api/users/password-resets/confirm', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ resetToken, newPassword }),
+  })
+
+  if (response.status === 204) return
+
+  const body: ApiResponse<never> | null =
+    await response.json().catch(() => null)
+
+  if (body?.success === false) {
+    throw new PasswordResetError(body.error.code, body.error.message)
+  }
+
+  throw new Error('비밀번호를 저장하지 못했어요. 다시 시도해 주세요.')
+}
+
 export async function logout(): Promise<void> {
   const response = await fetch('/api/users/logout', {
     method: 'POST',
@@ -230,5 +311,82 @@ export async function logout(): Promise<void> {
 
   if (!response.ok) {
     throw new Error('로그아웃하지 못했어요. 잠시 후 다시 시도해 주세요.')
+  }
+}
+
+type UserMeResponse = {
+  email: string | null
+  name: string
+  profilePhotoUrl: string | null
+}
+
+export async function getMe(signal?: AbortSignal): Promise<UserMeResponse> {
+  const response = await authenticatedFetch('/api/users/me', { signal })
+  const body: ApiResponse<UserMeResponse> | null =
+    await response.json().catch(() => null)
+
+  if (!response.ok || !body?.success) {
+    throw new Error('회원 정보를 불러오지 못했어요.')
+  }
+
+  return body.data
+}
+
+export async function updateMyName(name: string): Promise<UserMeResponse> {
+  const response = await authenticatedFetch('/api/users/me', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name }),
+  })
+
+  const body: ApiResponse<UserMeResponse> | null =
+    await response.json().catch(() => null)
+
+  if (!response.ok || !body?.success) {
+    throw new Error(
+      body?.success === false
+        ? body.error.message
+        : '닉네임을 저장하지 못했어요.',
+    )
+  }
+
+  return body.data
+}
+type UserProfilePhotoResponse = {
+  profileMediaId: number
+}
+
+export async function uploadProfilePhoto(
+  image: File,
+): Promise<UserProfilePhotoResponse> {
+  const formData = new FormData()
+  formData.append('image', image)
+
+  const response = await authenticatedFetch('/api/users/me/profile-photo', {
+    method: 'POST',
+    body: formData,
+  })
+
+  const body: ApiResponse<UserProfilePhotoResponse> | null =
+    await response.json().catch(() => null)
+
+  if (!response.ok || !body?.success) {
+    throw new Error(
+      body?.success === false
+        ? body.error.message
+        : '프로필 사진을 저장하지 못했어요.',
+    )
+  }
+
+  return body.data
+}
+
+export async function resetProfilePhoto(): Promise<void> {
+  const response = await authenticatedFetch('/api/users/me/profile-photo', {
+    method: 'DELETE',
+  })
+
+  if (!response.ok) {
+    throw new Error('기본 이미지로 변경하지 못했어요.')
   }
 }

@@ -3,6 +3,7 @@ package com.moamu.domain.user.service;
 import com.moamu.domain.user.dto.UserLoginRequest;
 import com.moamu.domain.user.dto.UserSignupRequest;
 import com.moamu.domain.user.entity.User;
+import com.moamu.domain.user.dto.UserMeResponse;
 
 public interface UserService {
 
@@ -12,4 +13,8 @@ public interface UserService {
   boolean isEmailAvailable(String email);
 
   User login(UserLoginRequest request);
+
+  UserMeResponse getMe(Long userId);
+
+  UserMeResponse updateMyName(Long userId, String name);
 }

@@ -84,13 +84,24 @@ public class EmailVerificationService {
     if (!userService.isEmailAvailable(email)) {
       throw new BusinessException(UserErrorCode.DUPLICATE_LOGIN_ID);
     }
+    sendVerificationCode(email, "auth:signup:", "[모아뮤] 회원가입 인증번호");
+  }
+
+  void sendPasswordResetCode(String email) {
+    sendVerificationCode(
+        email,
+        "auth:password-reset:",
+        "[모아뮤] 비밀번호 재설정 인증번호");
+  }
+
+  private void sendVerificationCode(String email, String keyPrefix, String subject) {
 
     JavaMailSender mailSender = mailSenderProvider.getIfAvailable();
     if (mailSender == null || fromAddress.isBlank()) {
       throw new BusinessException(UserErrorCode.VERIFICATION_MAIL_FAILED);
     }
 
-    String cooldownKey = "auth:signup:cooldown:" + email.toLowerCase(Locale.ROOT);
+    String cooldownKey = keyPrefix + "cooldown:" + email.toLowerCase(Locale.ROOT);
     Boolean canSend = redisTemplate.opsForValue()
         .setIfAbsent(cooldownKey, "1", RESEND_INTERVAL);
 
@@ -101,13 +112,13 @@ public class EmailVerificationService {
     String code = String.format(Locale.ROOT, "%06d", RANDOM.nextInt(1_000_000));
     String encodedCode = passwordEncoder.encode(code);
 
-    String codeKey = "auth:signup:code:" + email;
+    String codeKey = keyPrefix + "code:" + email;
     redisTemplate.opsForValue().set(codeKey, encodedCode, CODE_TTL);
 
     SimpleMailMessage message = new SimpleMailMessage();
     message.setFrom(fromAddress);
     message.setTo(email);
-    message.setSubject("[모아뮤] 회원가입 인증번호");
+    message.setSubject(subject);
     message.setText("인증번호는 " + code + "입니다.\n5분 안에 입력해 주세요.");
 
     try {
@@ -121,7 +132,16 @@ public class EmailVerificationService {
   }
 
   public String verifyCode(String email, String code) {
-    String codeKey = "auth:signup:code:" + email;
+    return verifyCode(email, code, "auth:signup:", email);
+  }
+
+  String verifyPasswordResetCode(String email, String code, Long userId) {
+    return verifyCode(email, code, "auth:password-reset:", userId.toString());
+  }
+
+  private String verifyCode(
+      String email, String code, String keyPrefix, String tokenValue) {
+    String codeKey = keyPrefix + "code:" + email;
     String encodedCode = redisTemplate.opsForValue().get(codeKey);
 
     if (encodedCode == null) {
@@ -140,11 +160,11 @@ public class EmailVerificationService {
         VERIFY_CODE,
         List.of(
             codeKey,
-            "auth:signup:attempts:" + email + ":" + encodedCode,
-            SignupVerificationTokenStore.key(token)),
+            keyPrefix + "attempts:" + email + ":" + encodedCode,
+            keyPrefix + "token:" + token),
         encodedCode,
         Boolean.toString(matches),
-        email,
+        tokenValue,
         Long.toString(VERIFICATION_TOKEN_TTL.toMillis()),
         Integer.toString(MAX_FAILED_ATTEMPTS));
 
@@ -160,6 +180,6 @@ public class EmailVerificationService {
       throw new BusinessException(UserErrorCode.INVALID_VERIFICATION_CODE);
     }
 
-    throw new IllegalStateException("가입용 이메일 인증 토큰을 저장하지 못했습니다.");
+    throw new IllegalStateException("이메일 인증 토큰을 저장하지 못했습니다.");
   }
 }

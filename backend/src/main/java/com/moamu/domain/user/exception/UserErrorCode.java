@@ -29,6 +29,11 @@ public enum UserErrorCode implements ErrorCode {
       "LOGIN_NOT_ALLOWED",
       "로그인할 수 없는 회원입니다."),
 
+  USER_NOT_FOUND(
+      HttpStatus.NOT_FOUND,
+      "USER_NOT_FOUND",
+      "회원 정보를 찾을 수 없습니다."),
+
   VERIFICATION_RESEND_TOO_SOON(
       HttpStatus.TOO_MANY_REQUESTS,
       "VERIFICATION_RESEND_TOO_SOON",
@@ -52,7 +57,12 @@ public enum UserErrorCode implements ErrorCode {
   INVALID_EMAIL_VERIFICATION_TOKEN(
       HttpStatus.BAD_REQUEST,
       "INVALID_EMAIL_VERIFICATION_TOKEN",
-      "이메일 인증이 만료되었거나 가입 이메일과 일치하지 않아요. 다시 인증해 주세요.");
+      "이메일 인증이 만료되었거나 가입 이메일과 일치하지 않아요. 다시 인증해 주세요."),
+
+  INVALID_PASSWORD_RESET_TOKEN(
+      HttpStatus.BAD_REQUEST,
+      "INVALID_PASSWORD_RESET_TOKEN",
+      "비밀번호 재설정 인증이 만료됐어요. 다시 인증해 주세요.");
 
   private final HttpStatus httpStatus;
   private final String code;
