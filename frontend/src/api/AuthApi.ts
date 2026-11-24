@@ -375,6 +375,26 @@ export async function changePassword(
   )
 }
 
+export async function withdrawAccount(currentPassword: string): Promise<void> {
+  const response = await authenticatedFetch('/api/users/me/withdrawal', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ currentPassword }),
+  })
+
+  if (response.status === 204) return
+
+  const body: ApiResponse<unknown> | null =
+    await response.json().catch(() => null)
+
+  throw new Error(
+    body?.success === false
+      ? body.error.message
+      : '회원 탈퇴 결과를 확인하지 못했어요.',
+  )
+}
+
 type UserProfilePhotoResponse = {
   profileMediaId: number
 }

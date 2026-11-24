@@ -29,6 +29,8 @@ export function WithdrawalPage() {
           <li>계정과 프로필을 다시 이용할 수 없어요.</li>
           <li>도전 기록과 작품은 복구할 수 없어요.</li>
           <li>진행 중인 도전은 이어갈 수 없어요.</li>
+          <li>이전 도전 기록과 작품은 새 계정으로 이전되지 않아요.</li>
+          <li>같은 이메일로 다시 가입할 수 있어요. </li>
         </ul>
 
         <p className="mt-5 text-[12px] leading-[18px] text-[var(--color-primary)]">
