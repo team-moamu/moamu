@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import defaultProfileMu from '../../assets/images/default_profile_mu.png'
-import { getLoginEmail } from '../../auth/AuthStorage'
 
 const activityCounts = [
   { label: '진행 중', count: 2 },
@@ -13,10 +12,11 @@ const exhibitionCount = 2
 
 type MyPageProps = {
   nickname: string
+  email: string | null
   profilePhotoUrl: string | null
 }
 
-export function MyPage({ nickname, profilePhotoUrl }: MyPageProps) {
+export function MyPage({ nickname, email, profilePhotoUrl }: MyPageProps) {
   const loginEmail = getLoginEmail()
   const location = useLocation()
   const navigate = useNavigate()
@@ -47,7 +47,7 @@ export function MyPage({ nickname, profilePhotoUrl }: MyPageProps) {
         <div className="min-w-0">
           <p className="break-all text-xl font-bold">{nickname} 님</p>
           <p className="break-all text-sm">
-            {loginEmail ?? '로그인 후 이메일을 확인할 수 있어요.'}
+            {email ?? '이메일 정보를 확인할 수 없어요.'}
           </p>
           <Link
             to="/mypage/profile"

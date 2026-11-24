@@ -6,6 +6,7 @@ import type {
   SignupResponse,
   EmailAvailabilityResponse,
 } from '../types/Auth'
+import { authenticatedFetch } from './AuthenticatedFetch'
 
 export class LoginError extends Error {
   readonly code: string
@@ -231,4 +232,20 @@ export async function logout(): Promise<void> {
   if (!response.ok) {
     throw new Error('로그아웃하지 못했어요. 잠시 후 다시 시도해 주세요.')
   }
+}
+type UserMeResponse = {
+  email: string | null
+  name: string
+}
+
+export async function getMe(signal?: AbortSignal): Promise<UserMeResponse> {
+  const response = await authenticatedFetch('/api/users/me', { signal })
+  const body: ApiResponse<UserMeResponse> | null =
+    await response.json().catch(() => null)
+
+  if (!response.ok || !body?.success) {
+    throw new Error('회원 정보를 불러오지 못했어요.')
+  }
+
+  return body.data
 }
