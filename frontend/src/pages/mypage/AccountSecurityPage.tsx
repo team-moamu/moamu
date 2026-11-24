@@ -56,24 +56,18 @@ export function AccountSecurityPage({ email }: AccountSecurityPageProps) {
         <h2 id="security-heading" className="mb-3 font-bold">
           보안 설정
         </h2>
-        <div
+        <Link
+          to="/mypage/password-change"
           className="flex items-center justify-between gap-3 rounded-2xl border border-[#E8CFAC] bg-white px-4 py-4"
         >
           <div>
-            <button
-              type="button"
-              disabled
-              className="font-medium"
-            >
-              비밀번호 변경
-              <span>비밀번호 변경 기능은 준비 중이에요.</span>
-            </button>
+            <span className="font-medium">비밀번호 변경</span>
             <p className="mt-1 text-sm text-neutral-600">
-              비밀번호를 새로 설정해요.
+              현재 비밀번호를 확인하고 새 비밀번호로 변경해요.
             </p>
           </div>
           <span aria-hidden="true">›</span>
-        </div>
+        </Link>
       </section>
 
       <section aria-labelledby="account-management-heading">

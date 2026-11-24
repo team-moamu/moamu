@@ -29,6 +29,7 @@ import { WithdrawalCompletePage } from '../pages/mypage/WithdrawalCompletePage'
 import { PasswordResetCompletePage } from '../pages/mypage/PasswordResetCompletePage'
 import { getMe, resetProfilePhoto, updateMyName, uploadProfilePhoto } from '../api/AuthApi'
 import { getAccessToken } from '../auth/AuthStorage'
+import { PasswordChangePage } from '../pages/mypage/PasswordChangePage'
 
 function ChallengePage() {
   return <h1>도전하기 화면</h1>
@@ -109,6 +110,10 @@ export default function AppRoutes() {
 
       <Route element={<MainLayout headerType="back" title="계정 및 보안" />}>
         <Route path="/mypage/account-security" element={<AccountSecurityPage email={email} />} />
+      </Route>
+
+      <Route element={<MainLayout headerType="back" title="비밀번호 변경" />}>
+        <Route path="/mypage/password-change" element={<PasswordChangePage />} />
       </Route>
 
       <Route

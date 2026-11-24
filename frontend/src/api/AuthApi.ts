@@ -352,6 +352,29 @@ export async function updateMyName(name: string): Promise<UserMeResponse> {
 
   return body.data
 }
+
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<void> {
+  const response = await authenticatedFetch('/api/users/me/password', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ currentPassword, newPassword }),
+  })
+
+  if (response.status === 204) return
+
+  const body: ApiResponse<unknown> | null =
+    await response.json().catch(() => null)
+
+  throw new Error(
+    body?.success === false
+      ? body.error.message
+      : '비밀번호 변경 결과를 확인하지 못했어요.',
+  )
+}
+
 type UserProfilePhotoResponse = {
   profileMediaId: number
 }
