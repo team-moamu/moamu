@@ -17,13 +17,16 @@ public class ArtworkGenerationWorker {
 
     private final ArtworkGenerationWorkStore workStore;
     private final ArtworkGenerationClient client;
+    private final GeneratedArtworkValidator validator;
     private final Duration lease;
 
     public ArtworkGenerationWorker(ArtworkGenerationWorkStore workStore, ArtworkGenerationClient client,
+            GeneratedArtworkValidator validator,
             @Value("${app.ai.connect-timeout}") Duration connectTimeout,
             @Value("${app.ai.read-timeout}") Duration readTimeout) {
         this.workStore = workStore;
         this.client = client;
+        this.validator = validator;
         this.lease = connectTimeout.plus(readTimeout).plusSeconds(5);
     }
 
@@ -31,8 +34,12 @@ public class ArtworkGenerationWorker {
         workStore.claimNext(Instant.now(), lease).ifPresent(this::process);
     }
 
-    // 본문이 이미 있으면 먼저 AI 서버에 같은 작업이 접수됐는지 확인.
     private void process(ClaimedTask task) {
+        // 저장된 생성 결과가 있으면 FastAPI를 다시 부르지 않고 S3를 확인.
+        if (task.resultJson() != null) {
+            validate(task);
+            return;
+        }
         boolean submit = task.requestBody() == null || task.submitAgain();
         try {
             if (submit) {
@@ -51,6 +58,15 @@ public class ArtworkGenerationWorker {
                 case PAYLOAD_CONFLICT -> workStore.fail(task, "ARTWORK_GENERATION_PAYLOAD_CONFLICT", false);
                 default -> workStore.pollAgain(task);
             }
+        }
+    }
+
+    private void validate(ClaimedTask task) {
+        try {
+            validator.validate(task.taskId(), task.taskVersion(), task.expiresAt(), workStore.readResult(task));
+            workStore.markVerified(task);
+        } catch (GeneratedArtworkValidator.ValidationException exception) {
+            workStore.fail(task, "ARTWORK_VALIDATION_FAILED", exception.isRetryable());
         }
     }
 

@@ -5,14 +5,13 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UncheckedIOException;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Locale;
 import javax.imageio.ImageIO;
 import org.springframework.web.multipart.MultipartFile;
 import com.moamu.domain.media.exception.MediaErrorCode;
 import com.moamu.global.exception.BusinessException;
+import com.moamu.global.util.Sha256;
 
 // 사진 검증 규칙
 final class ImageValidator {
@@ -20,7 +19,7 @@ final class ImageValidator {
 
     // 업로드 이미지의 크기와 형식을 검증하고 SHA-256 해시를 계산
     ValidatedImage validate(MultipartFile image) {
-        
+
         // 1. 빈 파일인지 확인
         if (image == null || image.isEmpty()) {
             throw new BusinessException(MediaErrorCode.IMAGE_REQUIRED);
@@ -41,7 +40,8 @@ final class ImageValidator {
 
         if (bytes.length == 0 || bytes.length > MAX_FILE_SIZE) {
             throw new BusinessException(bytes.length == 0
-                    ? MediaErrorCode.IMAGE_REQUIRED : MediaErrorCode.IMAGE_TOO_LARGE);
+                    ? MediaErrorCode.IMAGE_REQUIRED
+                    : MediaErrorCode.IMAGE_TOO_LARGE);
         }
 
         // 3. 지원하는 형식과 실제 이미지인지 검증
@@ -79,7 +79,7 @@ final class ImageValidator {
         String extension = originalFilename.substring(dotIndex + 1)
                 .toLowerCase(Locale.ROOT);
 
-        // 5. 지원하는 확장자만 허용하고 jpg/jpeg는 jpg로 통일        
+        // 5. 지원하는 확장자만 허용하고 jpg/jpeg는 jpg로 통일
         return switch (extension) {
             case "jpg", "jpeg" -> "jpg";
             case "png" -> "png";
@@ -94,8 +94,7 @@ final class ImageValidator {
 
         // 1. 바이트 배열을 이미지 입력 스트림으로 변환
         try (var input = ImageIO.createImageInputStream(
-                new ByteArrayInputStream(bytes)
-        )) {
+                new ByteArrayInputStream(bytes))) {
             if (input == null) {
                 throw new BusinessException(MediaErrorCode.INVALID_IMAGE);
             }
@@ -155,20 +154,16 @@ final class ImageValidator {
 
     // 동일 파일 확인용 SHA-256 해시 계산
     private String calculateHash(byte[] bytes) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(digest.digest(bytes));
-        } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256을 사용할 수 없습니다.", e);
-        }
+        return HexFormat.of().formatHex(Sha256.newDigest().digest(bytes));
     }
 
     // 검증된 이미지 정보와 디코딩 결과
     record ValidatedImage(byte[] bytes, String extension, String contentType, String fileHash,
-                          BufferedImage decodedImage) implements AutoCloseable {
+            BufferedImage decodedImage) implements AutoCloseable {
         @Override
         public void close() {
-            if (decodedImage != null) decodedImage.flush();
+            if (decodedImage != null)
+                decodedImage.flush();
         }
     }
 }

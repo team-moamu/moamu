@@ -9,7 +9,11 @@ public record GeneratedArtworkMetadata(
         Instant checkedAt, Boolean reuseAllowed) {
 
     public boolean canBeReused() {
-        return Boolean.TRUE.equals(reuseAllowed) && hasText(workId) && hasText(title)
+        return Boolean.TRUE.equals(reuseAllowed) && hasValidSource();
+    }
+
+    public boolean hasValidSource() {
+        return hasText(workId) && hasText(title)
                 && hasText(rightsCode) && checkedAt != null && isWebUrl(sourceUrl) && isWebUrl(rightsUrl);
     }
 

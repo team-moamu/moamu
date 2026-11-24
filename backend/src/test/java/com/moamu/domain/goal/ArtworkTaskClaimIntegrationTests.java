@@ -20,6 +20,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.moamu.domain.artwork.dto.ArtworkGenerationResult;
 import com.moamu.domain.goal.dto.GoalAnalysisSnapshot;
 import com.moamu.domain.goal.dto.GoalEvaluationRequest.CategoryPath;
 import com.moamu.domain.goal.repository.GoalAnalysisStore;
@@ -80,6 +81,14 @@ class ArtworkTaskClaimIntegrationTests {
             assertThat(claimed.taskId()).isEqualTo(firstTask.representativeTaskId());
             assertThat(workStore.claimNext(Instant.now(), Duration.ofSeconds(10))).isEmpty();
             assertThat(workStore.beforeSubmit(claimed, "{\"taskId\":" + claimed.taskId() + "}")).isTrue();
+
+            var result = new ArtworkGenerationResult(claimed.taskId(), claimed.taskVersion(),
+                    ArtworkGenerationResult.Status.SUCCEEDED, null, null, null, null, true);
+            workStore.saveResult(claimed, result);
+            var validation = workStore.claimNext(Instant.now(), Duration.ofSeconds(10)).orElseThrow();
+            assertThat(workStore.readResult(validation)).isEqualTo(result);
+            workStore.markVerified(validation);
+            assertThat(workStore.claimNext(Instant.now(), Duration.ofSeconds(10))).isEmpty();
         } finally {
             connection.destroy();
         }

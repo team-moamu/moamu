@@ -3,6 +3,7 @@ package com.moamu.domain.artwork.service;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -36,6 +37,7 @@ class ArtworkGenerationWorkerTests {
     private static final String BODY = "{\"taskId\":91,\"taskVersion\":1}";
     @Mock private ArtworkGenerationWorkStore store;
     @Mock private ArtworkGenerationClient client;
+    @Mock private GeneratedArtworkValidator validator;
 
     @Test
     void savesTheRequestBeforeSubmitting() {
@@ -58,8 +60,8 @@ class ArtworkGenerationWorkerTests {
 
     @Test
     void checksTheExistingVersionAfterRestartAndReusesTheExactBodyIfMissing() {
-        var previous = new ClaimedTask("analysis", "token", 91L, 1, EXPIRES_AT, "{}", BODY, false);
-        var again = new ClaimedTask("analysis", "new-token", 91L, 1, EXPIRES_AT, "{}", BODY, true);
+        var previous = new ClaimedTask("analysis", "token", 91L, 1, EXPIRES_AT, "{}", BODY, false, null);
+        var again = new ClaimedTask("analysis", "new-token", 91L, 1, EXPIRES_AT, "{}", BODY, true, null);
         when(store.claimNext(any(), eq(Duration.ofSeconds(38))))
                 .thenReturn(Optional.of(previous), Optional.of(again));
         when(client.getStatus(91L, 1)).thenThrow(new ArtworkGenerationClientException(Reason.TASK_NOT_FOUND, 404, null));
@@ -97,13 +99,48 @@ class ArtworkGenerationWorkerTests {
         verify(client, never()).submit(any());
     }
 
+    @Test
+    void marksTheSavedResultVerifiedWithoutCallingFastApiAgain() {
+        var task = claimResult();
+        var result = new ArtworkGenerationResult(91L, 1, Status.SUCCEEDED, null, null, null, null, true);
+        when(store.readResult(task)).thenReturn(result);
+
+        worker().runNext();
+
+        var order = inOrder(validator, store);
+        order.verify(validator).validate(91L, 1, EXPIRES_AT, result);
+        order.verify(store).markVerified(task);
+        verifyNoInteractions(client);
+    }
+
+    @Test
+    void doesNotMarkAResultVerifiedWhenS3ValidationFails() {
+        var task = claimResult();
+        var result = new ArtworkGenerationResult(91L, 1, Status.SUCCEEDED, null, null, null, null, true);
+        when(store.readResult(task)).thenReturn(result);
+        doThrow(new GeneratedArtworkValidator.ValidationException(false, null))
+                .when(validator).validate(91L, 1, EXPIRES_AT, result);
+
+        worker().runNext();
+
+        verify(store).fail(task, "ARTWORK_VALIDATION_FAILED", false);
+        verify(store, never()).markVerified(task);
+        verifyNoInteractions(client);
+    }
+
+    private ClaimedTask claimResult() {
+        var task = new ClaimedTask("analysis", "token", 91L, 1, EXPIRES_AT, "{}", BODY, false, "{}");
+        when(store.claimNext(any(), eq(Duration.ofSeconds(38)))).thenReturn(Optional.of(task));
+        return task;
+    }
+
     private ClaimedTask claim(String body, boolean submitAgain) {
-        var task = new ClaimedTask("analysis", "token", 91L, 1, EXPIRES_AT, "{}", body, submitAgain);
+        var task = new ClaimedTask("analysis", "token", 91L, 1, EXPIRES_AT, "{}", body, submitAgain, null);
         when(store.claimNext(any(), eq(Duration.ofSeconds(38)))).thenReturn(Optional.of(task));
         return task;
     }
 
     private ArtworkGenerationWorker worker() {
-        return new ArtworkGenerationWorker(store, client, Duration.ofSeconds(3), Duration.ofSeconds(30));
+        return new ArtworkGenerationWorker(store, client, validator, Duration.ofSeconds(3), Duration.ofSeconds(30));
     }
 }

@@ -69,7 +69,10 @@ public class ArtworkGenerationWorkStore {
                 return 1
             end
             redis.call('hdel', KEYS[1], 'workerToken')
-            if ARGV[5] == 'FAILED_FINAL' or ARGV[5] == 'VALIDATION_PENDING' then
+            if ARGV[5] == 'VALIDATION_PENDING' then
+                redis.call('hset', KEYS[1], 'generationState', ARGV[5], 'generationResult', ARGV[6])
+                redis.call('zadd', KEYS[2], now, ARGV[1])
+            elseif ARGV[5] == 'FAILED_FINAL' or ARGV[5] == 'VERIFIED' then
                 redis.call('hset', KEYS[1], 'generationState', ARGV[5])
                 if ARGV[5] == 'FAILED_FINAL' then
                     redis.call('hset', KEYS[1], 'generationErrorCode', ARGV[6], 'generationRetryable', ARGV[7])
@@ -79,8 +82,6 @@ public class ArtworkGenerationWorkStore {
                             redis.call('del', task[6])
                         end
                     end
-                else
-                    redis.call('hset', KEYS[1], 'generationResult', ARGV[6])
                 end
                 redis.call('zrem', KEYS[2], ARGV[1])
             else
@@ -99,7 +100,7 @@ public class ArtworkGenerationWorkStore {
     private final GoalAnalysisStore goalAnalysisStore;
 
     public record ClaimedTask(String analysisId, String token, long taskId, int taskVersion, Instant expiresAt,
-            String analysisJson, String requestBody, boolean submitAgain) {
+            String analysisJson, String requestBody, boolean submitAgain, String resultJson) {
     }
 
     public Optional<ClaimedTask> claimNext(Instant now, Duration lease) {
@@ -116,17 +117,31 @@ public class ArtworkGenerationWorkStore {
             return Optional.empty();
         }
         List<Object> fields = redisTemplate.opsForHash().multiGet(receiptKey, List.of("workerToken", "taskId",
-                "taskVersion", "expiresAt", "analysis", "generationRequestBody", "generationSubmitAgain"));
+                "taskVersion", "expiresAt", "analysis", "generationRequestBody", "generationSubmitAgain",
+                "generationResult"));
         if (!token.equals(fields.getFirst())) {
             return Optional.empty();
         }
         return Optional.of(new ClaimedTask(analysisId, token, Long.parseLong((String) fields.get(1)),
                 Integer.parseInt((String) fields.get(2)), Instant.parse((String) fields.get(3)),
-                (String) fields.get(4), (String) fields.get(5), "true".equals(fields.get(6))));
+                (String) fields.get(4), (String) fields.get(5), "true".equals(fields.get(6)),
+                (String) fields.get(7)));
     }
 
     public GoalAnalysisSnapshot readAnalysis(ClaimedTask task) {
         return goalAnalysisStore.readAnalysis(task.analysisJson());
+    }
+
+    public ArtworkGenerationResult readResult(ClaimedTask task) {
+        try {
+            return objectMapper.readValue(task.resultJson(), ArtworkGenerationResult.class);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("저장된 명화 생성 결과를 읽지 못했습니다.", exception);
+        }
+    }
+
+    public void markVerified(ClaimedTask task) {
+        update(task, "VERIFIED", "", false);
     }
 
     public boolean beforeSubmit(ClaimedTask task, String body) {
