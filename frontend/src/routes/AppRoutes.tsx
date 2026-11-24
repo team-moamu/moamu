@@ -1,6 +1,5 @@
 
 import { Route, Routes, useLocation } from 'react-router'
-import { getMe } from '../api/AuthApi'
 import { MainLayout } from '../components/layout/MainLayout'
 import { ChallengeCreatePage } from '../pages/challenge/ChallengeCreatePage'
 import { ChallengeListPage } from '../pages/challenge/ChallengeListPage'
@@ -28,7 +27,7 @@ import { WithdrawalPage } from '../pages/mypage/WithdrawalPage'
 import { WithdrawalConfirmPage } from '../pages/mypage/WithdrawalConfirmPage'
 import { WithdrawalCompletePage } from '../pages/mypage/WithdrawalCompletePage'
 import { PasswordResetCompletePage } from '../pages/mypage/PasswordResetCompletePage'
-import { getMe, updateMyName } from '../api/AuthApi'
+import { getMe, updateMyName, uploadProfilePhoto } from '../api/AuthApi'
 
 function ChallengePage() {
   return <h1>도전하기 화면</h1>
@@ -180,11 +179,20 @@ export default function AppRoutes() {
               nickname={nickname}
               profilePhoto={profilePhoto}
               onSave={async (nextNickname, nextPhoto) => {
-                const user = await updateMyName(nextNickname)
+                if (nextPhoto === null && profilePhoto !== null) {
+                  throw new Error('저장된 사진을 기본 이미지로 바꾸는 기능은 준비 중이에요.')
+                }
 
-                setNickname(user.name)
-                setEmail(user.email)
-                setProfilePhoto(nextPhoto)
+                if (nextNickname !== nickname) {
+                  const user = await updateMyName(nextNickname)
+                  setNickname(user.name)
+                  setEmail(user.email)
+                }
+
+                if (nextPhoto && nextPhoto !== profilePhoto) {
+                  await uploadProfilePhoto(nextPhoto)
+                  setProfilePhoto(nextPhoto)
+                }
               }}
             />
           }

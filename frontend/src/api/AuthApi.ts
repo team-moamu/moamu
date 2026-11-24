@@ -270,3 +270,31 @@ export async function updateMyName(name: string): Promise<UserMeResponse> {
 
   return body.data
 }
+type UserProfilePhotoResponse = {
+  profileMediaId: number
+}
+
+export async function uploadProfilePhoto(
+  image: File,
+): Promise<UserProfilePhotoResponse> {
+  const formData = new FormData()
+  formData.append('image', image)
+
+  const response = await authenticatedFetch('/api/users/me/profile-photo', {
+    method: 'POST',
+    body: formData,
+  })
+
+  const body: ApiResponse<UserProfilePhotoResponse> | null =
+    await response.json().catch(() => null)
+
+  if (!response.ok || !body?.success) {
+    throw new Error(
+      body?.success === false
+        ? body.error.message
+        : '프로필 사진을 저장하지 못했어요.',
+    )
+  }
+
+  return body.data
+}
