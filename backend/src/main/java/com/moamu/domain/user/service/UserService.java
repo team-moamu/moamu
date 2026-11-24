@@ -9,7 +9,7 @@ public interface UserService {
 
   Long signup(UserSignupRequest Request);
 
-  //이메일의 사용 가능 여부 확인 (이미 가입되어 있는가)
+  // 이메일의 사용 가능 여부 확인 (이미 가입되어 있는가)
   boolean isEmailAvailable(String email);
 
   User login(UserLoginRequest request);
@@ -17,4 +17,6 @@ public interface UserService {
   UserMeResponse getMe(Long userId);
 
   UserMeResponse updateMyName(Long userId, String name);
+
+  void changePassword(Long userId, String currentPassword, String newPassword);
 }

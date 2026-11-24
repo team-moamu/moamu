@@ -163,6 +163,20 @@ public class UserServiceImpl implements UserService {
 		return toMeResponse(user);
 	}
 
+	@Override
+	@Transactional
+	public void changePassword(Long userId, String currentPassword, String newPassword) {
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+
+		if (user.getPassword() == null
+				|| !passwordEncoder.matches(currentPassword, user.getPassword())) {
+			throw new BusinessException(UserErrorCode.INVALID_CURRENT_PASSWORD);
+		}
+
+		user.changePassword(passwordEncoder.encode(newPassword));
+	}
+
 	private UserMeResponse toMeResponse(User user) {
 		Long profileMediaId = user.getProfileMediaId();
 		String profilePhotoUrl = null;

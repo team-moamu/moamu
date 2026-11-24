@@ -29,6 +29,11 @@ public enum UserErrorCode implements ErrorCode {
       "LOGIN_NOT_ALLOWED",
       "로그인할 수 없는 회원입니다."),
 
+  INVALID_CURRENT_PASSWORD(
+      HttpStatus.BAD_REQUEST,
+      "INVALID_CURRENT_PASSWORD",
+      "현재 비밀번호가 올바르지 않아요."),
+
   USER_NOT_FOUND(
       HttpStatus.NOT_FOUND,
       "USER_NOT_FOUND",
