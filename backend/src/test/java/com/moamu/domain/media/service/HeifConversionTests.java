@@ -39,7 +39,7 @@ class HeifConversionTests {
         var client = mock(S3Client.class);
         try (var converters = mockConstruction(HeifConverter.class,
                 (converter, context) -> when(converter.read(any(byte[].class))).thenReturn(decoded))) {
-            var storage = new S3StorageService(client, "test", "verifications", new ImagePreprocessor(1.0f));
+            var storage = new S3StorageService(client, "test", "verifications", "profiles/", new ImagePreprocessor(1.0f));
             var saved = storage.saveVerification(new MockMultipartFile("image", "photo.heif", "image/heif", original));
             var request = org.mockito.ArgumentCaptor.forClass(
                 software.amazon.awssdk.services.s3.model.PutObjectRequest.class);
@@ -70,7 +70,7 @@ class HeifConversionTests {
     @Test
     void rejectsMalformedHeifBeforeS3() {
         var client = mock(S3Client.class);
-        var storage = new S3StorageService(client, "test", "verifications", new ImagePreprocessor(1.0f));
+        var storage = new S3StorageService(client, "test", "verifications", "profiles/", new ImagePreprocessor(1.0f));
         assertThrows(BusinessException.class, () -> storage.saveVerification(
             new MockMultipartFile("image", "photo.heif", "image/heif", new byte[]{1, 2, 3})));
         verifyNoInteractions(client);
