@@ -24,7 +24,12 @@ import org.springframework.transaction.support.SimpleTransactionStatus;
 
 import com.moamu.domain.aitask.entity.AiTask;
 import com.moamu.domain.aitask.enums.AiTaskType;
+import com.moamu.domain.aitask.enums.AiTaskStatus;
 import com.moamu.domain.aitask.repository.AiTaskRepository;
+import com.moamu.domain.artwork.dto.ArtworkGenerationResult;
+import com.moamu.domain.artwork.entity.Artwork;
+import com.moamu.domain.artwork.repository.ArtworkRepository;
+import com.moamu.domain.artwork.repository.GeneratedArtworkMetadataStore;
 import com.moamu.domain.challenge.dto.CustomChallengeCreateRequest;
 import com.moamu.domain.challenge.entity.Challenge;
 import com.moamu.domain.challenge.entity.ChallengeCondition;
@@ -38,6 +43,8 @@ import com.moamu.domain.goal.entity.GoalTemplate;
 import com.moamu.domain.goal.entity.GoalTemplateCondition;
 import com.moamu.domain.goal.enums.Status;
 import com.moamu.domain.goal.repository.GoalAnalysisStore;
+import com.moamu.domain.goal.repository.ArtworkGenerationWorkStore;
+import com.moamu.domain.goal.repository.ArtworkGenerationWorkStore.ClaimedTask;
 import com.moamu.domain.goal.repository.GoalAnalysisStore.CustomReceipt;
 import com.moamu.domain.goal.repository.GoalCategoryRepository;
 import com.moamu.domain.goal.repository.GoalCategoryRepository.CategoryNames;
@@ -46,6 +53,8 @@ import com.moamu.domain.goal.repository.GoalTemplateConditionRepository;
 import com.moamu.domain.goal.repository.GoalTemplateRepository;
 import com.moamu.domain.schedule.entity.Schedule;
 import com.moamu.domain.schedule.repository.ScheduleRepository;
+import com.moamu.domain.media.entity.Media;
+import com.moamu.domain.media.repository.MediaRepository;
 import com.moamu.global.exception.BusinessException;
 
 import static org.assertj.core.api.Assertions.*;
@@ -68,6 +77,10 @@ class CustomChallengeServiceTests {
     @Mock private GoalTemplateConditionRepository goalTemplateConditionRepository;
     @Mock private GoalTemplateArtworkRepository goalTemplateArtworkRepository;
     @Mock private AiTaskRepository aiTaskRepository;
+    @Mock private ArtworkGenerationWorkStore artworkWorkStore;
+    @Mock private GeneratedArtworkMetadataStore artworkMetadataStore;
+    @Mock private ArtworkRepository artworkRepository;
+    @Mock private MediaRepository mediaRepository;
     @Mock private ReusableArtworkService reusableArtworkService;
     @Mock private ChallengeRepository challengeRepository;
     @Mock private ChallengeConditionRepository challengeConditionRepository;
@@ -324,6 +337,67 @@ class CustomChallengeServiceTests {
             assertThat(definition.getIsolationLevel()).isEqualTo(TransactionDefinition.ISOLATION_SERIALIZABLE);
             return new SimpleTransactionStatus();
         });
+    }
+
+    @Test
+    void commitsVerifiedArtworkChallengeAndTaskBeforePublishingSuccess() {
+        var work = stubVerifiedWork(1);
+        var task = AiTask.pendingArtworkGeneration(START_DATE.atStartOfDay());
+        when(aiTaskRepository.findByAiTaskIdAndTaskType(91L, AiTaskType.GENERATE_ARTWORK))
+                .thenReturn(Optional.of(task));
+        stubCreation();
+        when(mediaRepository.save(any(Media.class))).thenAnswer(invocation -> {
+            Media media = invocation.getArgument(0);
+            ReflectionTestUtils.setField(media, "mediaId", 20L);
+            return media;
+        });
+        when(artworkRepository.save(any(Artwork.class))).thenAnswer(invocation -> {
+            Artwork artwork = invocation.getArgument(0);
+            ReflectionTestUtils.setField(artwork, "artworkId", 30L);
+            return artwork;
+        });
+        when(artworkWorkStore.beforeCommit(work, new GoalConfirmationSnapshot(1L, 100L))).thenReturn(true);
+
+        service.confirmGeneratedArtwork(work);
+
+        assertThat(task.getStatus()).isEqualTo(AiTaskStatus.SUCCEEDED);
+        assertThat(task.getArtworkId()).isEqualTo(30L);
+        var order = inOrder(challengeRepository, artworkWorkStore, transactionManager);
+        order.verify(challengeRepository).flush();
+        order.verify(artworkWorkStore).beforeCommit(work, new GoalConfirmationSnapshot(1L, 100L));
+        order.verify(transactionManager).commit(any());
+        order.verify(artworkWorkStore).markSucceeded(work, 30L);
+        verify(artworkMetadataStore).save(eq(30L), any());
+    }
+
+    @Test
+    void rejectsAnOldVersionBeforeSavingAnything() {
+        var work = stubVerifiedWork(2);
+        var task = AiTask.pendingArtworkGeneration(START_DATE.atStartOfDay());
+        when(aiTaskRepository.findByAiTaskIdAndTaskType(91L, AiTaskType.GENERATE_ARTWORK))
+                .thenReturn(Optional.of(task));
+
+        assertCode(() -> service.confirmGeneratedArtwork(work), "ARTWORK_TASK_UNAVAILABLE");
+
+        verify(transactionManager).rollback(any());
+        verifyNoInteractions(mediaRepository, artworkRepository, challengeRepository);
+        verify(artworkWorkStore, never()).markSucceeded(any(), any());
+    }
+
+    private ClaimedTask stubVerifiedWork(int version) {
+        var work = new ClaimedTask(ANALYSIS_ID, "worker", 91L, version, Instant.now().plusSeconds(30),
+                "{}", "{}", false, "{}", true);
+        when(goalAnalysisStore.findCustomReceipt(ANALYSIS_ID))
+                .thenReturn(Optional.of(new CustomReceipt(1L, START_DATE, START_DATE.plusDays(6))));
+        when(artworkWorkStore.readAnalysis(work)).thenReturn(SNAPSHOT);
+        var image = new ArtworkGenerationResult.Image("generated-artworks/91/" + version + "/result.webp",
+                "image/webp", 100L, "0".repeat(64));
+        var source = new ArtworkGenerationResult.Source("work-1", "Painting", "https://example.org/work",
+                "PUBLIC_DOMAIN", "https://example.org/rights", Instant.EPOCH);
+        when(artworkWorkStore.readResult(work)).thenReturn(new ArtworkGenerationResult(91L, version,
+                ArtworkGenerationResult.Status.SUCCEEDED, null, null, image, source, true));
+        when(transactionManager.getTransaction(any())).thenReturn(new SimpleTransactionStatus());
+        return work;
     }
 
     @ParameterizedTest

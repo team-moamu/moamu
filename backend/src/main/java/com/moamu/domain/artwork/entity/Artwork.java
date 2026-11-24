@@ -21,7 +21,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Artwork extends BaseEntity {
     // 작품ID
-    @Id 
+    @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "artwork_id")
     private Long artworkId;
@@ -50,4 +50,13 @@ public class Artwork extends BaseEntity {
     // 작품 준비 완료 시각
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
+
+    public static Artwork createGenerated(Long mediaId, String title, int taskVersion, LocalDateTime completedAt) {
+        Artwork artwork = new Artwork();
+        artwork.mediaId = mediaId;
+        artwork.artworkTitle = title;
+        artwork.taskVersion = taskVersion;
+        artwork.completedAt = completedAt;
+        return artwork;
+    }
 }

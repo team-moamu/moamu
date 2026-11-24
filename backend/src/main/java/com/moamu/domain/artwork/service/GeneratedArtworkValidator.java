@@ -51,7 +51,7 @@ public class GeneratedArtworkValidator {
         }
         var image = result.image();
         String prefix = "generated-artworks/" + taskId + "/" + taskVersion + "/";
-        if (image == null || image.key() == null || !image.key().startsWith(prefix)
+        if (image == null || image.key() == null || image.key().length() > 500 || !image.key().startsWith(prefix)
                 || !image.key().substring(prefix.length()).matches("[A-Za-z0-9][A-Za-z0-9._-]*")
                 || image.sizeBytes() == null || image.sizeBytes() <= 0 || image.sizeBytes() > maxBytes
                 || image.contentType() == null || !CONTENT_TYPES.contains(image.contentType())

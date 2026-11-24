@@ -29,22 +29,31 @@ public class GoalAnalysisStore {
     private static final Duration TTL = Duration.ofMinutes(30);
     private static final String LEGACY_LOCK_PREFIX = "goal:confirmation:";
     static final String RECEIPT_PREFIX = "goal:custom-receipt:";
-    private static final String RESULT_PREFIX = "goal:confirmation-result:";
-    private static final String ARTWORK_TASK_PREFIX = "goal:artwork-task:";
+    static final String RESULT_PREFIX = "goal:confirmation-result:";
+    static final String ARTWORK_TASK_PREFIX = "goal:artwork-task:";
     private static final String ARTWORK_REPRESENTATIVE_PREFIX = "goal:artwork-representative:";
-    private static final Duration CONFIRMATION_TTL = Duration.ofDays(7);
+    static final Duration CONFIRMATION_TTL = Duration.ofDays(7);
     private static final Duration GENERATION_TIMEOUT = Duration.ofSeconds(120);
+
+    public static Instant generationDeadline(Instant acceptedAt) {
+        return acceptedAt.plus(GENERATION_TIMEOUT);
+    }
 
     // 분석이 아직 유효하고 먼저 접수된 요청이 없을 때만 새 접수를 저장.
     private static final DefaultRedisScript<Long> ACQUIRE_RECEIPT = new DefaultRedisScript<>("""
             if redis.call('exists', KEYS[1], KEYS[3]) > 0 then return 0 end
             if redis.call('get', KEYS[2]) ~= ARGV[1] then return 0 end
             redis.call('hset', KEYS[1], 'token', ARGV[2], 'analysis', ARGV[1], 'userId', ARGV[3],
-                    'startDate', ARGV[4], 'endDate', ARGV[5], 'acceptedAt', ARGV[6], 'expiresAt', ARGV[7])
+                    'startDate', ARGV[4], 'endDate', ARGV[5], 'acceptedAt', ARGV[6], 'expiresAt', ARGV[7],
+                    'expiresAtMillis', ARGV[8])
             return 1
             """, Long.class);
     private static final DefaultRedisScript<Long> SAVE_CONFIRMATION = new DefaultRedisScript<>("""
             if redis.call('hget', KEYS[1], 'token') ~= ARGV[1] then return 0 end
+            local currentTime = redis.call('time')
+            local now = tonumber(currentTime[1]) * 1000 + math.floor(tonumber(currentTime[2]) / 1000)
+            local deadline = redis.call('hget', KEYS[1], 'expiresAtMillis')
+            if deadline and tonumber(deadline) <= now then return 0 end
             redis.call('set', KEYS[2], ARGV[2])
             return 1
             """, Long.class);
@@ -126,7 +135,7 @@ public class GoalAnalysisStore {
                 List.of(RECEIPT_PREFIX + analysisId, ARTWORK_REPRESENTATIVE_PREFIX + categoryKey,
                         ARTWORK_TASK_PREFIX + taskId, ArtworkGenerationWorkStore.QUEUE_KEY),
                 token, analysisId, taskId.toString(), Integer.toString(taskVersion),
-                Long.toString(acceptedAt.plus(GENERATION_TIMEOUT).toEpochMilli()));
+                Long.toString(generationDeadline(acceptedAt).toEpochMilli()));
         if (!Long.valueOf(1).equals(registered)) {
             throw new BusinessException(ChallengeErrorCode.ARTWORK_TASK_UNAVAILABLE);
         }
@@ -167,10 +176,11 @@ public class GoalAnalysisStore {
             return Optional.empty();
         }
         String token = UUID.randomUUID().toString();
+        Instant expiresAt = generationDeadline(acceptedAt);
         Long acquired = redisTemplate.execute(ACQUIRE_RECEIPT,
                 List.of(RECEIPT_PREFIX + analysisId, KEY_PREFIX + analysisId, LEGACY_LOCK_PREFIX + analysisId),
                 rawSnapshot, token, snapshot.userId().toString(), startDate.toString(), endDate.toString(),
-                acceptedAt.toString(), acceptedAt.plus(GENERATION_TIMEOUT).toString());
+                acceptedAt.toString(), expiresAt.toString(), Long.toString(expiresAt.toEpochMilli()));
         return Long.valueOf(1).equals(acquired) ? Optional.of(token) : Optional.empty();
     }
 

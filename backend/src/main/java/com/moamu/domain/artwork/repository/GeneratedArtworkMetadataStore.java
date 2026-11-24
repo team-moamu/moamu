@@ -54,4 +54,12 @@ public class GeneratedArtworkMetadataStore {
         }
         return reusableArtworkIds;
     }
+
+    public void save(Long artworkId, GeneratedArtworkMetadata metadata) {
+        try {
+            redisTemplate.opsForValue().set(KEY_PREFIX + artworkId, objectMapper.writeValueAsString(metadata));
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("작품 출처를 저장하지 못했습니다.", exception);
+        }
+    }
 }

@@ -1,16 +1,17 @@
 package com.moamu.domain.goal.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 
 import com.moamu.domain.goal.entity.GoalTemplateArtwork;
 
 public interface GoalTemplateArtworkRepository extends JpaRepository<GoalTemplateArtwork, Long> {
 
-    boolean existsByGoalTemplateIdAndDelYn(Long goalTemplateId, String delYn);
 
     @Query("""
             SELECT link.artworkId FROM GoalTemplateArtwork link
@@ -29,4 +30,10 @@ public interface GoalTemplateArtworkRepository extends JpaRepository<GoalTemplat
                 AND artwork.status = com.moamu.domain.artwork.enums.Status.READY
             """)
     List<Long> findReadyArtworkIdsByCategory(@Param("categoryId") Long categoryId);
+
+    Optional<GoalTemplateArtwork> findByGoalTemplateIdAndArtworkId(Long goalTemplateId, Long artworkId);
+
+    @Modifying
+    @Query("UPDATE GoalTemplateArtwork link SET link.delYn = 'N' WHERE link.goalTemplateArtworkId = :linkId")
+    void restore(@Param("linkId") Long linkId);
 }

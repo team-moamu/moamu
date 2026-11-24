@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import com.moamu.domain.artwork.client.ArtworkGenerationClient;
 import com.moamu.domain.artwork.client.ArtworkGenerationClientException;
 import com.moamu.domain.artwork.dto.ArtworkGenerationRequest;
+import com.moamu.domain.challenge.service.ChallengeService;
 import com.moamu.domain.goal.repository.ArtworkGenerationWorkStore;
 import com.moamu.domain.goal.repository.ArtworkGenerationWorkStore.ClaimedTask;
 
@@ -18,15 +19,17 @@ public class ArtworkGenerationWorker {
     private final ArtworkGenerationWorkStore workStore;
     private final ArtworkGenerationClient client;
     private final GeneratedArtworkValidator validator;
+    private final ChallengeService challengeService;
     private final Duration lease;
 
     public ArtworkGenerationWorker(ArtworkGenerationWorkStore workStore, ArtworkGenerationClient client,
-            GeneratedArtworkValidator validator,
+            GeneratedArtworkValidator validator, ChallengeService challengeService,
             @Value("${app.ai.connect-timeout}") Duration connectTimeout,
             @Value("${app.ai.read-timeout}") Duration readTimeout) {
         this.workStore = workStore;
         this.client = client;
         this.validator = validator;
+        this.challengeService = challengeService;
         this.lease = connectTimeout.plus(readTimeout).plusSeconds(5);
     }
 
@@ -35,6 +38,10 @@ public class ArtworkGenerationWorker {
     }
 
     private void process(ClaimedTask task) {
+        if (task.verified()) {
+            challengeService.confirmGeneratedArtwork(task);
+            return;
+        }
         // 저장된 생성 결과가 있으면 FastAPI를 다시 부르지 않고 S3를 확인.
         if (task.resultJson() != null) {
             validate(task);

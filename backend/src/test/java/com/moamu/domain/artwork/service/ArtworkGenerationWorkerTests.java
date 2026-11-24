@@ -25,6 +25,7 @@ import com.moamu.domain.artwork.client.ArtworkGenerationClientException.Reason;
 import com.moamu.domain.artwork.dto.ArtworkGenerationRequest;
 import com.moamu.domain.artwork.dto.ArtworkGenerationResult;
 import com.moamu.domain.artwork.dto.ArtworkGenerationResult.Status;
+import com.moamu.domain.challenge.service.ChallengeService;
 import com.moamu.domain.goal.dto.GoalAnalysisSnapshot;
 import com.moamu.domain.goal.dto.GoalEvaluationRequest.CategoryPath;
 import com.moamu.domain.goal.repository.ArtworkGenerationWorkStore;
@@ -38,6 +39,7 @@ class ArtworkGenerationWorkerTests {
     @Mock private ArtworkGenerationWorkStore store;
     @Mock private ArtworkGenerationClient client;
     @Mock private GeneratedArtworkValidator validator;
+    @Mock private ChallengeService challengeService;
 
     @Test
     void savesTheRequestBeforeSubmitting() {
@@ -60,8 +62,8 @@ class ArtworkGenerationWorkerTests {
 
     @Test
     void checksTheExistingVersionAfterRestartAndReusesTheExactBodyIfMissing() {
-        var previous = new ClaimedTask("analysis", "token", 91L, 1, EXPIRES_AT, "{}", BODY, false, null);
-        var again = new ClaimedTask("analysis", "new-token", 91L, 1, EXPIRES_AT, "{}", BODY, true, null);
+        var previous = new ClaimedTask("analysis", "token", 91L, 1, EXPIRES_AT, "{}", BODY, false, null, false);
+        var again = new ClaimedTask("analysis", "new-token", 91L, 1, EXPIRES_AT, "{}", BODY, true, null, false);
         when(store.claimNext(any(), eq(Duration.ofSeconds(38))))
                 .thenReturn(Optional.of(previous), Optional.of(again));
         when(client.getStatus(91L, 1)).thenThrow(new ArtworkGenerationClientException(Reason.TASK_NOT_FOUND, 404, null));
@@ -129,18 +131,19 @@ class ArtworkGenerationWorkerTests {
     }
 
     private ClaimedTask claimResult() {
-        var task = new ClaimedTask("analysis", "token", 91L, 1, EXPIRES_AT, "{}", BODY, false, "{}");
+        var task = new ClaimedTask("analysis", "token", 91L, 1, EXPIRES_AT, "{}", BODY, false, "{}", false);
         when(store.claimNext(any(), eq(Duration.ofSeconds(38)))).thenReturn(Optional.of(task));
         return task;
     }
 
     private ClaimedTask claim(String body, boolean submitAgain) {
-        var task = new ClaimedTask("analysis", "token", 91L, 1, EXPIRES_AT, "{}", body, submitAgain, null);
+        var task = new ClaimedTask("analysis", "token", 91L, 1, EXPIRES_AT, "{}", body, submitAgain, null, false);
         when(store.claimNext(any(), eq(Duration.ofSeconds(38)))).thenReturn(Optional.of(task));
         return task;
     }
 
     private ArtworkGenerationWorker worker() {
-        return new ArtworkGenerationWorker(store, client, validator, Duration.ofSeconds(3), Duration.ofSeconds(30));
+        return new ArtworkGenerationWorker(store, client, validator, challengeService,
+                Duration.ofSeconds(3), Duration.ofSeconds(30));
     }
 }

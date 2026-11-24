@@ -14,6 +14,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moamu.domain.artwork.dto.ArtworkGenerationResult;
 import com.moamu.domain.goal.dto.GoalAnalysisSnapshot;
+import com.moamu.domain.goal.dto.GoalConfirmationSnapshot;
 
 import lombok.RequiredArgsConstructor;
 
@@ -28,8 +29,10 @@ public class ArtworkGenerationWorkStore {
             local now = tonumber(time[1]) * 1000 + math.floor(tonumber(time[2]) / 1000)
             """;
     private static final String EXPIRE_TASK = """
-            redis.call('hset', KEYS[1], 'generationState', 'FAILED_FINAL',
-                    'generationErrorCode', 'ARTWORK_GENERATION_TIMEOUT', 'generationRetryable', 'true')
+            if redis.call('hget', KEYS[1], 'generationState') ~= 'FINALIZING' then
+                redis.call('hset', KEYS[1], 'generationState', 'FAILED_FINAL',
+                        'generationErrorCode', 'ARTWORK_GENERATION_TIMEOUT', 'generationRetryable', 'true')
+            end
             redis.call('hdel', KEYS[1], 'workerToken')
             redis.call('zrem', KEYS[2], ARGV[1])
             return 0
@@ -63,24 +66,40 @@ public class ArtworkGenerationWorkStore {
             """ + EXPIRE_TASK + """
             end
             if tonumber(task[2]) <= now then return 0 end
+            local state = redis.call('hget', KEYS[1], 'generationState')
             if ARGV[5] == 'BEFORE_SUBMIT' then
                 redis.call('hsetnx', KEYS[1], 'generationRequestBody', ARGV[6])
                 redis.call('hdel', KEYS[1], 'generationSubmitAgain')
                 return 1
             end
+            if ARGV[5] == 'BEFORE_COMMIT' then
+                if state ~= 'VERIFIED' and state ~= 'FINALIZING' then return 0 end
+                redis.call('set', KEYS[3], ARGV[6])
+                redis.call('hset', KEYS[1], 'generationState', 'FINALIZING')
+                return 1
+            end
+            if ARGV[5] == 'SUCCEEDED' and state ~= 'FINALIZING' then return 0 end
             redis.call('hdel', KEYS[1], 'workerToken')
             if ARGV[5] == 'VALIDATION_PENDING' then
                 redis.call('hset', KEYS[1], 'generationState', ARGV[5], 'generationResult', ARGV[6])
                 redis.call('zadd', KEYS[2], now, ARGV[1])
-            elseif ARGV[5] == 'FAILED_FINAL' or ARGV[5] == 'VERIFIED' then
+            elseif ARGV[5] == 'VERIFIED' then
+                redis.call('hset', KEYS[1], 'generationState', ARGV[5])
+                redis.call('zadd', KEYS[2], now, ARGV[1])
+            elseif ARGV[5] == 'FAILED_FINAL' or ARGV[5] == 'SUCCEEDED' then
                 redis.call('hset', KEYS[1], 'generationState', ARGV[5])
                 if ARGV[5] == 'FAILED_FINAL' then
                     redis.call('hset', KEYS[1], 'generationErrorCode', ARGV[6], 'generationRetryable', ARGV[7])
-                    if task[6] then
-                        local representative = redis.call('hmget', task[6], 'taskId', 'version')
-                        if representative[1] == task[3] and representative[2] == task[4] then
-                            redis.call('del', task[6])
-                        end
+                else
+                    redis.call('hset', KEYS[1], 'generationArtworkId', ARGV[6])
+                    redis.call('pexpire', KEYS[1], ARGV[9])
+                    redis.call('pexpire', KEYS[3], ARGV[9])
+                    redis.call('pexpire', KEYS[4], ARGV[9])
+                end
+                if task[6] then
+                    local representative = redis.call('hmget', task[6], 'taskId', 'version')
+                    if representative[1] == task[3] and representative[2] == task[4] then
+                        redis.call('del', task[6])
                     end
                 end
                 redis.call('zrem', KEYS[2], ARGV[1])
@@ -100,7 +119,7 @@ public class ArtworkGenerationWorkStore {
     private final GoalAnalysisStore goalAnalysisStore;
 
     public record ClaimedTask(String analysisId, String token, long taskId, int taskVersion, Instant expiresAt,
-            String analysisJson, String requestBody, boolean submitAgain, String resultJson) {
+            String analysisJson, String requestBody, boolean submitAgain, String resultJson, boolean verified) {
     }
 
     public Optional<ClaimedTask> claimNext(Instant now, Duration lease) {
@@ -118,14 +137,14 @@ public class ArtworkGenerationWorkStore {
         }
         List<Object> fields = redisTemplate.opsForHash().multiGet(receiptKey, List.of("workerToken", "taskId",
                 "taskVersion", "expiresAt", "analysis", "generationRequestBody", "generationSubmitAgain",
-                "generationResult"));
+                "generationResult", "generationState"));
         if (!token.equals(fields.getFirst())) {
             return Optional.empty();
         }
         return Optional.of(new ClaimedTask(analysisId, token, Long.parseLong((String) fields.get(1)),
                 Integer.parseInt((String) fields.get(2)), Instant.parse((String) fields.get(3)),
                 (String) fields.get(4), (String) fields.get(5), "true".equals(fields.get(6)),
-                (String) fields.get(7)));
+                (String) fields.get(7), "VERIFIED".equals(fields.get(8)) || "FINALIZING".equals(fields.get(8))));
     }
 
     public GoalAnalysisSnapshot readAnalysis(ClaimedTask task) {
@@ -142,6 +161,19 @@ public class ArtworkGenerationWorkStore {
 
     public void markVerified(ClaimedTask task) {
         update(task, "VERIFIED", "", false);
+    }
+
+    // 저장 결과를 바로 알 수 없을 때, 같은 요청으로 도전이 이미 만들어졌는지 확인할 수 있게 ID를 남김.
+    public boolean beforeCommit(ClaimedTask task, GoalConfirmationSnapshot confirmation) {
+        try {
+            return update(task, "BEFORE_COMMIT", objectMapper.writeValueAsString(confirmation), false);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("도전 확정 결과를 저장하지 못했습니다.", exception);
+        }
+    }
+
+    public void markSucceeded(ClaimedTask task, Long artworkId) {
+        update(task, "SUCCEEDED", artworkId.toString(), false);
     }
 
     public boolean beforeSubmit(ClaimedTask task, String body) {
@@ -170,9 +202,11 @@ public class ArtworkGenerationWorkStore {
 
     private boolean update(ClaimedTask task, String action, String value, boolean retryable) {
         Long changed = redisTemplate.execute(UPDATE,
-                List.of(GoalAnalysisStore.RECEIPT_PREFIX + task.analysisId(), QUEUE_KEY),
+                List.of(GoalAnalysisStore.RECEIPT_PREFIX + task.analysisId(), QUEUE_KEY,
+                        GoalAnalysisStore.RESULT_PREFIX + task.analysisId(), GoalAnalysisStore.ARTWORK_TASK_PREFIX + task.taskId()),
                 task.analysisId(), task.token(), Long.toString(task.taskId()), Integer.toString(task.taskVersion()),
-                action, value, Boolean.toString(retryable), Long.toString(POLL_DELAY.toMillis()));
+                action, value, Boolean.toString(retryable), Long.toString(POLL_DELAY.toMillis()),
+                Long.toString(GoalAnalysisStore.CONFIRMATION_TTL.toMillis()));
         return Long.valueOf(1).equals(changed);
     }
 }

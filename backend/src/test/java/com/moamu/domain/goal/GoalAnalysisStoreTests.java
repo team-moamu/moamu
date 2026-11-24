@@ -83,7 +83,7 @@ class GoalAnalysisStoreTests {
         var acceptedAt = Instant.parse("2026-11-23T04:00:00Z");
         when(values.get("goal:analysis:analysis-id")).thenReturn(json);
         when(redis.execute(org.mockito.ArgumentMatchers.<RedisScript<Long>>any(), anyList(),
-                any(), any(), any(), any(), any(), any(), any())).thenReturn(1L);
+                any(), any(), any(), any(), any(), any(), any(), any())).thenReturn(1L);
 
         String token = store.acquireConfirmation("analysis-id", snapshot, start, end, acceptedAt).orElseThrow();
 
@@ -91,7 +91,8 @@ class GoalAnalysisStoreTests {
                 eq(List.of("goal:custom-receipt:analysis-id", "goal:analysis:analysis-id",
                         "goal:confirmation:analysis-id")),
                 eq(json), eq(token), eq("7"), eq(start.toString()), eq(end.toString()),
-                eq(acceptedAt.toString()), eq("2026-11-23T04:02:00Z"));
+                eq(acceptedAt.toString()), eq("2026-11-23T04:02:00Z"),
+                eq(Long.toString(acceptedAt.plusSeconds(120).toEpochMilli())));
     }
 
     @Test

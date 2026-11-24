@@ -29,6 +29,9 @@ public class AiTask {
     @Column(name = "verification_id")
     private Long verificationId;
 
+    @Column(name = "artwork_id")
+    private Long artworkId;
+
     // 작업 요청 버전
     @Column(name = "task_version", nullable = false)
     private int taskVersion;
@@ -90,6 +93,11 @@ public class AiTask {
     public void complete() {
         status = AiTaskStatus.SUCCEEDED;
         finishedAt = LocalDateTime.now();
+    }
+
+    public void completeArtworkGeneration(Long artworkId) {
+        this.artworkId = artworkId;
+        complete();
     }
 
     // AI 호출 또는 결과 저장 중 기술 오류 기록

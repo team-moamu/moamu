@@ -22,6 +22,7 @@ import org.testcontainers.utility.DockerImageName;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.moamu.domain.artwork.dto.ArtworkGenerationResult;
 import com.moamu.domain.goal.dto.GoalAnalysisSnapshot;
+import com.moamu.domain.goal.dto.GoalConfirmationSnapshot;
 import com.moamu.domain.goal.dto.GoalEvaluationRequest.CategoryPath;
 import com.moamu.domain.goal.repository.GoalAnalysisStore;
 import com.moamu.domain.goal.repository.ArtworkGenerationWorkStore;
@@ -88,7 +89,13 @@ class ArtworkTaskClaimIntegrationTests {
             var validation = workStore.claimNext(Instant.now(), Duration.ofSeconds(10)).orElseThrow();
             assertThat(workStore.readResult(validation)).isEqualTo(result);
             workStore.markVerified(validation);
+            var finalization = workStore.claimNext(Instant.now(), Duration.ofSeconds(10)).orElseThrow();
+            assertThat(finalization.verified()).isTrue();
+            assertThat(workStore.beforeCommit(finalization, new GoalConfirmationSnapshot(1L, 100L))).isTrue();
+            workStore.markSucceeded(finalization, 200L);
             assertThat(workStore.claimNext(Instant.now(), Duration.ofSeconds(10))).isEmpty();
+            assertThat(redisTemplate.opsForHash().get("goal:custom-receipt:" + finalization.analysisId(), "generationState"))
+                    .isEqualTo("SUCCEEDED");
         } finally {
             connection.destroy();
         }
