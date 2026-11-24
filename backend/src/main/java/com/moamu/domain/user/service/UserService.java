@@ -19,4 +19,6 @@ public interface UserService {
   UserMeResponse updateMyName(Long userId, String name);
 
   void changePassword(Long userId, String currentPassword, String newPassword);
+
+  void withdraw(Long userId, String currentPassword);
 }

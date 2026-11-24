@@ -61,4 +61,11 @@ public class User extends BaseEntity {
   public void changePassword(String encodedPassword) {
     this.password = encodedPassword;
   }
+
+  public void withdraw() {
+    this.status = UserStatus.WITHDRAWN;
+    this.withdrawnAt = LocalDateTime.now();
+    this.loginId = null;
+    this.password = null;
+  }
 }
