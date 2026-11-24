@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Navigate } from 'react-router'
-import { changePassword } from '../../api/AuthApi'
-import { getAccessToken } from '../../auth/AuthStorage'
+import { changePassword, logout } from '../../api/AuthApi'
+import { clearAccessToken, getAccessToken } from '../../auth/AuthStorage'
 import { SignupField } from '../../components/molecules/form/SignupField'
 
 export function PasswordChangePage() {
@@ -11,8 +11,7 @@ export function PasswordChangePage() {
   const [passwordConfirm, setPasswordConfirm] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
-  const [successMessage, setSuccessMessage] = useState('')
-
+  const [passwordChanged, setPasswordChanged] = useState(false)
   const isNewPasswordValid =
     newPassword.length >= 8 &&
     newPassword.length <= 20 &&
@@ -20,14 +19,12 @@ export function PasswordChangePage() {
 
   const passwordsMatch = newPassword === passwordConfirm
   const canSubmit =
-    currentPassword.trim().length > 0 &&
-    isNewPasswordValid &&
-    passwordsMatch &&
-    !isSubmitting
+    !isSubmitting &&
+    (passwordChanged ||
+      (currentPassword.trim().length > 0 && isNewPasswordValid && passwordsMatch))
 
   function clearMessages() {
     setErrorMessage('')
-    setSuccessMessage('')
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -36,18 +33,28 @@ export function PasswordChangePage() {
 
     clearMessages()
     setIsSubmitting(true)
+    let changed = passwordChanged
 
     try {
-      await changePassword(currentPassword, newPassword)
-      setCurrentPassword('')
-      setNewPassword('')
-      setPasswordConfirm('')
-      setSuccessMessage('비밀번호를 변경했어요.')
+      if (!changed) {
+        await changePassword(currentPassword, newPassword)
+        changed = true
+        setPasswordChanged(true)
+        setCurrentPassword('')
+        setNewPassword('')
+        setPasswordConfirm('')
+      }
+
+      await logout()
+      clearAccessToken()
+      window.location.replace('/login')
     } catch (error) {
       setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : '비밀번호 변경 결과를 확인하지 못했어요.',
+        changed
+          ? '비밀번호를 변경했어요. 로그아웃을 다시 시도해 주세요.'
+          : error instanceof Error
+            ? error.message
+            : '비밀번호 변경 결과를 확인하지 못했어요.',
       )
     } finally {
       setIsSubmitting(false)
@@ -66,7 +73,7 @@ export function PasswordChangePage() {
         type="password"
         autoComplete="current-password"
         value={currentPassword}
-        disabled={isSubmitting}
+        disabled={isSubmitting || passwordChanged}
         onChange={(value) => {
           setCurrentPassword(value)
           clearMessages()
@@ -79,7 +86,7 @@ export function PasswordChangePage() {
         type="password"
         autoComplete="new-password"
         value={newPassword}
-        disabled={isSubmitting}
+        disabled={isSubmitting || passwordChanged}
         hint="영문과 숫자를 포함해 공백 없이 8~20자로 설정해 주세요."
         onChange={(value) => {
           setNewPassword(value)
@@ -93,7 +100,7 @@ export function PasswordChangePage() {
         type="password"
         autoComplete="new-password"
         value={passwordConfirm}
-        disabled={isSubmitting}
+        disabled={isSubmitting || passwordChanged}
         error={
           passwordConfirm && !passwordsMatch
             ? '새 비밀번호가 일치하지 않아요.'
@@ -111,18 +118,12 @@ export function PasswordChangePage() {
         </p>
       )}
 
-      {successMessage && (
-        <p role="status" className="text-sm">
-          {successMessage}
-        </p>
-      )}
-
       <button
         type="submit"
         disabled={!canSubmit}
         className="button button--primary button--full h-[52px]"
       >
-        {isSubmitting ? '변경 중…' : '비밀번호 변경하기'}
+        {isSubmitting ? '처리 중…' : passwordChanged ? '로그아웃 다시 시도' : '비밀번호 변경하기'}
       </button>
     </form>
   )
