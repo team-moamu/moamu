@@ -17,7 +17,6 @@ type MyPageProps = {
 }
 
 export function MyPage({ nickname, email, profilePhotoUrl }: MyPageProps) {
-  const loginEmail = getLoginEmail()
   const location = useLocation()
   const navigate = useNavigate()
   const [showSavedMessage, setShowSavedMessage] = useState(
