@@ -1,7 +1,7 @@
 package com.moamu.domain.user.service;
 
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -21,12 +21,14 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
+import com.moamu.domain.media.repository.MediaRepository;
 import com.moamu.domain.user.dto.UserLoginRequest;
 import com.moamu.domain.user.dto.UserSignupRequest;
 import com.moamu.domain.user.entity.User;
 import com.moamu.domain.user.enums.UserStatus;
 import com.moamu.domain.user.exception.UserErrorCode;
 import com.moamu.domain.user.repository.UserRepository;
+import com.moamu.domain.verification.service.ArtworkImageUrlService;
 import com.moamu.global.exception.BusinessException;
 
 public class UserServiceImplTests {
@@ -43,7 +45,9 @@ public class UserServiceImplTests {
 		userService = new UserServiceImpl(
 				userRepository,
 				passwordEncoder,
-				mock(SignupVerificationTokenStore.class));
+				mock(SignupVerificationTokenStore.class),
+				mock(MediaRepository.class),
+				mock(ArtworkImageUrlService.class));
 	}
 
 	@Test
