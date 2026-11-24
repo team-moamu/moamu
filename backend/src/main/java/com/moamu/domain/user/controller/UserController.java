@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PatchMapping;
 
+import com.moamu.domain.user.dto.AccountWithdrawalRequest;
 import com.moamu.domain.user.dto.EmailAvailabilityResponse;
 import com.moamu.domain.user.dto.EmailVerificationSendRequest;
 import com.moamu.domain.user.dto.EmailVerificationVerifyRequest;
@@ -118,6 +119,17 @@ public class UserController {
     return ResponseEntity.noContent().build();
   }
 
+  @PostMapping("/me/withdrawal")
+  public ResponseEntity<Void> withdraw(
+      @AuthenticationPrincipal Long userId,
+      @Valid @RequestBody AccountWithdrawalRequest request) {
+    userService.withdraw(userId, request.currentPassword());
+
+    return ResponseEntity.noContent()
+        .header(HttpHeaders.SET_COOKIE, expiredRefreshCookie().toString())
+        .build();
+  }
+
   // 이메일과 비밀번호로 로그인하고 액세스 토큰을 반환
   @PostMapping("/login")
   public ResponseEntity<ApiResponse<UserLoginResponse>> login(
@@ -196,17 +208,18 @@ public class UserController {
 
     refreshTokenService.revoke(token);
 
-    ResponseCookie expiredCookie = ResponseCookie
-        .from("moamu_refresh", "")
+    return ResponseEntity.noContent()
+        .header(HttpHeaders.SET_COOKIE, expiredRefreshCookie().toString())
+        .build();
+  }
+
+  private ResponseCookie expiredRefreshCookie() {
+    return ResponseCookie.from("moamu_refresh", "")
         .httpOnly(true)
         .secure(refreshCookieSecure)
         .sameSite("Strict")
         .path("/api/users")
         .maxAge(0)
-        .build();
-
-    return ResponseEntity.noContent()
-        .header(HttpHeaders.SET_COOKIE, expiredCookie.toString())
         .build();
   }
 

@@ -1,20 +1,47 @@
 import { useState } from 'react'
-import { Link } from 'react-router'
+import type { FormEvent } from 'react'
+import { Link, Navigate, useNavigate } from 'react-router'
+import { withdrawAccount } from '../../api/AuthApi'
+import { clearAccessToken, getAccessToken } from '../../auth/AuthStorage'
 import { SignupField } from '../../components/molecules/form/SignupField'
 
 export function WithdrawalConfirmPage() {
   const [password, setPassword] = useState('')
   const [message, setMessage] = useState('')
+  const navigate = useNavigate()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const canSubmit = password.trim().length > 0 && !isSubmitting
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!canSubmit) return
+
+    setMessage('')
+    setIsSubmitting(true)
+
+    try {
+      await withdrawAccount(password)
+      clearAccessToken()
+      navigate('/mypage/withdrawal/complete', { replace: true })
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : '회원 탈퇴 중 오류가 발생했어요.',
+      )
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  if (!getAccessToken()) {
+    return <Navigate to="/login" replace />
+  }
 
   return (
     <form
       className="px-6 pt-6 pb-48 text-[#493725]"
-      onSubmit={(event) => {
-        event.preventDefault()
-        if (!password.trim()) return
-
-        setMessage('회원탈퇴 기능은 준비 중이에요.')
-      }}
+      onSubmit={handleSubmit}
     >
       <h2 className="font-[family-name:var(--font-title)] text-[24px] leading-[36px]">
         탈퇴를 진행할까요?
@@ -31,6 +58,7 @@ export function WithdrawalConfirmPage() {
           autoComplete="current-password"
           placeholder="비밀번호를 입력해 주세요."
           value={password}
+          disabled={isSubmitting}
           onChange={(value) => {
             setPassword(value)
             setMessage('')
@@ -54,10 +82,10 @@ export function WithdrawalConfirmPage() {
 
         <button
           type="submit"
-          disabled={!password.trim()}
+          disabled={!canSubmit}
           className="button button--primary button--full h-[52px]"
         >
-          회원 탈퇴
+          {isSubmitting ? '탈퇴 처리 중…' : '회원 탈퇴'}
         </button>
       </div>
     </form>

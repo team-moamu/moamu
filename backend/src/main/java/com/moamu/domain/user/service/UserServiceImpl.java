@@ -177,6 +177,24 @@ public class UserServiceImpl implements UserService {
 		user.changePassword(passwordEncoder.encode(newPassword));
 	}
 
+	@Override
+	@Transactional
+	public void withdraw(Long userId, String currentPassword) {
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+
+		if (user.getStatus() != UserStatus.ACTIVE) {
+			throw new BusinessException(UserErrorCode.LOGIN_NOT_ALLOWED);
+		}
+
+		if (user.getPassword() == null
+				|| !passwordEncoder.matches(currentPassword, user.getPassword())) {
+			throw new BusinessException(UserErrorCode.INVALID_CURRENT_PASSWORD);
+		}
+
+		user.withdraw();
+	}
+
 	private UserMeResponse toMeResponse(User user) {
 		Long profileMediaId = user.getProfileMediaId();
 		String profilePhotoUrl = null;
