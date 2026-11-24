@@ -4,19 +4,20 @@ import { useEffect, useState } from 'react'
 
 type ProfileEditPageProps = {
   nickname: string
-  profilePhoto: File | null
+  profilePhotoUrl: string | null
   onSave: (nickname: string, photo: File | null) => Promise<void>
 }
 
 export function ProfileEditPage({
   nickname,
-  profilePhoto,
+  profilePhotoUrl,
   onSave,
 }: ProfileEditPageProps) {
   const navigate = useNavigate()
-  const [draftNickname, setDraftNickname] = useState(nickname)
-  const trimmedNickname = draftNickname.trim()
-  const [photo, setPhoto] = useState<File | null>(profilePhoto)
+  const [draftNickname, setDraftNickname] = useState<string | null>(null)
+  const currentNickname = draftNickname ?? nickname
+  const trimmedNickname = currentNickname.trim()
+  const [photo, setPhoto] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [isPhotoMenuOpen, setIsPhotoMenuOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -63,7 +64,7 @@ export function ProfileEditPage({
     >
       <div className="relative mx-auto w-fit">
         <img
-          src={previewUrl ?? defaultProfileMu}
+          src={previewUrl ?? profilePhotoUrl ?? defaultProfileMu}
           alt="프로필 사진 미리보기"
           className="h-24 w-24 rounded-full object-cover"
         />
@@ -85,7 +86,7 @@ export function ProfileEditPage({
           id="profile-nickname"
           name="nickname"
           type="text"
-          value={draftNickname}
+          value={currentNickname}
           onChange={(event) => setDraftNickname(event.currentTarget.value)}
           aria-describedby="profile-nickname-help"
           className="w-full rounded-xl border border-neutral-200 bg-white px-4 py-3"
@@ -93,6 +94,7 @@ export function ProfileEditPage({
         <p id="profile-nickname-help" className="mt-2 text-sm text-neutral-600">
           다른 사람에게 보이는 이름이에요.
         </p>
+        {saveError && <p role="alert" className="mt-2 text-sm text-red-600">{saveError}</p>}
       </div>
 
       <section className="flex min-h-[80px] flex-col justify-center gap-[8px] rounded-[12px] bg-[rgba(66,107,69,0.2)] px-3 py-3">

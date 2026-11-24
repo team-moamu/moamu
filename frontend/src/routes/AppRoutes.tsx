@@ -28,6 +28,7 @@ import { WithdrawalConfirmPage } from '../pages/mypage/WithdrawalConfirmPage'
 import { WithdrawalCompletePage } from '../pages/mypage/WithdrawalCompletePage'
 import { PasswordResetCompletePage } from '../pages/mypage/PasswordResetCompletePage'
 import { getMe, updateMyName, uploadProfilePhoto } from '../api/AuthApi'
+import { getAccessToken } from '../auth/AuthStorage'
 
 function ChallengePage() {
   return <h1>도전하기 화면</h1>
@@ -36,15 +37,19 @@ function ChallengePage() {
 export default function AppRoutes() {
   const { pathname } = useLocation()
   const isMyPageRoute = pathname === '/mypage' || pathname.startsWith('/mypage/')
+  const shouldLoadProfile =
+    (pathname === '/' || isMyPageRoute) && Boolean(getAccessToken())
+
   const [nickname, setNickname] = useState('')
   const [email, setEmail] = useState<string | null>(null)
-  const [profilePhoto, setProfilePhoto] = useState<File | null>(null)
   const [profilePhotoUrl, setProfilePhotoUrl] = useState<string | null>(null)
+  const [profilePhotoVersion, setProfilePhotoVersion] = useState(0)
 
   useEffect(() => {
-    if (!isMyPageRoute) {
+    if (!shouldLoadProfile) {
       setNickname('')
       setEmail(null)
+      setProfilePhotoUrl(null)
       return
     }
 
@@ -52,32 +57,22 @@ export default function AppRoutes() {
 
     getMe(controller.signal)
       .then((user) => {
-        if (!controller.signal.aborted) {
-          setNickname(user.name)
-          setEmail(user.email)
-        }
+        if (controller.signal.aborted) return
+
+        setNickname(user.name)
+        setEmail(user.email)
+        setProfilePhotoUrl(user.profilePhotoUrl)
       })
       .catch(() => {
-        if (!controller.signal.aborted) {
-          setNickname('')
-          setEmail(null)
-        }
+        if (controller.signal.aborted) return
+
+        setNickname('')
+        setEmail(null)
+        setProfilePhotoUrl(null)
       })
 
     return () => controller.abort()
-  }, [isMyPageRoute])
-
-  useEffect(() => {
-    if (!profilePhoto) {
-      setProfilePhotoUrl(null)
-      return
-    }
-
-    const url = URL.createObjectURL(profilePhoto)
-    setProfilePhotoUrl(url)
-
-    return () => URL.revokeObjectURL(url)
-  }, [profilePhoto])
+  }, [shouldLoadProfile, profilePhotoVersion])
 
   return (
     <Routes>
@@ -177,21 +172,18 @@ export default function AppRoutes() {
           element={
             <ProfileEditPage
               nickname={nickname}
-              profilePhoto={profilePhoto}
+              profilePhotoUrl={profilePhotoUrl}
               onSave={async (nextNickname, nextPhoto) => {
-                if (nextPhoto === null && profilePhoto !== null) {
-                  throw new Error('저장된 사진을 기본 이미지로 바꾸는 기능은 준비 중이에요.')
-                }
-
                 if (nextNickname !== nickname) {
                   const user = await updateMyName(nextNickname)
                   setNickname(user.name)
                   setEmail(user.email)
+                  setProfilePhotoUrl(user.profilePhotoUrl)
                 }
 
-                if (nextPhoto && nextPhoto !== profilePhoto) {
+                if (nextPhoto) {
                   await uploadProfilePhoto(nextPhoto)
-                  setProfilePhoto(nextPhoto)
+                  setProfilePhotoVersion((version) => version + 1)
                 }
               }}
             />

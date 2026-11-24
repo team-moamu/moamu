@@ -233,9 +233,11 @@ export async function logout(): Promise<void> {
     throw new Error('로그아웃하지 못했어요. 잠시 후 다시 시도해 주세요.')
   }
 }
+
 type UserMeResponse = {
   email: string | null
   name: string
+  profilePhotoUrl: string | null
 }
 
 export async function getMe(signal?: AbortSignal): Promise<UserMeResponse> {
