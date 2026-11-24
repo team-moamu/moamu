@@ -1,16 +1,12 @@
 package com.moamu.domain.verification.client;
 
-import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.cfg.CoercionAction;
-import com.fasterxml.jackson.databind.cfg.CoercionInputShape;
-import com.fasterxml.jackson.databind.type.LogicalType;
 import com.moamu.domain.verification.dto.PhotoVerificationErrorResponse;
 import com.moamu.domain.verification.dto.PhotoVerificationRequest;
 import com.moamu.domain.verification.dto.PhotoVerificationResponse;
 import com.moamu.domain.verification.exception.PhotoVerificationTechnicalException;
+import com.moamu.global.client.AiClientSupport;
 import jakarta.validation.Validator;
 import java.net.URI;
 import java.util.HashSet;
@@ -44,14 +40,7 @@ public class PhotoVerificationClient {
         this.serverUrl = serverUrl;
 
         // 외부 응답 검증 설정이 프로젝트의 다른 JSON 처리에 영향을 주지 않도록 복사
-        this.objectMapper = objectMapper.copy()
-                .enable(DeserializationFeature.FAIL_ON_NUMBERS_FOR_ENUMS)
-                .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS)
-                .enable(JsonParser.Feature.STRICT_DUPLICATE_DETECTION);
-        this.objectMapper.coercionConfigFor(LogicalType.Textual)
-                .setCoercion(CoercionInputShape.Integer, CoercionAction.Fail)
-                .setCoercion(CoercionInputShape.Float, CoercionAction.Fail)
-                .setCoercion(CoercionInputShape.Boolean, CoercionAction.Fail);
+        this.objectMapper = AiClientSupport.responseMapper(objectMapper);
     }
 
     // 요청 검증 후 AI 서버에 사진 판정을 요청하고 검증된 응답 반환
@@ -125,13 +114,7 @@ public class PhotoVerificationClient {
     // AI 서버 기본 주소를 검증하고 사진 판정 API의 전체 주소 생성
     private URI endpoint() {
         try {
-            URI base = URI.create(serverUrl == null ? "" : serverUrl.strip());
-            if (!("http".equals(base.getScheme()) || "https".equals(base.getScheme()))
-                    || base.getHost() == null || base.getRawQuery() != null
-                    || base.getRawFragment() != null || base.getRawUserInfo() != null) {
-                throw new IllegalArgumentException("AI_SERVER_URL must be an HTTP(S) server URL");
-            }
-            return URI.create(base.toString().replaceAll("/+$", "") + "/internal/photo-verifications");
+            return AiClientSupport.endpoint(serverUrl, "/internal/photo-verifications");
         } catch (IllegalArgumentException exception) {
             throw new PhotoVerificationTechnicalException("AI_SERVER_URL 설정이 필요합니다.", exception);
         }
@@ -163,7 +146,7 @@ public class PhotoVerificationClient {
         if (httpStatus == 400 && "INVALID_REQUEST".equals(response.error().code())) {
             if ((response.aiTaskId() != null && !request.aiTaskId().equals(response.aiTaskId()))
                     || (response.verificationId() != null
-                    && !request.verificationId().equals(response.verificationId()))) {
+                            && !request.verificationId().equals(response.verificationId()))) {
                 throw new PhotoVerificationTechnicalException("AI 판정 요청과 응답의 ID가 일치하지 않습니다.");
             }
             return;
