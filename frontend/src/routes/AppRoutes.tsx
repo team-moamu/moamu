@@ -173,7 +173,7 @@ export default function AppRoutes() {
             <ProfileEditPage
               nickname={nickname}
               profilePhotoUrl={profilePhotoUrl}
-              onSave={async (nextNickname, nextPhoto) => {
+              onSave={async (nextNickname, nextPhoto, useDefaultPhoto) => {
                 if (nextNickname !== nickname) {
                   const user = await updateMyName(nextNickname)
                   setNickname(user.name)
@@ -181,7 +181,11 @@ export default function AppRoutes() {
                   setProfilePhotoUrl(user.profilePhotoUrl)
                 }
 
-                if (nextPhoto) {
+                if (useDefaultPhoto) {
+                  await resetProfilePhoto()
+                  setProfilePhotoUrl(null)
+                  setProfilePhotoVersion((version) => version + 1)
+                } else if (nextPhoto) {
                   await uploadProfilePhoto(nextPhoto)
                   setProfilePhotoVersion((version) => version + 1)
                 }

@@ -5,7 +5,11 @@ import { useEffect, useState } from 'react'
 type ProfileEditPageProps = {
   nickname: string
   profilePhotoUrl: string | null
-  onSave: (nickname: string, photo: File | null) => Promise<void>
+  onSave: (
+    nickname: string,
+    photo: File | null,
+    useDefaultPhoto: boolean,
+  ) => Promise<void>
 }
 
 export function ProfileEditPage({
@@ -22,6 +26,7 @@ export function ProfileEditPage({
   const [isPhotoMenuOpen, setIsPhotoMenuOpen] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [useDefaultPhoto, setUseDefaultPhoto] = useState(false)
 
   useEffect(() => {
     if (!photo) {
@@ -47,7 +52,7 @@ export function ProfileEditPage({
         setSaveError('')
 
         try {
-          await onSave(trimmedNickname, photo)
+          await onSave(trimmedNickname, photo, useDefaultPhoto)
 
           navigate('/mypage', {
             replace: true,
@@ -64,7 +69,7 @@ export function ProfileEditPage({
     >
       <div className="relative mx-auto w-fit">
         <img
-          src={previewUrl ?? profilePhotoUrl ?? defaultProfileMu}
+          src={useDefaultPhoto ? defaultProfileMu : (previewUrl ?? profilePhotoUrl ?? defaultProfileMu)}
           alt="프로필 사진 미리보기"
           className="h-24 w-24 rounded-full object-cover"
         />
@@ -137,6 +142,7 @@ export function ProfileEditPage({
 
                   setPhoto(file)
                   setIsPhotoMenuOpen(false)
+                  setUseDefaultPhoto(false)
                 }}
               />
             </label>
@@ -155,7 +161,10 @@ export function ProfileEditPage({
             <button
               type="button"
               className="rounded-xl px-4 py-3 text-neutral-600"
-              onClick={() => setIsPhotoMenuOpen(false)}
+              onClick={() => {
+                setIsPhotoMenuOpen(false)
+                setUseDefaultPhoto(true)
+              }}
             >
               취소
             </button>

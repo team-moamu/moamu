@@ -300,3 +300,13 @@ export async function uploadProfilePhoto(
 
   return body.data
 }
+
+export async function resetProfilePhoto(): Promise<void> {
+  const response = await authenticatedFetch('/api/users/me/profile-photo', {
+    method: 'DELETE',
+  })
+
+  if (!response.ok) {
+    throw new Error('기본 이미지로 변경하지 못했어요.')
+  }
+}
