@@ -9,10 +9,10 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
- @Entity
- @Table (name = "users")
- @Getter
- @NoArgsConstructor (access = AccessLevel.PROTECTED)
+@Entity
+@Table(name = "users")
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class User extends BaseEntity {
 
     @Id
@@ -39,16 +39,18 @@ public class User extends BaseEntity {
     @Column(name = "profile_media_id")
     private Long profileMediaId;
 
-
     public static User createLocal(
-        String loginId,
-        String encodePassword,
-        String name
-    ) {
+            String loginId,
+            String encodePassword,
+            String name) {
         User user = new User();
         user.loginId = loginId;
         user.password = encodePassword;
         user.name = name;
         return user;
+    }
+
+    public void changeName(String name) {
+        this.name = name;
     }
 }

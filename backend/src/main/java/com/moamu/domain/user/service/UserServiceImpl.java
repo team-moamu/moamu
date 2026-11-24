@@ -13,6 +13,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.moamu.domain.user.dto.UserLoginRequest;
+import com.moamu.domain.user.dto.UserMeResponse;
 import com.moamu.domain.user.dto.UserSignupRequest;
 import com.moamu.domain.user.entity.User;
 import com.moamu.domain.user.enums.UserStatus;
@@ -136,5 +137,24 @@ public class UserServiceImpl implements UserService {
 		}
 
 		return user;
+	}
+
+	@Override
+	public UserMeResponse getMe(Long userId) {
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+
+		return new UserMeResponse(user.getLoginId(), user.getName());
+	}
+
+	@Override
+	@Transactional
+	public UserMeResponse updateMyName(Long userId, String name) {
+		User user = userRepository.findById(userId)
+				.orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+
+		user.changeName(name.strip());
+
+		return new UserMeResponse(user.getLoginId(), user.getName());
 	}
 }

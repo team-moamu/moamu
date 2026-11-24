@@ -29,6 +29,11 @@ public enum UserErrorCode implements ErrorCode {
       "LOGIN_NOT_ALLOWED",
       "로그인할 수 없는 회원입니다."),
 
+  USER_NOT_FOUND(
+      HttpStatus.NOT_FOUND,
+      "USER_NOT_FOUND",
+      "회원 정보를 찾을 수 없습니다."),
+
   VERIFICATION_RESEND_TOO_SOON(
       HttpStatus.TOO_MANY_REQUESTS,
       "VERIFICATION_RESEND_TOO_SOON",

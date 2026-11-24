@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.PatchMapping;
 
 import com.moamu.domain.user.dto.EmailAvailabilityResponse;
 import com.moamu.domain.user.dto.EmailVerificationSendRequest;
@@ -30,6 +32,8 @@ import com.moamu.domain.user.service.UserService;
 import com.moamu.global.response.ApiResponse;
 import com.moamu.global.security.JwtTokenProvider;
 import com.moamu.global.security.RefreshTokenService;
+import com.moamu.domain.user.dto.UserMeResponse;
+import com.moamu.domain.user.dto.UpdateMyNameRequest;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
@@ -43,152 +47,169 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class UserController {
 
-    private final UserService userService;
+  private final UserService userService;
 
-    // 로그인 검증을 통과한 회원의 액세스 토큰 발급
-    private final JwtTokenProvider jwtTokenProvider;
+  // 로그인 검증을 통과한 회원의 액세스 토큰 발급
+  private final JwtTokenProvider jwtTokenProvider;
 
-    private final RefreshTokenService refreshTokenService;
+  private final RefreshTokenService refreshTokenService;
 
-    private final UserRepository userRepository;
+  private final UserRepository userRepository;
 
-    private final EmailVerificationService emailVerificationService;
+  private final EmailVerificationService emailVerificationService;
 
-    @Value("${auth.refresh-cookie-secure:true}")
-    private boolean refreshCookieSecure;
+  @Value("${auth.refresh-cookie-secure:true}")
+  private boolean refreshCookieSecure;
 
-    @Value("${auth.browser-origin:}")
-    private String browserOrigin;
+  @Value("${auth.browser-origin:}")
+  private String browserOrigin;
 
-    // 신규회원 등록, 생성된 Id 반환
-    @PostMapping("/signup")
-    public ResponseEntity<ApiResponse<UserSignupResponse>> signup(
-            @Valid @RequestBody UserSignupRequest request) {
-        Long userId = userService.signup(request);
+  // 신규회원 등록, 생성된 Id 반환
+  @PostMapping("/signup")
+  public ResponseEntity<ApiResponse<UserSignupResponse>> signup(
+      @Valid @RequestBody UserSignupRequest request) {
+    Long userId = userService.signup(request);
 
-        UserSignupResponse response = new UserSignupResponse(userId);
+    UserSignupResponse response = new UserSignupResponse(userId);
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
+    return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
 
+  }
+
+  // 입력한 이메일의 사용 가능 여부 반환
+  @GetMapping("/email-availability")
+  public ResponseEntity<ApiResponse<EmailAvailabilityResponse>> checkEmailAvailability(
+      @RequestParam("email") @NotBlank @Email @Size(max = 50) @Pattern(regexp = "^\\S+$", message = "이메일에는 공백을 포함할 수 없습니다.") String email) {
+    boolean available = userService.isEmailAvailable(email);
+
+    EmailAvailabilityResponse response = new EmailAvailabilityResponse(available);
+
+    return ResponseEntity.ok(ApiResponse.success(response));
+  }
+
+  @GetMapping("/me")
+  public ResponseEntity<ApiResponse<UserMeResponse>> getMe(
+      @AuthenticationPrincipal Long userId) {
+    UserMeResponse response = userService.getMe(userId);
+
+    return ResponseEntity.ok(ApiResponse.success(response));
+  }
+
+  @PatchMapping("/me")
+  public ResponseEntity<ApiResponse<UserMeResponse>> updateMyName(
+      @AuthenticationPrincipal Long userId,
+      @Valid @RequestBody UpdateMyNameRequest request) {
+    UserMeResponse response = userService.updateMyName(userId, request.name());
+
+    return ResponseEntity.ok(ApiResponse.success(response));
+  }
+
+  // 이메일과 비밀번호로 로그인하고 액세스 토큰을 반환
+  @PostMapping("/login")
+  public ResponseEntity<ApiResponse<UserLoginResponse>> login(
+      @Valid @RequestBody UserLoginRequest request) {
+
+    User user = userService.login(request);
+
+    String accessToken = jwtTokenProvider.createAccessToken(user.getUserId());
+
+    RefreshTokenService.IssuedRefreshToken refreshToken = refreshTokenService.issue(user.getUserId());
+
+    ResponseCookie cookie = ResponseCookie
+        .from("moamu_refresh", refreshToken.token())
+        .httpOnly(true)
+        .secure(refreshCookieSecure)
+        .sameSite("Strict")
+        .path("/api/users")
+        .maxAge(refreshToken.ttl())
+        .build();
+
+    UserLoginResponse response = new UserLoginResponse(accessToken);
+
+    return ResponseEntity.ok()
+        .header(HttpHeaders.SET_COOKIE, cookie.toString())
+        .body(ApiResponse.success(response));
+  }
+
+  @PostMapping("/refresh")
+  public ResponseEntity<ApiResponse<UserLoginResponse>> refresh(
+      @RequestHeader(name = "Origin", required = false) String origin,
+      @CookieValue(name = "moamu_refresh", required = false) String token) {
+
+    if (browserOrigin.isBlank() || !browserOrigin.equals(origin)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN)
+          .body(ApiResponse.failure(
+              "INVALID_ORIGIN", "허용되지 않은 요청입니다."));
     }
 
-    // 입력한 이메일의 사용 가능 여부 반환
-    @GetMapping("/email-availability")
-    public ResponseEntity<ApiResponse<EmailAvailabilityResponse>> checkEmailAvailability(
-            @RequestParam("email") @NotBlank @Email @Size(max = 50) @Pattern(regexp = "^\\S+$", message = "이메일에는 공백을 포함할 수 없습니다.") String email) {
-        boolean available = userService.isEmailAvailable(email);
+    var user = refreshTokenService.consume(token)
+        .flatMap(userRepository::findById)
+        .filter(member -> member.getStatus() == UserStatus.ACTIVE);
 
-        EmailAvailabilityResponse response = new EmailAvailabilityResponse(available);
-
-        return ResponseEntity.ok(ApiResponse.success(response));
+    if (user.isEmpty()) {
+      return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+          .body(ApiResponse.failure(
+              "INVALID_REFRESH_TOKEN", "다시 로그인해 주세요."));
     }
 
-    // 이메일과 비밀번호로 로그인하고 액세스 토큰을 반환
-    @PostMapping("/login")
-    public ResponseEntity<ApiResponse<UserLoginResponse>> login(
-            @Valid @RequestBody UserLoginRequest request) {
+    Long userId = user.get().getUserId();
+    String accessToken = jwtTokenProvider.createAccessToken(userId);
+    var refreshToken = refreshTokenService.issue(userId);
 
-        User user = userService.login(request);
+    ResponseCookie cookie = ResponseCookie
+        .from("moamu_refresh", refreshToken.token())
+        .httpOnly(true)
+        .secure(refreshCookieSecure)
+        .sameSite("Strict")
+        .path("/api/users")
+        .maxAge(refreshToken.ttl())
+        .build();
 
-        String accessToken = jwtTokenProvider.createAccessToken(user.getUserId());
+    return ResponseEntity.ok()
+        .header(HttpHeaders.SET_COOKIE, cookie.toString())
+        .header(HttpHeaders.CACHE_CONTROL, "no-store")
+        .body(ApiResponse.success(new UserLoginResponse(accessToken)));
+  }
 
-        RefreshTokenService.IssuedRefreshToken refreshToken = refreshTokenService.issue(user.getUserId());
+  @PostMapping("/logout")
+  public ResponseEntity<Void> logout(
+      @RequestHeader(name = "Origin", required = false) String origin,
+      @CookieValue(name = "moamu_refresh", required = false) String token) {
 
-        ResponseCookie cookie = ResponseCookie
-                .from("moamu_refresh", refreshToken.token())
-                .httpOnly(true)
-                .secure(refreshCookieSecure)
-                .sameSite("Strict")
-                .path("/api/users")
-                .maxAge(refreshToken.ttl())
-                .build();
-
-        UserLoginResponse response = new UserLoginResponse(accessToken);
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .body(ApiResponse.success(response));
+    if (browserOrigin.isBlank() || !browserOrigin.equals(origin)) {
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
-    @PostMapping("/refresh")
-    public ResponseEntity<ApiResponse<UserLoginResponse>> refresh(
-            @RequestHeader(name = "Origin", required = false) String origin,
-            @CookieValue(name = "moamu_refresh", required = false) String token) {
+    refreshTokenService.revoke(token);
 
-        if (browserOrigin.isBlank() || !browserOrigin.equals(origin)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(ApiResponse.failure(
-                            "INVALID_ORIGIN", "허용되지 않은 요청입니다."));
-        }
+    ResponseCookie expiredCookie = ResponseCookie
+        .from("moamu_refresh", "")
+        .httpOnly(true)
+        .secure(refreshCookieSecure)
+        .sameSite("Strict")
+        .path("/api/users")
+        .maxAge(0)
+        .build();
 
-        var user = refreshTokenService.consume(token)
-                .flatMap(userRepository::findById)
-                .filter(member -> member.getStatus() == UserStatus.ACTIVE);
+    return ResponseEntity.noContent()
+        .header(HttpHeaders.SET_COOKIE, expiredCookie.toString())
+        .build();
+  }
 
-        if (user.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ApiResponse.failure(
-                            "INVALID_REFRESH_TOKEN", "다시 로그인해 주세요."));
-        }
+  @PostMapping("/email-verifications")
+  public ResponseEntity<Void> sendEmailVerification(
+      @Valid @RequestBody EmailVerificationSendRequest request) {
+    emailVerificationService.sendCode(request.email());
+    return ResponseEntity.noContent().build();
+  }
 
-        Long userId = user.get().getUserId();
-        String accessToken = jwtTokenProvider.createAccessToken(userId);
-        var refreshToken = refreshTokenService.issue(userId);
+  @PostMapping("/email-verifications/verify")
+  public ResponseEntity<ApiResponse<EmailVerificationVerifyResponse>> verifyEmail(
+      @Valid @RequestBody EmailVerificationVerifyRequest request) {
+    String token = emailVerificationService.verifyCode(
+        request.email(), request.code());
 
-        ResponseCookie cookie = ResponseCookie
-                .from("moamu_refresh", refreshToken.token())
-                .httpOnly(true)
-                .secure(refreshCookieSecure)
-                .sameSite("Strict")
-                .path("/api/users")
-                .maxAge(refreshToken.ttl())
-                .build();
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
-                .header(HttpHeaders.CACHE_CONTROL, "no-store")
-                .body(ApiResponse.success(new UserLoginResponse(accessToken)));
-    }
-
-    @PostMapping("/logout")
-    public ResponseEntity<Void> logout(
-            @RequestHeader(name = "Origin", required = false) String origin,
-            @CookieValue(name = "moamu_refresh", required = false) String token) {
-
-        if (browserOrigin.isBlank() || !browserOrigin.equals(origin)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-
-        refreshTokenService.revoke(token);
-
-        ResponseCookie expiredCookie = ResponseCookie
-                .from("moamu_refresh", "")
-                .httpOnly(true)
-                .secure(refreshCookieSecure)
-                .sameSite("Strict")
-                .path("/api/users")
-                .maxAge(0)
-                .build();
-
-        return ResponseEntity.noContent()
-                .header(HttpHeaders.SET_COOKIE, expiredCookie.toString())
-                .build();
-    }
-
-    @PostMapping("/email-verifications")
-    public ResponseEntity<Void> sendEmailVerification(
-            @Valid @RequestBody EmailVerificationSendRequest request) {
-        emailVerificationService.sendCode(request.email());
-        return ResponseEntity.noContent().build();
-    }
-
-    @PostMapping("/email-verifications/verify")
-    public ResponseEntity<ApiResponse<EmailVerificationVerifyResponse>> verifyEmail(
-            @Valid @RequestBody EmailVerificationVerifyRequest request) {
-        String token = emailVerificationService.verifyCode(
-                request.email(), request.code());
-
-        var response = new EmailVerificationVerifyResponse(token);
-        return ResponseEntity.ok(ApiResponse.success(response));
-    }
+    var response = new EmailVerificationVerifyResponse(token);
+    return ResponseEntity.ok(ApiResponse.success(response));
+  }
 }
