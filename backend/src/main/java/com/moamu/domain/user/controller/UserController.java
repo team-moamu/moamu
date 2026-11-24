@@ -20,6 +20,7 @@ import com.moamu.domain.user.dto.EmailAvailabilityResponse;
 import com.moamu.domain.user.dto.EmailVerificationSendRequest;
 import com.moamu.domain.user.dto.EmailVerificationVerifyRequest;
 import com.moamu.domain.user.dto.EmailVerificationVerifyResponse;
+import com.moamu.domain.user.dto.PasswordChangeRequest;
 import com.moamu.domain.user.dto.PasswordResetConfirmRequest;
 import com.moamu.domain.user.dto.PasswordResetVerifyResponse;
 import com.moamu.domain.user.dto.UserLoginRequest;
@@ -107,6 +108,14 @@ public class UserController {
     UserMeResponse response = userService.updateMyName(userId, request.name());
 
     return ResponseEntity.ok(ApiResponse.success(response));
+  }
+
+  @PatchMapping("/me/password")
+  public ResponseEntity<Void> changePassword(
+      @AuthenticationPrincipal Long userId,
+      @Valid @RequestBody PasswordChangeRequest request) {
+    userService.changePassword(userId, request.currentPassword(), request.newPassword());
+    return ResponseEntity.noContent().build();
   }
 
   // 이메일과 비밀번호로 로그인하고 액세스 토큰을 반환
