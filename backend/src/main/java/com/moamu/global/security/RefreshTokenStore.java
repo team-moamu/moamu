@@ -22,7 +22,7 @@ public class RefreshTokenStore {
   private final StringRedisTemplate redisTemplate;
 
   // 원본 토큰 대신 해시를 키로 사용하고, 만료 시간을 함께 저장합니다.
-  public void save(String token, Long userId, Duration ttl) {
+  public void save(String token, Long userId, boolean autoLogin, Duration ttl) {
     Objects.requireNonNull(userId, "회원 ID가 필요합니다.");
     Objects.requireNonNull(ttl, "유효 기간이 필요합니다.");
 
@@ -33,7 +33,7 @@ public class RefreshTokenStore {
 
     Boolean saved = redisTemplate.opsForValue().setIfAbsent(
         key(token),
-        userId.toString(),
+        userId + ":" + autoLogin,
         ttl);
 
     if (!Boolean.TRUE.equals(saved)) {
@@ -43,12 +43,21 @@ public class RefreshTokenStore {
   }
 
   // 조회와 삭제를 한 번에 수행해 같은 토큰의 중복 사용을 막습니다.
-  public Optional<Long> consume(String token) {
-    String userId = redisTemplate.opsForValue()
-        .getAndDelete(key(token));
+  public Optional<StoredRefreshToken> consume(String token) {
+    String value = redisTemplate.opsForValue().getAndDelete(key(token));
 
-    return Optional.ofNullable(userId)
-        .map(Long::valueOf);
+    if (value == null) {
+      return Optional.empty();
+    }
+
+    String[] parts = value.split(":", 2);
+    Long userId = Long.valueOf(parts[0]);
+    boolean autoLogin = parts.length == 2 && Boolean.parseBoolean(parts[1]);
+
+    return Optional.of(new StoredRefreshToken(userId, autoLogin));
+  }
+
+  public record StoredRefreshToken(Long userId, boolean autoLogin) {
   }
 
   // 로그아웃할 때 해당 토큰을 폐기합니다.

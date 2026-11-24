@@ -18,4 +18,5 @@ public class UserLoginRequest {
     //비밀번호 입력값
     @NotBlank
     private String password;
+    private boolean autoLogin;
 }
