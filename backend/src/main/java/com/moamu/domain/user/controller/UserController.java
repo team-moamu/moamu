@@ -20,6 +20,7 @@ import com.moamu.domain.user.dto.EmailAvailabilityResponse;
 import com.moamu.domain.user.dto.EmailVerificationSendRequest;
 import com.moamu.domain.user.dto.EmailVerificationVerifyRequest;
 import com.moamu.domain.user.dto.EmailVerificationVerifyResponse;
+import com.moamu.domain.user.dto.PasswordResetVerifyResponse;
 import com.moamu.domain.user.dto.UserLoginRequest;
 import com.moamu.domain.user.dto.UserLoginResponse;
 import com.moamu.domain.user.dto.UserSignupRequest;
@@ -221,5 +222,15 @@ public class UserController {
       @Valid @RequestBody EmailVerificationSendRequest request) {
     passwordResetService.sendCode(request.email());
     return ResponseEntity.noContent().build();
+  }
+
+  @PostMapping("/password-resets/verify")
+  public ResponseEntity<ApiResponse<PasswordResetVerifyResponse>> verifyPasswordResetCode(
+      @Valid @RequestBody EmailVerificationVerifyRequest request) {
+    String resetToken = passwordResetService.verifyCode(request.email(), request.code());
+
+    return ResponseEntity.ok()
+        .header(HttpHeaders.CACHE_CONTROL, "no-store")
+        .body(ApiResponse.success(new PasswordResetVerifyResponse(resetToken)));
   }
 }

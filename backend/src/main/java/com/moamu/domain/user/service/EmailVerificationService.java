@@ -132,7 +132,16 @@ public class EmailVerificationService {
   }
 
   public String verifyCode(String email, String code) {
-    String codeKey = "auth:signup:code:" + email;
+    return verifyCode(email, code, "auth:signup:", email);
+  }
+
+  String verifyPasswordResetCode(String email, String code, Long userId) {
+    return verifyCode(email, code, "auth:password-reset:", userId.toString());
+  }
+
+  private String verifyCode(
+      String email, String code, String keyPrefix, String tokenValue) {
+    String codeKey = keyPrefix + "code:" + email;
     String encodedCode = redisTemplate.opsForValue().get(codeKey);
 
     if (encodedCode == null) {
@@ -151,11 +160,11 @@ public class EmailVerificationService {
         VERIFY_CODE,
         List.of(
             codeKey,
-            "auth:signup:attempts:" + email + ":" + encodedCode,
-            SignupVerificationTokenStore.key(token)),
+            keyPrefix + "attempts:" + email + ":" + encodedCode,
+            keyPrefix + "token:" + token),
         encodedCode,
         Boolean.toString(matches),
-        email,
+        tokenValue,
         Long.toString(VERIFICATION_TOKEN_TTL.toMillis()),
         Integer.toString(MAX_FAILED_ATTEMPTS));
 
@@ -171,6 +180,6 @@ public class EmailVerificationService {
       throw new BusinessException(UserErrorCode.INVALID_VERIFICATION_CODE);
     }
 
-    throw new IllegalStateException("가입용 이메일 인증 토큰을 저장하지 못했습니다.");
+    throw new IllegalStateException("이메일 인증 토큰을 저장하지 못했습니다.");
   }
 }
