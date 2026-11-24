@@ -6,10 +6,12 @@ import com.moamu.domain.media.service.StorageService;
 import com.moamu.domain.user.exception.UserErrorCode;
 import com.moamu.domain.user.repository.UserRepository;
 import com.moamu.global.exception.BusinessException;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class UserProfilePhotoService {
@@ -59,5 +61,13 @@ public class UserProfilePhotoService {
 
       throw dbException;
     }
+  }
+
+  @Transactional
+  public void resetProfilePhoto(Long userId) {
+    var user = userRepository.findById(userId)
+        .orElseThrow(() -> new BusinessException(UserErrorCode.USER_NOT_FOUND));
+
+    user.changeProfilePhoto(null);
   }
 }
