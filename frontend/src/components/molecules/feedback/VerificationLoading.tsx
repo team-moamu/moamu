@@ -3,14 +3,13 @@ import { createPortal } from 'react-dom'
 import loadingBackground from '../../../assets/images/verification_loading_mu.png'
 import './VerificationLoading.css'
 
-type VerificationLoadingProps = {
-  challengeTitle: string
-  dayNo: number
-  dayCount: number
-}
+type VerificationLoadingProps = { challengeTitle: string } & (
+  | { mode?: never; dayNo: number; dayCount: number }
+  | { mode?: 'artwork'; dayNo?: never; dayCount?: never }
+)
 
-// AI 응답을 기다리는 동안 기존 인증 화면의 사진과 입력 상태를 유지한다.
-export function VerificationLoading({ challengeTitle, dayNo, dayCount }: VerificationLoadingProps) {
+// AI 응답을 기다리는 동안 기존 화면의 입력 상태를 유지한다.
+export function VerificationLoading(props: VerificationLoadingProps) {
   const screenRef = useRef<HTMLElement>(null)
 
   useEffect(() => {
@@ -42,17 +41,19 @@ export function VerificationLoading({ challengeTitle, dayNo, dayCount }: Verific
       aria-busy="true"
       tabIndex={-1}
     >
-      <VerificationLoadingContent challengeTitle={challengeTitle} dayNo={dayNo} dayCount={dayCount} />
+      <VerificationLoadingContent {...props} />
     </section>,
     document.body,
   )
 }
 
-export function VerificationLoadingContent({ challengeTitle, dayNo, dayCount }: VerificationLoadingProps | {
-  challengeTitle: string
-  dayNo?: never
-  dayCount?: never
-}) {
+export function VerificationLoadingContent({ challengeTitle, mode, dayNo, dayCount }: VerificationLoadingProps) {
+  const [title, message] = mode === 'artwork'
+    ? ['도전 작품을 만드는 중…', '나만의 목표에 어울리는 작품을 만들고 있어요']
+    : dayNo === undefined
+      ? ['목표를 분석하는 중…', '목표의 사진 인증 조건을 살펴보고 있어요']
+      : ['사진을 분석하는 중…', '사진에서 오늘의 습관을 찾아보고 있어요']
+
   return (
     <>
       <img className="verification-loading__background" src={loadingBackground} alt="" />
@@ -60,17 +61,17 @@ export function VerificationLoadingContent({ challengeTitle, dayNo, dayCount }: 
 
       <div className="verification-loading__content">
         <h1 id="verification-loading-title" className="verification-loading__title">
-          {dayNo === undefined ? '목표를 분석하는 중…' : '사진을 분석하는 중…'}
+          {title}
         </h1>
 
-        <section className="verification-loading__card" aria-label="분석 중인 도전">
+        <section className="verification-loading__card" aria-label="나의 도전">
           <h2>나의 도전</h2>
           <p className="verification-loading__challenge">{challengeTitle}</p>
           {dayNo !== undefined && <p>Day {dayNo} · {dayCount}일 도전</p>}
         </section>
 
         <div className="verification-loading__message" role="status">
-          <p>{dayNo === undefined ? '목표의 사진 인증 조건을 살펴보고 있어요' : '사진에서 오늘의 습관을 찾아보고 있어요'}</p>
+          <p>{message}</p>
           <p id="verification-loading-description">잠시만 기다려 주세요</p>
         </div>
 
