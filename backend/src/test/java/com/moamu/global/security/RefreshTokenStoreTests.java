@@ -48,9 +48,10 @@ class RefreshTokenStoreTests {
   void savedTokenCanOnlyBeConsumedOnce() {
     String token = UUID.randomUUID().toString();
 
-    store.save(token, 1L, Duration.ofMinutes(1));
+    store.save(token, 1L, true, Duration.ofMinutes(1));
 
-    assertEquals(1L, store.consume(token).orElseThrow());
+    assertEquals(new RefreshTokenStore.StoredRefreshToken(1L, true),
+        store.consume(token).orElseThrow());
     assertTrue(store.consume(token).isEmpty());
   }
 
@@ -58,7 +59,7 @@ class RefreshTokenStoreTests {
   void revokedTokenCannotBeConsumed() {
     String token = UUID.randomUUID().toString();
 
-    store.save(token, 1L, Duration.ofMinutes(1));
+    store.save(token, 1L, true, Duration.ofMinutes(1));
     store.revoke(token);
 
     assertTrue(store.consume(token).isEmpty());
@@ -68,7 +69,7 @@ class RefreshTokenStoreTests {
   void expiredTokenCannotBeConsumed() throws InterruptedException {
     String token = UUID.randomUUID().toString();
 
-    store.save(token, 1L, Duration.ofMillis(200));
+    store.save(token, 1L, true, Duration.ofMillis(200));
     Thread.sleep(500);
 
     assertTrue(store.consume(token).isEmpty());
@@ -78,12 +79,13 @@ class RefreshTokenStoreTests {
   void duplicateSaveDoesNotOverwriteOwner() {
     String token = UUID.randomUUID().toString();
 
-    store.save(token, 1L, Duration.ofMinutes(1));
+    store.save(token, 1L, true, Duration.ofMinutes(1));
 
     assertThrows(
         IllegalStateException.class,
-        () -> store.save(token, 2L, Duration.ofMinutes(1)));
+        () -> store.save(token, 2L, false, Duration.ofMinutes(1)));
 
-    assertEquals(1L, store.consume(token).orElseThrow());
+    assertEquals(new RefreshTokenStore.StoredRefreshToken(1L, true),
+        store.consume(token).orElseThrow());
   }
 }
