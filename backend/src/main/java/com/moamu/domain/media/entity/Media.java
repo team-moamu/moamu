@@ -77,8 +77,9 @@ public class Media {
         MediaPurpose.PROFILE);
   }
 
-  public static Media createGeneratedArtwork(String imageKey, String fileHash, String contentType, Long fileSize) {
-    return create(imageKey, fileHash, contentType, fileSize, null, MediaPurpose.GENERATED_ARTWORK);
+  public static Media createGeneratedArtwork(
+      String imageKey, String fileHash, String contentType, Long fileSize, Long userId) {
+    return create(imageKey, fileHash, contentType, fileSize, userId, MediaPurpose.GENERATED_ARTWORK);
   }
 
   private static Media create(

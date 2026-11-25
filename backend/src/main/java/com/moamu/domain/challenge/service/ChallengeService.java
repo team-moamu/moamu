@@ -563,7 +563,8 @@ public class ChallengeService {
             throw new BusinessException(ChallengeErrorCode.ARTWORK_TASK_UNAVAILABLE);
         }
 
-        Long artworkId = work.isRepresentative() ? createGeneratedArtwork(work, result) : findWaitingArtwork(work);
+        Long artworkId = work.isRepresentative()
+                ? createGeneratedArtwork(work, result, userId) : findWaitingArtwork(work);
         int durationDays = calculateDurationDays(request.startDate(), request.endDate());
         Long challengeId = saveCustomChallenge(userId, request, snapshot, durationDays, artworkId);
         task.completeArtworkGeneration(artworkId);
@@ -589,7 +590,7 @@ public class ChallengeService {
 
     // 대표 작업의 검증된 결과로 새 작품을 만듦.
     // 결과의 작업 ID와 버전을 다시 확인하고 S3 파일 정보를 media에 저장하고 artwork를 생성
-    private Long createGeneratedArtwork(ClaimedTask work, ArtworkGenerationResult result) {
+    private Long createGeneratedArtwork(ClaimedTask work, ArtworkGenerationResult result, Long userId) {
         if (result == null || result.status() != ArtworkGenerationResult.Status.SUCCEEDED
                 || !Objects.equals(result.taskId(), work.taskId())
                 || !Objects.equals(result.taskVersion(), work.taskVersion())) {
@@ -598,7 +599,7 @@ public class ChallengeService {
         var image = result.image();
         var source = result.source();
         var media = mediaRepository.save(Media.createGeneratedArtwork(
-                image.key(), image.sha256(), image.contentType(), image.sizeBytes()));
+                image.key(), image.sha256(), image.contentType(), image.sizeBytes(), userId));
         String title = source.title();
         int titleLength = Math.min(100, title.codePointCount(0, title.length()));
         Artwork artwork = artworkRepository.save(Artwork.createGenerated(media.getMediaId(),
