@@ -19,7 +19,7 @@ public class RefreshTokenService {
   private final SecureRandom secureRandom = new SecureRandom();
   private final RefreshTokenStore refreshTokenStore;
 
-  public IssuedRefreshToken issue(Long userId) {
+  public IssuedRefreshToken issue(Long userId, boolean autoLogin) {
     byte[] randomBytes = new byte[32];
     secureRandom.nextBytes(randomBytes);
 
@@ -27,17 +27,14 @@ public class RefreshTokenService {
         .withoutPadding()
         .encodeToString(randomBytes);
 
-    refreshTokenStore.save(token, userId, TOKEN_TTL);
-
-    return new IssuedRefreshToken(token, TOKEN_TTL);
+    refreshTokenStore.save(token, userId, autoLogin, TOKEN_TTL);
+    return new IssuedRefreshToken(token, TOKEN_TTL, autoLogin);
   }
 
-  public record IssuedRefreshToken(
-      String token,
-      Duration ttl) {
+  public record IssuedRefreshToken(String token, Duration ttl, boolean autoLogin) {
   }
 
-  public Optional<Long> consume(String token) {
+  public Optional<RefreshTokenStore.StoredRefreshToken> consume(String token) {
     if (token == null || token.isBlank()) {
       return Optional.empty();
     }

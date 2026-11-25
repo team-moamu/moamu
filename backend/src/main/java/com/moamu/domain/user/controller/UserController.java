@@ -139,16 +139,8 @@ public class UserController {
 
     String accessToken = jwtTokenProvider.createAccessToken(user.getUserId());
 
-    RefreshTokenService.IssuedRefreshToken refreshToken = refreshTokenService.issue(user.getUserId());
-
-    ResponseCookie cookie = ResponseCookie
-        .from("moamu_refresh", refreshToken.token())
-        .httpOnly(true)
-        .secure(refreshCookieSecure)
-        .sameSite("Strict")
-        .path("/api/users")
-        .maxAge(refreshToken.ttl())
-        .build();
+    var refreshToken = refreshTokenService.issue(user.getUserId(), request.isAutoLogin());
+    ResponseCookie cookie = buildRefreshCookie(refreshToken);
 
     UserLoginResponse response = new UserLoginResponse(accessToken);
 
@@ -168,8 +160,9 @@ public class UserController {
               "INVALID_ORIGIN", "허용되지 않은 요청입니다."));
     }
 
-    var user = refreshTokenService.consume(token)
-        .flatMap(userRepository::findById)
+    var storedToken = refreshTokenService.consume(token);
+    var user = storedToken
+        .flatMap(stored -> userRepository.findById(stored.userId()))
         .filter(member -> member.getStatus() == UserStatus.ACTIVE);
 
     if (user.isEmpty()) {
@@ -180,16 +173,8 @@ public class UserController {
 
     Long userId = user.get().getUserId();
     String accessToken = jwtTokenProvider.createAccessToken(userId);
-    var refreshToken = refreshTokenService.issue(userId);
-
-    ResponseCookie cookie = ResponseCookie
-        .from("moamu_refresh", refreshToken.token())
-        .httpOnly(true)
-        .secure(refreshCookieSecure)
-        .sameSite("Strict")
-        .path("/api/users")
-        .maxAge(refreshToken.ttl())
-        .build();
+    var refreshToken = refreshTokenService.issue(userId, storedToken.orElseThrow().autoLogin());
+    ResponseCookie cookie = buildRefreshCookie(refreshToken);
 
     return ResponseEntity.ok()
         .header(HttpHeaders.SET_COOKIE, cookie.toString())
@@ -211,6 +196,21 @@ public class UserController {
     return ResponseEntity.noContent()
         .header(HttpHeaders.SET_COOKIE, expiredRefreshCookie().toString())
         .build();
+  }
+
+  private ResponseCookie buildRefreshCookie(
+      RefreshTokenService.IssuedRefreshToken refreshToken) {
+    var cookie = ResponseCookie.from("moamu_refresh", refreshToken.token())
+        .httpOnly(true)
+        .secure(refreshCookieSecure)
+        .sameSite("Strict")
+        .path("/api/users");
+
+    if (refreshToken.autoLogin()) {
+      cookie.maxAge(refreshToken.ttl());
+    }
+
+    return cookie.build();
   }
 
   private ResponseCookie expiredRefreshCookie() {

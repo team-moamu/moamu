@@ -1,6 +1,7 @@
 export interface LoginRequest {
   loginId: string
   password: string
+  autoLogin: boolean
 }
 
 export interface LoginResponse {
