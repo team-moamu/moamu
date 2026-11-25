@@ -36,6 +36,7 @@ class MediaControllerTests {
     @Autowired MockMvc mockMvc;
     @Autowired JwtTokenProvider tokens;
     @MockitoBean MediaVerificationService mediaService;
+    @MockitoBean com.moamu.domain.media.service.MediaVerificationQueryService queryService;
     @MockitoBean UserRepository users;
 
     @Test
@@ -44,18 +45,18 @@ class MediaControllerTests {
         when(user.getStatus()).thenReturn(UserStatus.ACTIVE);
         when(users.findById(1L)).thenReturn(Optional.of(user));
         when(mediaService.submit(eq(1L), eq(50L), any(), eq("request-1")))
-                .thenReturn(new MediaResponse(20L, 10L, 30L, "SUCCESS", List.of()));
+                .thenReturn(new MediaResponse(20L, 10L, 30L, "SUBMITTED", List.of()));
 
         mockMvc.perform(multipart("/api/media")
                         .file(new MockMultipartFile("image", "guitar.jpg", "image/jpeg", new byte[]{1}))
                         .header("Authorization", "Bearer " + tokens.createAccessToken(1L))
                         .param("scheduleId", "50").header("Idempotency-Key", "request-1")
                         .param("userId", "999").requestAttr("userId", 999L))
-                .andExpect(status().isOk())
+                .andExpect(status().isAccepted())
                 .andExpect(jsonPath("success").value(true))
                 .andExpect(jsonPath("data.mediaId").value(10))
                 .andExpect(jsonPath("data.verificationId").value(20))
-                .andExpect(jsonPath("data.status").value("SUCCESS"));
+                .andExpect(jsonPath("data.status").value("SUBMITTED"));
         verify(mediaService).submit(eq(1L), eq(50L), any(), eq("request-1"));
     }
 
@@ -69,13 +70,15 @@ class MediaControllerTests {
     }
 
     @Test
-    void thereIsNoDirectMediaReadEndpoint() throws Exception {
+    void statusQueryUsesAuthenticatedOwner() throws Exception {
         var user = mock(User.class);
         when(user.getStatus()).thenReturn(UserStatus.ACTIVE);
         when(users.findById(1L)).thenReturn(Optional.of(user));
 
+        when(queryService.get(1L, 30L)).thenReturn(new MediaResponse(30L, 10L, 40L, "ANALYZING", List.of()));
         mockMvc.perform(get("/api/media/30").header("Authorization", "Bearer " + tokens.createAccessToken(1L)))
-                .andExpect(result -> assertThat(result.getResolvedException()).isInstanceOf(NoResourceFoundException.class));
+                .andExpect(status().isOk()).andExpect(jsonPath("data.status").value("ANALYZING"));
+        verify(queryService).get(1L, 30L);
         verifyNoInteractions(mediaService);
     }
 

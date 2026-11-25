@@ -75,7 +75,9 @@ class MediaVerificationFlowTests {
         jdbc.update("DELETE FROM verification");
         jdbc.update("DELETE FROM media");
         jdbc.update("UPDATE schedule SET status='OPEN', schedule_date=?", java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")));
-        jdbc.update("UPDATE challenge SET status='IN_PROGRESS'");
+        jdbc.update("UPDATE challenge SET status='IN_PROGRESS', start_date=?, end_date=?",
+            java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")),
+            java.time.LocalDate.now(java.time.ZoneId.of("Asia/Seoul")).plusDays(6));
         mvc = org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup(webContext)
                 .apply(org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity()).build();
         reset(storage, client);
@@ -117,102 +119,142 @@ class MediaVerificationFlowTests {
                 .header("Idempotency-Key", key).header("Authorization", "Bearer " + tokens.createAccessToken(1L));
     }
 
-    @Test
-    void successResultRequiresJwtAndChallengeOwnership() throws Exception {
-        mvc.perform(upload("success-view")).andExpect(status().isOk());
-        var id = jdbc.queryForObject("SELECT verification_id FROM verification", Long.class);
-        String path = "/api/verification/" + id + "/result";
-        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(path))
-                .andExpect(status().isUnauthorized());
-        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(path)
-                        .header("Authorization", "Bearer " + tokens.createAccessToken(2L)))
-                .andExpect(status().isNotFound());
-        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(path)
-                        .header("Authorization", "Bearer " + tokens.createAccessToken(1L)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("SUCCESS"))
-                .andExpect(jsonPath("$.data.earnedPieceCount").value(1))
-                .andExpect(jsonPath("$.data.totalPieceCount").value(1))
-                .andExpect(jsonPath("$.data.checks.length()").value(2));
-        verify(client, times(1)).verify(any());
+
+    @Autowired com.moamu.domain.verification.service.PhotoVerificationWorker worker;
+    @Autowired com.moamu.domain.verification.service.PhotoVerificationWorkStore workStore;
+    @Autowired com.moamu.domain.verification.repository.PhotoVerificationRequestRepository requests;
+
+    private String state(String table) { return jdbc.queryForObject("SELECT status FROM " + table + " ORDER BY 1 LIMIT 1", String.class); }
+    private long verificationId() { return jdbc.queryForObject("SELECT verification_id FROM verification ORDER BY verification_id DESC LIMIT 1", Long.class); }
+    private org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder poll(long userId) {
+        return org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/media/" + verificationId())
+            .header("Authorization", "Bearer " + tokens.createAccessToken(userId));
     }
 
     @Test
-    void singleHttpRequestStoresAllRecordsAndReplayDoesNotCallExternalServers() throws Exception {
-        var first = mvc.perform(upload("one")).andExpect(status().isOk())
-                .andExpect(jsonPath("data.status").value("SUCCESS"))
-                .andExpect(jsonPath("data.verificationId").isNumber())
-                .andExpect(jsonPath("data.aiTaskId").isNumber())
-                .andExpect(jsonPath("data.checks.length()").value(2)).andReturn().getResponse().getContentAsString();
-        mvc.perform(upload("one")).andExpect(status().isOk()).andExpect(content().json(first));
-        verify(storage, times(1)).saveVerification(any());
+    void acceptsBeforeAiCallAndReplayDoesNotDuplicateRecords() throws Exception {
+        var first = mvc.perform(upload("one")).andExpect(status().isAccepted())
+            .andExpect(header().exists("Location"))
+            .andExpect(jsonPath("data.status").value("SUBMITTED"))
+            .andExpect(jsonPath("data.checks.length()").value(0)).andReturn().getResponse().getContentAsString();
+        verifyNoInteractions(client);
+        assertThat(state("ai_task")).isEqualTo("PENDING");
+        mvc.perform(upload("one")).andExpect(status().isAccepted()).andExpect(content().json(first));
+        worker.runNext();
+        mvc.perform(poll(1)).andExpect(status().isOk()).andExpect(jsonPath("data.status").value("SUCCESS"))
+            .andExpect(jsonPath("data.checks.length()").value(2));
+        mvc.perform(upload("one")).andExpect(status().isAccepted()).andExpect(jsonPath("data.status").value("SUCCESS"))
+            .andExpect(jsonPath("data.checks.length()").value(2));
+        worker.runNext();
         verify(client, times(1)).verify(any());
-        assertThat(jdbc.queryForObject("SELECT status FROM ai_task", String.class)).isEqualTo("SUCCEEDED");
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM media", Integer.class)).isEqualTo(1);
+        verify(storage, times(1)).saveVerification(any());
+        assertThat(state("ai_task")).isEqualTo("SUCCEEDED");
+        assertThat(state("schedule")).isEqualTo("SUCCESS");
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification", Integer.class)).isEqualTo(1);
         assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification_check", Integer.class)).isEqualTo(2);
-        assertThat(jdbc.queryForObject("SELECT attempt_count FROM schedule", Integer.class)).isEqualTo(1);
-        assertThat(jdbc.queryForObject("SELECT status FROM schedule", String.class)).isEqualTo("SUCCESS");
-        assertThat(jdbc.queryForObject("SELECT version FROM schedule", Integer.class)).isEqualTo(2);
-        assertThat(jdbc.queryForMap("SELECT started_at, finished_at FROM ai_task").values()).doesNotContainNull();
+    }
+
+    @Test
+    void onlyOwnerCanPollPendingAndCompletedResults() throws Exception {
+        mvc.perform(upload("owner")).andExpect(status().isAccepted());
+        mvc.perform(poll(2)).andExpect(status().isNotFound());
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get("/api/media/" + verificationId()))
+            .andExpect(status().isUnauthorized());
+        mvc.perform(poll(1)).andExpect(jsonPath("data.status").value("SUBMITTED"));
+        worker.runNext();
+        mvc.perform(poll(2)).andExpect(status().isNotFound());
+        mvc.perform(poll(1)).andExpect(jsonPath("data.status").value("SUCCESS"));
     }
 
     @ParameterizedTest
     @EnumSource(value=CheckStatus.class, names={"NOT_MET", "UNCERTAIN"})
-    void normalNegativeVerdictStillCompletesAiTask(CheckStatus check) throws Exception {
+    void normalNegativeVerdictDoesNotRetry(CheckStatus check) throws Exception {
         doAnswer(call -> answer(call.getArgument(0), check)).when(client).verify(any());
-        mvc.perform(upload("negative")).andExpect(status().isOk())
-                .andExpect(jsonPath("data.status").value(check == CheckStatus.NOT_MET ? "FAILED" : "REVIEW_REQUIRED"));
-        assertThat(jdbc.queryForObject("SELECT status FROM ai_task", String.class)).isEqualTo("SUCCEEDED");
+        mvc.perform(upload("negative")).andExpect(status().isAccepted());
+        worker.runNext(); worker.runNext();
+        mvc.perform(poll(1)).andExpect(jsonPath("data.status").value(check == CheckStatus.NOT_MET ? "FAILED" : "REVIEW_REQUIRED"));
+        assertThat(state("ai_task")).isEqualTo("SUCCEEDED");
+        verify(client, times(1)).verify(any());
     }
 
     @Test
-    void failedSubmissionsReopenUntilThirdAttemptThenRejectAnotherSubmission() throws Exception {
+    void thirdNegativeAttemptClosesSchedule() throws Exception {
         doAnswer(call -> answer(call.getArgument(0), CheckStatus.NOT_MET)).when(client).verify(any());
-        for (int attempt = 1; attempt <= 3; attempt++) {
-            mvc.perform(upload("attempt-" + attempt)).andExpect(status().isOk())
-                    .andExpect(jsonPath("data.status").value("FAILED"));
+        for (int attempt=1; attempt<=3; attempt++) {
+            mvc.perform(upload("attempt-" + attempt)).andExpect(status().isAccepted());
+            worker.runNext();
             assertThat(jdbc.queryForObject("SELECT attempt_count FROM schedule", Integer.class)).isEqualTo(attempt);
-            assertThat(jdbc.queryForObject("SELECT status FROM schedule", String.class))
-                    .isEqualTo(attempt < 3 ? "OPEN" : "FAILED");
+            assertThat(state("schedule")).isEqualTo(attempt < 3 ? "OPEN" : "FAILED");
         }
         mvc.perform(upload("attempt-4")).andExpect(status().isBadRequest());
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification", Integer.class)).isEqualTo(3);
-        verify(client, times(3)).verify(any());
     }
 
     @Test
-    void aiFailurePreservesPhotoAndRefundsCountOnlyOnce() throws Exception {
-        doThrow(new PhotoVerificationTechnicalException("timeout")).when(client).verify(any());
-        mvc.perform(upload("failed")).andExpect(status().isBadGateway());
-        mvc.perform(upload("failed")).andExpect(status().isBadGateway());
-        assertThat(jdbc.queryForObject("SELECT status FROM ai_task", String.class)).isEqualTo("FAILED_FINAL");
-        assertThat(jdbc.queryForObject("SELECT status FROM verification", String.class)).isEqualTo("TECH_ERROR");
+    void invalidAiResponseEndsAsTechnicalErrorAndRefundsOnlyOnce() throws Exception {
+        doThrow(new PhotoVerificationTechnicalException("invalid response")).when(client).verify(any());
+        mvc.perform(upload("failed")).andExpect(status().isAccepted());
+        worker.runNext(); worker.runNext();
+        mvc.perform(upload("failed")).andExpect(status().isAccepted()).andExpect(jsonPath("data.status").value("TECH_ERROR"));
+        assertThat(state("ai_task")).isEqualTo("FAILED_FINAL");
         assertThat(jdbc.queryForObject("SELECT attempt_count FROM schedule", Integer.class)).isZero();
-        assertThat(jdbc.queryForObject("SELECT status FROM schedule", String.class)).isEqualTo("OPEN");
+        assertThat(state("schedule")).isEqualTo("OPEN");
         verify(storage, never()).delete(any());
         verify(client, times(1)).verify(any());
     }
 
     @Test
-    void rejectedSubmissionCleansNewPhotoAndDoesNotCallAi() throws Exception {
-        jdbc.update("UPDATE schedule SET attempt_count=3");
-        mvc.perform(upload("limit")).andExpect(status().isBadRequest());
-        verify(storage).delete("verifications/test.png");
-        verifyNoInteractions(client);
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM media", Integer.class)).isZero();
-        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ai_task", Integer.class)).isZero();
+    void transportFailuresRetrySameTaskAtMostTwice() throws Exception {
+        doThrow(new PhotoVerificationTechnicalException("timeout", new org.springframework.web.client.ResourceAccessException("timeout")))
+            .when(client).verify(any());
+        mvc.perform(upload("retry")).andExpect(status().isAccepted());
+        long taskId = jdbc.queryForObject("SELECT ai_task_id FROM ai_task", Long.class);
+        worker.runNext();
+        assertThat(state("ai_task")).isEqualTo("RETRYING");
+        worker.runNext(); // 재시도 시각 전에는 실행하지 않는다
+        verify(client, times(1)).verify(any());
+        for (int i=0; i<2; i++) {
+            jdbc.update("UPDATE ai_task SET next_retry_at='2000-01-01'");
+            worker.runNext();
+        }
+        assertThat(state("ai_task")).isEqualTo("FAILED_FINAL");
+        assertThat(jdbc.queryForObject("SELECT attempt_count FROM schedule", Integer.class)).isZero();
+        verify(client, times(3)).verify(argThat(request -> request.aiTaskId().equals(Long.toString(taskId))));
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM ai_task", Integer.class)).isEqualTo(1);
     }
 
     @Test
-    void missingSubmissionFieldsDoNotUploadAnything() throws Exception {
-        mvc.perform(multipart("/api/media").file(image()).header("Authorization", "Bearer " + tokens.createAccessToken(1L)))
-                .andExpect(status().isBadRequest());
-        verifyNoInteractions(storage, client);
+    void retryCanSucceedWithoutChargingAnotherAttempt() throws Exception {
+        mvc.perform(upload("retry-success")).andExpect(status().isAccepted());
+        var first = workStore.claimNext().orElseThrow();
+        workStore.fail(first, true);
+        jdbc.update("UPDATE ai_task SET next_retry_at='2000-01-01'");
+        worker.runNext();
+        assertThat(state("ai_task")).isEqualTo("SUCCEEDED");
+        assertThat(jdbc.queryForObject("SELECT attempt_count FROM schedule", Integer.class)).isEqualTo(1);
     }
 
     @Test
-    void simultaneousReplayDoesNotStartAnotherAiCall() throws Exception {
+    void staleWorkerCannotWriteAfterRecovery() throws Exception {
+        mvc.perform(upload("recovery")).andExpect(status().isAccepted());
+        var old = workStore.claimNext().orElseThrow();
+        assertThat(workStore.claimNext()).isEmpty();
+        jdbc.update("UPDATE ai_task SET locked_at='2000-01-01'");
+        var recovered = workStore.claimNext().orElseThrow();
+        assertThat(recovered.taskId()).isEqualTo(old.taskId());
+        assertThat(recovered.token()).isNotEqualTo(old.token());
+        var request = requests.findByAiTaskIdAndUserId(old.taskId(), old.userId()).orElseThrow();
+        var result = new com.moamu.domain.verification.service.PhotoVerificationService.Result(
+            com.moamu.domain.verification.enums.VerificationResult.SUCCESS, answer(request, CheckStatus.MET));
+        assertThat(workStore.complete(old, request, result)).isFalse();
+        workStore.fail(old, false);
+        assertThat(state("ai_task")).isEqualTo("RUNNING");
+        assertThat(workStore.complete(recovered, request, result)).isTrue();
+        assertThat(workStore.complete(recovered, request, result)).isFalse();
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM verification_check", Integer.class)).isEqualTo(2);
+    }
+
+    @Test
+    void concurrentWorkersDoNotExecuteSameTaskAndReplayRemainsAccepted() throws Exception {
         var entered = new java.util.concurrent.CountDownLatch(1);
         var release = new java.util.concurrent.CountDownLatch(1);
         doAnswer(call -> {
@@ -220,15 +262,29 @@ class MediaVerificationFlowTests {
             if (!release.await(10, java.util.concurrent.TimeUnit.SECONDS)) throw new IllegalStateException("test timeout");
             return answer(call.getArgument(0), CheckStatus.MET);
         }).when(client).verify(any());
+        mvc.perform(upload("concurrent")).andExpect(status().isAccepted());
         try (var pool = java.util.concurrent.Executors.newSingleThreadExecutor()) {
-            var first = pool.submit(() -> mvc.perform(upload("concurrent")).andExpect(status().isOk()));
+            var first = pool.submit(() -> worker.runNext());
             try {
                 assertThat(entered.await(10, java.util.concurrent.TimeUnit.SECONDS)).isTrue();
-                mvc.perform(upload("concurrent")).andExpect(status().isConflict());
+                worker.runNext();
+                mvc.perform(upload("concurrent")).andExpect(status().isAccepted()).andExpect(jsonPath("data.status").value("ANALYZING"));
             } finally { release.countDown(); }
             first.get(10, java.util.concurrent.TimeUnit.SECONDS);
         }
         verify(client, times(1)).verify(any());
         verify(storage, times(1)).saveVerification(any());
+    }
+
+    @Test
+    void rejectedSubmissionCleansPhotoAndMissingFieldsDoNotUpload() throws Exception {
+        mvc.perform(multipart("/api/media").file(image()).header("Authorization", "Bearer " + tokens.createAccessToken(1L)))
+            .andExpect(status().isBadRequest());
+        verifyNoInteractions(storage, client);
+        jdbc.update("UPDATE schedule SET attempt_count=3");
+        mvc.perform(upload("limit")).andExpect(status().isBadRequest());
+        verify(storage).delete("verifications/test.png");
+        verifyNoInteractions(client);
+        assertThat(jdbc.queryForObject("SELECT COUNT(*) FROM media", Integer.class)).isZero();
     }
 }
