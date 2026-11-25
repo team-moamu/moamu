@@ -2,13 +2,12 @@ import { Link } from 'react-router'
 import emptyMu from '../../../assets/images/drawing_mu.png'
 import sadMu from '../../../assets/images/sad_mu.png'
 
-interface CollectionEmptyStateProps {
-  variant: 'empty' | 'error'
-  onRetry: () => void
-}
+type CollectionEmptyStateProps =
+  | { variant: 'empty'; startTo?: string }
+  | { variant: 'error'; onRetry: () => void }
 
-export function CollectionEmptyState({ variant, onRetry }: CollectionEmptyStateProps) {
-  const isError = variant === 'error'
+export function CollectionEmptyState(props: CollectionEmptyStateProps) {
+  const isError = props.variant === 'error'
   const actionClass = 'flex min-h-12 w-full cursor-pointer items-center justify-center rounded-[10px] bg-[var(--color-primary)] px-4 py-3 text-sm text-white hover:bg-[var(--color-primary-hover)]'
 
   return (
@@ -26,9 +25,9 @@ export function CollectionEmptyState({ variant, onRetry }: CollectionEmptyStateP
       </div>
       <div className="mt-8 w-full">
         {isError ? (
-          <button type="button" onClick={onRetry} className={actionClass}>다시 불러오기</button>
+          <button type="button" onClick={props.onRetry} className={actionClass}>다시 불러오기</button>
         ) : (
-          <Link to="/challenge/list" className={actionClass}>첫 도전 시작하기</Link>
+          <Link to={props.startTo ?? '/challenge/list'} className={actionClass}>첫 도전 시작하기</Link>
         )}
       </div>
     </div>

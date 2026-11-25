@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 
 import { ChallengeCardList } from '../../components/organisms/challenge/ChallengeCardList'
+import { CollectionEmptyState } from '../../components/molecules/feedback/CollectionEmptyState'
 import { getTodayChallenges } from '../../api/ChallengeApi'
 import backgroundMu from '../../assets/images/background_mu.png'
 import { goalArtworkImages } from '../../constants/GoalArtworkImages'
@@ -87,6 +88,8 @@ export function ChallengeListPage() {
     navigate(`/challenge/${challengeId}/verification?scheduleId=${scheduleId}`)
   }
 
+  const isEmpty = !loading && !error && challenges.length === 0
+
   return (
     <>
       <div className="relative w-full">
@@ -96,34 +99,42 @@ export function ChallengeListPage() {
           className="block w-full"
         />
 
-        <p className="absolute top-[30%] left-1/2 -translate-x-1/2 whitespace-nowrap text-sm font-medium text-[#4A382A]">
+        <p className="absolute top-[30%] left-1/2 -translate-x-1/2 whitespace-nowrap font-[family-name:var(--font-description)] text-[18px] leading-[1.4] font-bold text-[#4A382A]">
           {formattedDate}
         </p>
       </div>
 
-      <div className="flex flex-col px-6 py-6">
-        {loading ? (
-          <p>도전 목록을 불러오는 중입니다.</p>
-        ) : error ? (
-          <p>{error}</p>
-        ) : (
-          <ChallengeCardList
-            challenges={challenges}
-            onVerify={handleVerify}
-            onCardClick={handleChallengeClick}
-          />
-        )}
-      </div>
-      <div className="pointer-events-none fixed bottom-28 left-1/2 z-40 flex w-full max-w-[430px] -translate-x-1/2 justify-end px-4">
-        <Link
-          to="/challenge/create"
-          aria-label="도전 생성하기"
-          title="도전 생성하기"
-          className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full border-2 border-white bg-[var(--color-primary)] text-white shadow-md ring-2 ring-[var(--color-primary)] transition-colors hover:bg-[var(--color-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--color-primary)] active:bg-[var(--color-primary-pressed)]"
-        >
-          <Icon name="palette" size={36} />
-        </Link>
-      </div>
+      {isEmpty ? (
+        <div className="bg-[var(--color-background)] px-6 pb-1">
+          <CollectionEmptyState variant="empty" startTo="/challenge/create" />
+        </div>
+      ) : (
+        <>
+          <div className="flex flex-col px-6 py-6">
+            {loading ? (
+              <p>도전 목록을 불러오는 중입니다.</p>
+            ) : error ? (
+              <p>{error}</p>
+            ) : (
+              <ChallengeCardList
+                challenges={challenges}
+                onVerify={handleVerify}
+                onCardClick={handleChallengeClick}
+              />
+            )}
+          </div>
+          <div className="pointer-events-none fixed bottom-28 left-1/2 z-40 flex w-full max-w-[430px] -translate-x-1/2 justify-end px-4">
+            <Link
+              to="/challenge/create"
+              aria-label="도전 생성하기"
+              title="도전 생성하기"
+              className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full border-2 border-white bg-[var(--color-primary)] text-white shadow-md ring-2 ring-[var(--color-primary)] transition-colors hover:bg-[var(--color-primary-hover)] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--color-primary)] active:bg-[var(--color-primary-pressed)]"
+            >
+              <Icon name="palette" size={36} />
+            </Link>
+          </div>
+        </>
+      )}
     </>
   )
 }

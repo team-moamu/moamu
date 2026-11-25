@@ -49,7 +49,7 @@ export function ChallengeCard({
             onClick?.()
           }
         }}
-        className="rounded-md p-4 shadow-sm card bg-[#fff8ed]"
+        className="rounded-md p-4 shadow-sm card"
       >
       <div className="flex gap-4">
         <BlurImage

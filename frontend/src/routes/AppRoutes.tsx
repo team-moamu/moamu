@@ -232,7 +232,7 @@ export default function AppRoutes() {
         <Route path="/museum/:challengeId" element={<GalleryDetailPage />} />
       </Route>
 
-      <Route element={<MainLayout showBottomNav background='white' headerType="title" title="도전하기" />} >
+      <Route element={<MainLayout showBottomNav headerType="title" title="도전하기" />} >
         <Route path="/challenge/list" element={<ChallengeListPage />} />
       </Route>
 

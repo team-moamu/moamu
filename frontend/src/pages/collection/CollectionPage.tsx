@@ -130,7 +130,7 @@ export function CollectionPage() {
         {!loading && error ? (
           <CollectionEmptyState variant="error" onRetry={reloadCollection} />
         ) : !loading && !hasAnyArtwork ? (
-          <CollectionEmptyState variant="empty" onRetry={reloadCollection} />
+          <CollectionEmptyState variant="empty" />
         ) : (
           <>
         <div className="mt-5">
