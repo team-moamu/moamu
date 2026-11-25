@@ -14,6 +14,7 @@ public class PhotoVerificationClientConfig {
     @Bean
     public RestClient photoVerificationRestClient(
             RestClient.Builder builder,
+            @Value("${app.ai.internal-api-token}") String internalApiToken,
             @Value("${app.ai.connect-timeout}") Duration connectTimeout,
             @Value("${app.ai.read-timeout}") Duration readTimeout) {
         HttpClient httpClient = HttpClient.newBuilder()
@@ -23,6 +24,9 @@ public class PhotoVerificationClientConfig {
                 .build();
         JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
         factory.setReadTimeout(readTimeout);
+        if (!internalApiToken.isBlank()) {
+            builder.defaultHeaders(headers -> headers.setBearerAuth(internalApiToken.strip()));
+        }
         return builder.requestFactory(factory).build();
     }
 }

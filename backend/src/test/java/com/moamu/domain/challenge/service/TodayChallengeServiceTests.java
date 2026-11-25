@@ -2,6 +2,7 @@ package com.moamu.domain.challenge.service;
 
 import com.moamu.domain.challenge.dto.TodayChallengeResponse;
 import com.moamu.domain.challenge.repository.ChallengeRepository;
+import com.moamu.domain.verification.service.ArtworkImageUrlService;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -26,6 +27,7 @@ class TodayChallengeServiceTests {
     private static final LocalDate DAY = LocalDate.of(2026, 11, 3);
 
     @Mock private ChallengeRepository challengeRepository;
+    @Mock private ArtworkImageUrlService artworkImageUrlService;
     @InjectMocks private ChallengeService challengeService;
 
     // 지정한 날짜와 정규화한 정렬 기준을 저장소에 전달한다.
@@ -40,16 +42,20 @@ class TodayChallengeServiceTests {
     }, nullValues = "NULL")
     void forwardsRequestedDateAndNormalizesSort(String sort, String expectedSort) {
         TodayChallengeResponse first = new TodayChallengeResponse(
-                100L, "Reading", DAY, DAY.plusDays(6),1L,  1, null, 0, null, 1L, com.moamu.domain.challenge.enums.Status.IN_PROGRESS);
+                100L, "Reading", DAY, DAY.plusDays(6),1L,  1, null, 0, null, 1L, com.moamu.domain.challenge.enums.Status.IN_PROGRESS, "artwork/reading.jpg");
         TodayChallengeResponse second = new TodayChallengeResponse(
-                99L, "Exercise", DAY, DAY.plusDays(13),1L,  1, null, 0, null, 2L, com.moamu.domain.challenge.enums.Status.COMPLETED);
+                99L, "Exercise", DAY, DAY.plusDays(13),1L,  1, null, 0, null, 2L, com.moamu.domain.challenge.enums.Status.COMPLETED, null);
         when(challengeRepository.findTodayChallenges(USER_ID, DAY, expectedSort))
                 .thenReturn(List.of(first, second));
+        when(artworkImageUrlService.resolveBlurredPreview("artwork/reading.jpg"))
+                .thenReturn("data:image/png;base64,preview");
 
         List<TodayChallengeResponse> result = challengeService.getTodayChallenges(USER_ID, DAY, sort);
 
         assertThat(result).extracting(TodayChallengeResponse::challengeId).containsExactly(100L, 99L);
         assertThat(result).extracting(TodayChallengeResponse::goalTemplateId).containsExactly(1L, 2L);
+        assertThat(result).extracting(TodayChallengeResponse::artworkPreviewUrl)
+                .containsExactly("data:image/png;base64,preview", null);
         assertThat(result).extracting(TodayChallengeResponse::challengeStatus).containsExactly(
                 com.moamu.domain.challenge.enums.Status.IN_PROGRESS,
                 com.moamu.domain.challenge.enums.Status.COMPLETED);

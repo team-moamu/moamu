@@ -2,12 +2,14 @@ type BlurImageProps = {
   src: string
   alt: string
   className?: string
+  alreadyBlurred?: boolean
 }
 
 export function BlurImage({
   src,
   alt,
   className = '',
+  alreadyBlurred = false,
 }: BlurImageProps) {
   return (
     <div
@@ -16,7 +18,7 @@ export function BlurImage({
       <img
         src={src}
         alt={alt}
-        className="w-full h-full object-cover blur-md"
+        className={`w-full h-full object-cover ${alreadyBlurred ? '' : 'blur-md'}`}
       />
     </div>
   )

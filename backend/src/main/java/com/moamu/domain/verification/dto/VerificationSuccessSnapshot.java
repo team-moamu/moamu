@@ -17,6 +17,7 @@ public record VerificationSuccessSnapshot(
     int gridCols,
     long artworkId,
     String artworkTitle,
-    String imageKey
+    String imageKey,
+    boolean blurredPreview
 ) {
 }

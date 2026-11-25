@@ -146,25 +146,46 @@ export class CustomChallengeCreateError extends Error {
   }
 }
 
+type CustomChallengeResult =
+  | { status: 'SUCCEEDED'; challengeId: number }
+  | { status: 'PENDING' | 'RUNNING'; taskId: number; expiresAt: string }
+  | { status: 'FAILED_FINAL'; errorCode: string }
+
 export async function createCustomChallenge(request: {
   analysisId: string
   startDate: string
   endDate: string
 }): Promise<{ challengeId: number }> {
-  const response = await authenticatedFetch('/api/challenges/custom', {
+  const submission = await authenticatedFetch('/api/challenges/custom', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(request),
   })
-  const body: ApiResponse<{ challengeId: number }> | null = await response.json().catch(() => null)
-  if (!response.ok || !body || !body.success) {
-    const code = body?.success === false ? body.error.code : undefined
-    throw new CustomChallengeCreateError(
-      body?.success === false ? body.error.message : '도전을 생성하지 못했어요. 다시 시도해 주세요.', code,
-    )
+  let response = submission
+  while (true) {
+    const body: ApiResponse<CustomChallengeResult> | null = await response.json().catch(() => null)
+    if (!response.ok || !body || !body.success) {
+      const code = body?.success === false ? body.error.code : undefined
+      throw new CustomChallengeCreateError(
+        body?.success === false ? body.error.message : '도전을 생성하지 못했어요. 다시 시도해 주세요.', code,
+      )
+    }
+    const result = body.data
+    if (result?.status === 'FAILED_FINAL') {
+      throw new CustomChallengeCreateError('도전 작품을 생성하지 못했어요.', result.errorCode)
+    }
+    if (result?.status === 'SUCCEEDED' && Number.isSafeInteger(result.challengeId) && result.challengeId > 0) {
+      return { challengeId: result.challengeId }
+    }
+    if ((result?.status !== 'PENDING' && result?.status !== 'RUNNING') ||
+      !Number.isSafeInteger(result.taskId) || result.taskId <= 0 ||
+      !Number.isFinite(Date.parse(result.expiresAt))) {
+      throw new Error('생성된 도전 정보를 확인하지 못했어요.')
+    }
+    if (Date.now() >= Date.parse(result.expiresAt)) {
+      throw new Error('도전 작품 생성 시간이 초과됐어요.')
+    }
+    await new Promise(resolve => setTimeout(resolve, 2000))
+    response = await authenticatedFetch(`/api/challenges/custom/tasks/${result.taskId}`)
   }
-  if (!Number.isSafeInteger(body.data?.challengeId) || body.data.challengeId <= 0) {
-    throw new Error('생성된 도전 정보를 확인하지 못했어요.')
-  }
-  return body.data
 }

@@ -15,7 +15,7 @@ import com.moamu.domain.verification.entity.Verification;
 public interface VerificationSuccessRepository extends JpaRepository<Verification, Long> {
 
     // 인증 소유자의 도전과 회차, 도전 생성 당시 선택된 작품 정보 조회
-    // 미디어 유형이나 저장 경로로 AI 작품을 확인하고, 도전이 끝나기 전에는 이미지 키를 가져오지 않음.
+    // 진행 중인 AI 작품은 원본 대신 흐린 미리보기를 제공.
     @Query("""
         SELECT new com.moamu.domain.verification.dto.VerificationSuccessSnapshot(
             v.verificationId,
@@ -30,10 +30,11 @@ public interface VerificationSuccessRepository extends JpaRepository<Verificatio
             c.gridCols,
             c.artworkId,
             a.artworkTitle,
+            m.imageKey,
             CASE WHEN c.status <> com.moamu.domain.challenge.enums.Status.COMPLETED
                 AND (m.purpose = com.moamu.domain.media.enums.MediaPurpose.GENERATED_ARTWORK
                     OR LOCATE(:generatedArtworkPrefix, m.imageKey) = 1)
-                THEN NULL ELSE m.imageKey END
+                THEN TRUE ELSE FALSE END
         )
         FROM Verification v
         INNER JOIN Schedule s ON s.scheduleId = v.scheduleId

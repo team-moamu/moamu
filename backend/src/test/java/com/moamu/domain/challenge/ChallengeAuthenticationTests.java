@@ -61,7 +61,7 @@ class ChallengeAuthenticationTests {
         LocalDate day = LocalDate.of(2026, 11, 7);
         when(challengeService.getTodayChallenges(2L, day, null)).thenReturn(List.of(new TodayChallengeResponse(
                 10L, "Walk", day, day.plusDays(6), 30L, 1, Status.OPEN, 0, null, 20L,
-                com.moamu.domain.challenge.enums.Status.IN_PROGRESS)));
+                com.moamu.domain.challenge.enums.Status.IN_PROGRESS, "private/artwork.jpg", "data:image/png;base64,preview")));
 
         mockMvc.perform(get("/api/challenges/today")
                 .header("Authorization", "Bearer user-two-token")
@@ -69,6 +69,8 @@ class ChallengeAuthenticationTests {
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data[0].challengeId").value(10))
+            .andExpect(jsonPath("$.data[0].artworkPreviewUrl").value("data:image/png;base64,preview"))
+            .andExpect(jsonPath("$..artworkImageKey").isEmpty())
             .andExpect(jsonPath("$..imageUrl").isEmpty())
             .andExpect(jsonPath("$..thumbnail").isEmpty());
 

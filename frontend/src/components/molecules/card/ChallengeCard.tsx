@@ -10,6 +10,7 @@ type ChallengeCardProps = {
   scheduleId: number
   challengeTitle: string
   imageUrl: string
+  imageAlreadyBlurred?: boolean
   dayNo: number
   durationDays: number
   attemptCount: number
@@ -25,6 +26,7 @@ export function ChallengeCard({
   scheduleId,
   challengeTitle,
   imageUrl,
+  imageAlreadyBlurred,
   dayNo,
   durationDays,
   attemptCount,
@@ -53,6 +55,7 @@ export function ChallengeCard({
         <BlurImage
           src={imageUrl}
           alt={challengeTitle}
+          alreadyBlurred={imageAlreadyBlurred}
         />
 
         <div className="flex flex-1 flex-col gap-2">

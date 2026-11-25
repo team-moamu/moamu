@@ -424,7 +424,11 @@ public class ChallengeService {
         // 최신순 - 기본값(내림차순) / 이름순(오름차순)
         String sortType = "name".equals(sort) ? "name" : "latest";
 
-        return challengeRepository.findTodayChallenges(userId, targetDate, sortType);
+        return challengeRepository.findTodayChallenges(userId, targetDate, sortType).stream()
+                .map(challenge -> challenge.artworkImageKey() == null ? challenge
+                        : challenge.withArtworkPreviewUrl(
+                                artworkImageUrlService.resolveBlurredPreview(challenge.artworkImageKey())))
+                .toList();
     }
 
     // 자유목표 도전 확정

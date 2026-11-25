@@ -38,6 +38,7 @@ app:
     worker-delay-ms: ${PHOTO_VERIFICATION_WORKER_DELAY_MS:1000}
   ai:
     server-url: ${AI_SERVER_URL:http://localhost:8000}
+    internal-api-token: ${AI_INTERNAL_API_TOKEN:}
     connect-timeout: ${AI_CONNECT_TIMEOUT:3s}
     read-timeout: ${AI_READ_TIMEOUT:30s}
   storage:

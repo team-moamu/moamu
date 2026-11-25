@@ -4,6 +4,7 @@ import type { ChallengeDetailResponse, TodayChallengeResponse } from '../../type
 export interface HomeChallenge {
   completed: boolean
   goalTemplateId: number
+  artworkPreviewUrl: string | null
   id: number
   scheduleId: number
   title: string
@@ -49,6 +50,7 @@ export function toHomeChallenge(
   return {
     completed: challenge.challengeStatus === 'COMPLETED',
     goalTemplateId: challenge.goalTemplateId,
+    artworkPreviewUrl: challenge.artworkPreviewUrl,
     id: challenge.challengeId,
     scheduleId: challenge.scheduleId,
     title: challenge.challengeTitle,

@@ -24,7 +24,7 @@ public record VerificationSuccessResponse(
     int totalPieceCount,
     List<Check> checks
 ) {
-    // 작품 이미지 URL은 유효 시간이 있는 S3 서명 URL이며 미디어가 없으면 null
+    // 작품 이미지는 흐린 미리보기 또는 S3 서명 URL이며 미디어가 없으면 null
     public record Artwork(
         long artworkId,
         String title,
