@@ -48,7 +48,7 @@ public class VerificationResultRepository {
                 UPDATE ai_task SET status='SUCCEEDED', finished_at=?, upd_dt=?,
                     last_error=NULL, next_retry_at=NULL, locked_by=NULL, locked_at=NULL
                 WHERE ai_task_id=? AND verification_id=? AND task_type='VERIFY'
-                  AND status IN ('PENDING', 'RUNNING', 'RETRYING')
+                  AND status IN ('PENDING', 'RUNNING', 'RETRYING') AND locked_by IS NULL
                 """, now, now, taskId, verificationId) == 1;
     }
 

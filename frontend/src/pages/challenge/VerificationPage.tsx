@@ -113,7 +113,7 @@ export function VerificationPage({ accessToken }: VerificationPageProps) {
     setRefreshError(null)
     let completedResponse: VerificationSubmitResponse | null = null
     try {
-      // /internal/photo-verifications 호출은 /api/media의 백엔드 내부에서 처리
+      // 접수 후 워커가 AI를 호출하며, 완료될 때까지 결과를 조회
       const response = await submitVerificationImage(image, challenge.scheduleId,
         submissionKey.current, controller.signal, accessToken)
       if (!controller.signal.aborted) {

@@ -6,29 +6,30 @@ import com.moamu.domain.media.dto.MediaResponse;
 import com.moamu.domain.media.repository.MediaRepository;
 import com.moamu.domain.verification.repository.VerificationRepository;
 import com.moamu.domain.verification.service.VerificationSubmissionService;
-import com.moamu.domain.verification.service.PhotoVerificationService;
 import com.moamu.global.exception.BusinessException;
 import com.moamu.global.exception.CommonErrorCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-// 사진 저장 → 인증 시도·AI 작업 생성 → AI 호출·결과 저장을 순서대로 호출
+// 사진 저장 후 인증 시도와 AI 대기 작업을 등록
 @Service
 public class MediaVerificationService {
     private final MediaService mediaService;
     private final VerificationSubmissionService submissionService;
     private final VerificationRepository verifications;
     private final MediaRepository media;
+    private final MediaVerificationQueryService queryService;
 
     public MediaVerificationService(MediaService mediaService, VerificationSubmissionService submissionService,
-            VerificationRepository verifications, MediaRepository media) {
+            VerificationRepository verifications, MediaRepository media, MediaVerificationQueryService queryService) {
         this.mediaService = mediaService;
         this.submissionService = submissionService;
         this.verifications = verifications;
         this.media = media;
+        this.queryService = queryService;
     }
 
-    // 사진 인증 요청을 처리하고, DB 접수 완료 후 AI 판정 결과 반환
+    // 사진 인증 요청을 처리하고 DB 접수 완료 후 응답
     public MediaResponse submit(Long userId, Long scheduleId, MultipartFile image, String key) {
         if (userId == null || userId <= 0) throw new BusinessException(CommonErrorCode.UNAUTHORIZED);
         if (scheduleId == null || scheduleId <= 0 || key == null || key.isBlank() || key.length() > 100)
@@ -47,8 +48,7 @@ public class MediaVerificationService {
                     throw new BusinessException(CommonErrorCode.INVALID_REQUEST);
             }
             var submitted = submissionService.createVerification(userId, scheduleId, stored.getMediaId(), key);
-            var completed = submissionService.verify(userId, submitted.aiTaskId());
-            return response(submitted.verificationId(), submitted.mediaId(), submitted.aiTaskId(), completed);
+            return queryService.get(userId, submitted.verificationId());
         }
 
         // 신규 요청이면 사진을 업로드하고 인증 접수
@@ -66,15 +66,7 @@ public class MediaVerificationService {
             }
             throw failure;
         }
-        // AI 판정 실패 시에도 접수 기록을 유지하여 재시도 가능하도록 처리
-        var result = submissionService.verify(userId, submitted.aiTaskId());
-        return response(submitted.verificationId(), submitted.mediaId(), submitted.aiTaskId(), result);
+        return queryService.get(userId, submitted.verificationId());
     }
 
-    // 인증 정보와 AI 판정 결과를 조합하여 클라이언트 응답 DTO 생성
-    private MediaResponse response(Long verificationId, Long mediaId, Long taskId,
-            PhotoVerificationService.Result result) {
-        return new MediaResponse(verificationId, mediaId, taskId,
-                result.status().name(), result.response().checks());
-    }
 }

@@ -32,6 +32,10 @@ app:
   schedule-closing:
     enabled: ${SCHEDULE_CLOSING_ENABLED:true}
     delay-ms: ${SCHEDULE_CLOSING_DELAY_MS:60000}
+  # 사진 인증 AI 작업 워커 설정
+  photo-verification:
+    worker-enabled: ${PHOTO_VERIFICATION_WORKER_ENABLED:true}
+    worker-delay-ms: ${PHOTO_VERIFICATION_WORKER_DELAY_MS:1000}
   ai:
     server-url: ${AI_SERVER_URL:http://localhost:8000}
     connect-timeout: ${AI_CONNECT_TIMEOUT:3s}
