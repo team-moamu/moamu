@@ -14,7 +14,7 @@ export function BackHeader({ title }: BackHeaderProps) {
       <button
         type="button"
         onClick={() => navigate(-1)}
-        className="absolute left-6 flex items-center justify-center"
+        className="absolute left-6 flex cursor-pointer items-center justify-center"
         aria-label="뒤로가기"
       >
         <Icon name="back" size={20} />
