@@ -44,7 +44,7 @@ export function HomeChallengeCard({ challenge, featured, isToday }: HomeChalleng
         {challenge.title}
       </h3>
       <p className="m-0 mb-3 text-xs">{challenge.day}일 차 {dayDescription}</p>
-      {featured && <ChallengeArtwork challenge={challenge} />}
+      {(featured || challenge.artworkPreviewUrl) && <ChallengeArtwork challenge={challenge} />}
       <ChallengeAction challenge={challenge} isToday={isToday} status={status} />
     </article>
   )
@@ -63,9 +63,9 @@ function ChallengeArtwork({ challenge }: { challenge: HomeChallenge }) {
       </div>
       <div className="aspect-square w-[48%] overflow-hidden rounded-[9px] border-2 border-[#cebd9e]">
         <img
-          src={goalArtworkImages[challenge.goalTemplateId] ?? backgroundMu}
+          src={challenge.artworkPreviewUrl ?? goalArtworkImages[challenge.goalTemplateId] ?? backgroundMu}
           alt={`${challenge.title} 작품 미리보기`}
-          className={`h-full w-full object-cover ${challenge.completed ? '' : 'blur-md'}`}
+          className={`h-full w-full object-cover ${challenge.artworkPreviewUrl || challenge.completed ? '' : 'blur-md'}`}
         />
       </div>
     </div>

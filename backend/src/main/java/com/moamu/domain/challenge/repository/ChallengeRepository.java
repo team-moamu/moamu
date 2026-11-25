@@ -82,11 +82,14 @@ public interface ChallengeRepository extends JpaRepository<Challenge, Long> {
                 s.attemptCount,
                 s.resultReason,
                 c.goalTemplateId,
-                c.status
+                c.status,
+                m.imageKey
               )
               FROM Schedule s
               INNER JOIN Challenge c
                   ON s.challengeId = c.challengeId
+              LEFT JOIN Artwork a ON a.artworkId = c.artworkId AND a.delYn = 'N'
+              LEFT JOIN Media m ON m.mediaId = a.mediaId
               WHERE c.userId = :userId
                 AND DATE(s.scheduleDate) = :day
               ORDER BY

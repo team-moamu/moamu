@@ -190,7 +190,7 @@ class VerificationSubmissionIntegrationTests {
 
     @ParameterizedTest
     @CsvSource({"GENERATED_ARTWORK,artworks/result.webp", "VERIFICATION,generated_test/91/1/result.webp"})
-    void hidesAnAiArtworkForTheIncompleteChallengeEvenWhenAnotherChallengeSharesIt(String purpose, String key) {
+    void showsOnlyABlurredPreviewForAnIncompleteChallengeThatSharesAnAiArtwork(String purpose, String key) {
         jdbc.update("INSERT INTO media (image_key, purpose) VALUES (?, ?)", key, purpose);
         Long artworkMediaId = jdbc.queryForObject("SELECT media_id FROM media WHERE image_key = ?", Long.class, key);
         jdbc.update("UPDATE artwork SET artwork_title='Painting', media_id=? WHERE artwork_id=30", artworkMediaId);
@@ -219,13 +219,15 @@ class VerificationSubmissionIntegrationTests {
                 .isEqualTo("https://example.org/signed-artwork");
         clearInvocations(artworkImages);
 
+        when(artworkImages.resolveBlurredPreview(key)).thenReturn("data:image/png;base64,preview");
         var result = successService.getSuccess(1L, openVerification.verificationId());
         assertThat(result.artwork().artworkId()).isEqualTo(30L);
-        assertThat(result.artwork().imageUrl()).isNull();
+        assertThat(result.artwork().imageUrl()).isEqualTo("data:image/png;base64,preview");
         assertThat(result.earnedPieceCount()).isEqualTo(1);
         assertThat(result.checks()).hasSize(1);
         assertThatThrownBy(() -> challengeService.getCompletion(1L, challengeId)).isInstanceOf(BusinessException.class);
-        verifyNoInteractions(artworkImages);
+        verify(artworkImages).resolveBlurredPreview(key);
+        verifyNoMoreInteractions(artworkImages);
     }
 
     @Test

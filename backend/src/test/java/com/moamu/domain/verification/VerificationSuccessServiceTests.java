@@ -32,9 +32,13 @@ class VerificationSuccessServiceTests {
     }
 
     private VerificationSuccessSnapshot snapshot(String status, String scheduleStatus) {
+        return snapshot(status, scheduleStatus, false);
+    }
+
+    private VerificationSuccessSnapshot snapshot(String status, String scheduleStatus, boolean blurredPreview) {
         return new VerificationSuccessSnapshot(101, VerificationStatus.valueOf(status), 10, "Read", 30, 2,
                 Status.valueOf(scheduleStatus), 1,
-                3, 3, 20, "Painting", "artworks/test.png");
+                3, 3, 20, "Painting", "artworks/test.png", blurredPreview);
     }
 
     @ParameterizedTest
@@ -54,6 +58,18 @@ class VerificationSuccessServiceTests {
         assertThat(result.checks()).containsExactly(check);
         assertThat(result.artwork().imageUrl()).isEqualTo("https://example.com/signed");
         assertThat(service.getSuccess(1L, 101)).isEqualTo(result);
+    }
+
+    @Test
+    void returnsBlurredPreviewWithoutSigningTheOriginal() {
+        when(repository.findOwned(1, 101, "generated_test/"))
+                .thenReturn(Optional.of(snapshot("SUCCESS", "SUCCESS", true)));
+        when(images.resolveBlurredPreview("artworks/test.png")).thenReturn("data:image/png;base64,preview");
+
+        var result = service.getSuccess(1L, 101);
+
+        assertThat(result.artwork().imageUrl()).isEqualTo("data:image/png;base64,preview");
+        verify(images, never()).resolve(any());
     }
 
     @Test

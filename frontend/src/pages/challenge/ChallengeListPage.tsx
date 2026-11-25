@@ -46,7 +46,8 @@ export function ChallengeListPage() {
           challengeId: challenge.challengeId,
           scheduleId: challenge.scheduleId,
           challengeTitle: challenge.challengeTitle,
-          imageUrl: goalArtworkImages[challenge.goalTemplateId] ?? backgroundMu,
+          imageUrl: challenge.artworkPreviewUrl ?? goalArtworkImages[challenge.goalTemplateId] ?? backgroundMu,
+          imageAlreadyBlurred: Boolean(challenge.artworkPreviewUrl),
           dayNo: challenge.dayNo,
           durationDays: Math.round(
             (Date.parse(`${challenge.endDate}T00:00:00Z`)

@@ -60,7 +60,9 @@ public class VerificationSuccessService {
         int totalPieceCount = Math.toIntExact(verificationSuccessRepository.countPieces(snapshot.challengeId()));
 
         // 작품 이미지 URL과 해당 인증 시도의 조건별 결과 조회
-        String imageUrl = snapshot.imageKey() == null ? null : artworkImageUrlService.resolve(snapshot.imageKey());
+        String imageUrl = snapshot.blurredPreview()
+                ? artworkImageUrlService.resolveBlurredPreview(snapshot.imageKey())
+                : artworkImageUrlService.resolve(snapshot.imageKey());
         Artwork artwork = new Artwork(snapshot.artworkId(), snapshot.artworkTitle(), imageUrl);
         List<Check> checks = verificationSuccessRepository.findChecks(verificationId);
 
