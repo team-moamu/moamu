@@ -84,6 +84,7 @@ export function ChallengeCard({
         <SuccessButton
           icon="camera"
           disabled={status === 'success' || status === 'fail'}
+          disabledTone={status === 'success' ? 'blue' : 'neutral'}
           onClick={(e) => {
             e.stopPropagation()
             onVerify(challengeId, scheduleId)
