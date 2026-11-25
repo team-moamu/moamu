@@ -72,7 +72,7 @@ class UserControllerTests {
             {
               "loginId": "test@example.com",
               "password": "test-password1",
-              "name": "테스트회원"
+              "verificationToken": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopq"
             }
             """))
         .andExpect(status().isCreated())
@@ -92,7 +92,7 @@ class UserControllerTests {
             {
               "loginId": "not-an-email",
               "password": "test-password1",
-              "name": "테스트회원"
+              "verificationToken": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopq"
             }
             """))
         .andExpect(status().isBadRequest())
@@ -111,7 +111,7 @@ class UserControllerTests {
             {
               "loginId": "test@example.com",
               "password": "",
-              "name": "테스트회원"
+              "verificationToken": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopq"
             }
             """))
         .andExpect(status().isBadRequest())
@@ -137,7 +137,7 @@ class UserControllerTests {
             {
               "loginId": "test@example.com",
               "password": "%s",
-              "name": "테스트회원"
+              "verificationToken": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopq"
             }
             """.formatted(password)))
         .andExpect(status().isBadRequest())
@@ -163,7 +163,7 @@ class UserControllerTests {
             {
               "loginId": "test@example.com",
               "password": "%s",
-              "name": "테스트회원"
+              "verificationToken": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopq"
             }
             """.formatted(password)))
         .andExpect(status().isCreated())
@@ -185,7 +185,7 @@ class UserControllerTests {
             {
               "loginId": "%s",
               "password": "test-password1",
-              "name": "테스트회원"
+              "verificationToken": "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopq"
             }
             """.formatted(email)))
         .andExpect(status().isBadRequest())
@@ -212,8 +212,9 @@ class UserControllerTests {
     verifyNoInteractions(userService);
   }
 
-  @Test
-  void validLoginReturnsAccessToken() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void validLoginReturnsAccessToken(boolean autoLogin) throws Exception {
 
     // 로그인 검증을 통과한 회원 준비
     User user = mock(User.class);
@@ -226,10 +227,11 @@ class UserControllerTests {
     when(jwtTokenProvider.createAccessToken(10L))
         .thenReturn("test-access-token");
 
-    when(refreshTokenService.issue(10L))
+    when(refreshTokenService.issue(10L, autoLogin))
         .thenReturn(new RefreshTokenService.IssuedRefreshToken(
             "test-refresh-token",
-            Duration.ofDays(7)));
+            Duration.ofDays(7),
+            autoLogin));
 
     // 로그인 요청 및 응답 확인
     mockMvc.perform(post("/api/users/login")
@@ -237,16 +239,17 @@ class UserControllerTests {
         .content("""
             {
               "loginId": "Test@example.com",
-              "password": "Password123!"
+              "password": "Password123!",
+              "autoLogin": %s
             }
-            """))
+            """.formatted(autoLogin)))
         .andExpect(status().isOk())
 
         .andExpect(cookie().value("moamu_refresh", "test-refresh-token"))
         .andExpect(cookie().httpOnly("moamu_refresh", true))
         .andExpect(cookie().secure("moamu_refresh", true))
         .andExpect(cookie().path("moamu_refresh", "/api/users"))
-        .andExpect(cookie().maxAge("moamu_refresh", 604800))
+        .andExpect(cookie().maxAge("moamu_refresh", autoLogin ? 604800 : -1))
 
         .andExpect(jsonPath("$.success").value(true))
         .andExpect(jsonPath("$.data.accessToken")
