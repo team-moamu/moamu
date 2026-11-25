@@ -5,7 +5,7 @@ import { Text } from '../../components/atoms/typography/Text'
 import { LabeledInput } from '../../components/molecules/form/LabeledInput'
 import { SocialLoginButton } from '../../components/molecules/form/SocialLoginButton'
 import { login, LoginError } from '../../api/AuthApi'
-import { Link, useLocation, useNavigate } from 'react-router'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router'
 import { saveAccessToken, saveLoginEmail } from '../../auth/AuthStorage'
 
 export function LoginPage() {
@@ -13,6 +13,8 @@ export function LoginPage() {
 
   const location = useLocation()
   const signupCompleted = location.state?.signupCompleted === true
+  const [searchParams] = useSearchParams()
+  const sessionExpired = searchParams.get('reason') === 'session-expired'
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -68,6 +70,12 @@ export function LoginPage() {
           나만의 미술관으로
         </Text>
       </h1>
+
+      {sessionExpired && (
+        <p role="status" className="text-caption mb-4 text-[var(--color-primary)]">
+          로그인 상태가 만료됐어요. 다시 로그인해 주세요.
+        </p>
+      )}
 
       {signupCompleted && (
         <p

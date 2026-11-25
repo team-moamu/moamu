@@ -28,7 +28,7 @@ async function refreshAccessToken(previousToken: string): Promise<string> {
       lastRotation = null
 
       if (window.location.pathname !== '/login') {
-        window.location.replace('/login')
+        window.location.replace('/login?reason=session-expired')
       }
     }
 
