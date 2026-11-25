@@ -10,6 +10,7 @@ import { SuccessButton } from '../../components/atoms/button/SuccessButton'
 import type { IconName } from '../../components/atoms/icon/Icon'
 import { GoalCard } from '../../components/atoms/card/GoalCard'
 import { CustomGoalModal } from '../../components/molecules/modal/CustomGoalModal'
+import { VerificationLoading } from '../../components/molecules/feedback/VerificationLoading'
 import { dateKey } from '../home/HomeData'
 
 type Goal = {
@@ -145,6 +146,9 @@ export function ChallengeCreatePage() {
 
   return (
     <div className="flex flex-col gap-8 px-5 py-6">
+      {isSubmitting && selectedGoalId === null && analysis && (
+        <VerificationLoading mode="artwork" challengeTitle={customGoal} />
+      )}
       <fieldset disabled={isSubmitting || isAnalyzing} className="m-0 flex min-w-0 flex-col gap-8 border-0 p-0">
 
       {/* 목표 선택 */}

@@ -49,7 +49,7 @@ export function ChallengeCard({
             onClick?.()
           }
         }}
-        className="rounded-md p-4 shadow-sm card bg-[#fff8ed]"
+        className="rounded-md p-4 shadow-sm card"
       >
       <div className="flex gap-4">
         <BlurImage
@@ -84,12 +84,13 @@ export function ChallengeCard({
         <SuccessButton
           icon="camera"
           disabled={status === 'success' || status === 'fail'}
+          disabledTone={status === 'success' ? 'blue' : 'neutral'}
           onClick={(e) => {
             e.stopPropagation()
             onVerify(challengeId, scheduleId)
           }}
         >
-          인증 완료
+          {status === 'retry' ? '재인증하기' : '인증 완료'}
         </SuccessButton>
       </div>
     </div>

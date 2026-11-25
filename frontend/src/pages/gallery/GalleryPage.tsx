@@ -122,7 +122,7 @@ export function GalleryPage() {
           ) : error ? (
             <CollectionEmptyState variant="error" onRetry={reloadGallery} />
           ) : artworks.length === 0 ? (
-            <CollectionEmptyState variant="empty" onRetry={reloadGallery} />
+            <CollectionEmptyState variant="empty" />
           ) : (
             <div className="grid grid-cols-2 gap-x-4 gap-y-5">
               {artworks.map((artwork) => (
