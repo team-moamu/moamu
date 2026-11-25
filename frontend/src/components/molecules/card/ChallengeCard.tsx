@@ -90,7 +90,7 @@ export function ChallengeCard({
             onVerify(challengeId, scheduleId)
           }}
         >
-          인증 완료
+          {status === 'retry' ? '재인증하기' : '인증 완료'}
         </SuccessButton>
       </div>
     </div>
