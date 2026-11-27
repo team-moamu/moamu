@@ -18,7 +18,7 @@ pipeline {
                     }
                     env.IMAGE_TAG = env.GIT_COMMIT.take(12)
                 }
-                sh 'docker version && git --version'
+                sh 'docker version && git --version && kustomize version'
             }
         }
 
@@ -49,10 +49,11 @@ pipeline {
         stage('Update development manifests') {
             when { branch 'develop' }
             steps {
-                sshagent(credentials: ['moamu-deploy-ssh']) {
+                dir('deploy') { deleteDir() }
+                withCredentials([gitUsernamePassword(credentialsId: 'moamu-deploy-pat', gitToolName: 'Default')]) {
                     sh '''
                         set -eu
-                        git clone --branch main git@github.com:team-moamu/moamu-deploy.git deploy
+                        git clone --branch main https://github.com/team-moamu/moamu-deploy.git deploy
                         test -f deploy/environments/dev/back/kustomization.yaml
                         test -f deploy/environments/dev/front/kustomization.yaml
                         cd deploy/environments/dev/back
@@ -64,7 +65,10 @@ pipeline {
                         git add environments/dev/back/kustomization.yaml environments/dev/front/kustomization.yaml
                         if ! git diff --cached --quiet; then
                             git -c user.name=moamu-deploy-bot -c user.email=moamu-deploy-bot@users.noreply.github.com commit -m "chore: 개발 이미지 ${IMAGE_TAG} 갱신"
-                            git push origin HEAD:main
+                            if ! git push origin HEAD:main; then
+                                git pull --rebase origin main
+                                git push origin HEAD:main
+                            fi
                         fi
                     '''
                 }
